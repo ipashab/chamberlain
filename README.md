@@ -8,14 +8,15 @@
 <a href="https://www.blacksmith.sh/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/blacksmith-dark.svg"><img src="docs/references/badges/blacksmith-light.svg" height="28" alt="CI powered by Blacksmith" /></picture></a>
 
 > [!NOTE]
-> **This is the team-operations fork of OpenChamber.** It builds four blocks on top of upstream, each with its own surface:
+> **This is the team-operations fork of OpenChamber.** It builds five blocks on top of upstream, each with its own surface:
 >
 > - **Team Mode.** A lead you chat with plus staffed teammates: shared task board with pull-request badges, live roster, sub-teams, one activity feed.
 > - **Missions.** A Goals page where a goal prompt is filed into a paced queue and run as a fresh session or a lead-led team, watched to completion.
 > - **Contacts.** Saved assistant personas (a reviewer, a planner) with one continuing chat each, one click away in the sidebar.
 > - **`/compactnew`.** Compact a long chat and continue in a fresh one seeded with the summary.
+> - **Bitbucket DC and Jira, read-only.** Pull requests and issues open as rich views; a dedicated session analyzes a pull (comment footnotes, file verdicts) or drafts a spec from a Jira task, and the judging methodology is a Magic Prompts setting.
 >
-> Fork release: `2.2.0-fork1`, based on upstream `2.2.0`. The full list, commit by commit: [README-FORK.md](README-FORK.md).
+> Fork release: `2.2.0-fork4`, based on upstream `2.2.0`. The full list, commit by commit: [README-FORK.md](README-FORK.md).
 
 ## Run agent work. Keep control. Ship from anywhere.
 
@@ -124,6 +125,27 @@ reply. [Details](README-FORK.md#contacts-saved-personas-with-one-continuing-chat
 `/compact` compacts a long chat in place; `/compactnew` compacts it and
 **continues in a fresh chat** seeded with the summary. The old chat stays in
 the list as the archive. [Details](README-FORK.md#compactnew-continues-a-long-chat-in-a-fresh-one--eb2fa71)
+
+## Bitbucket DC and Jira — whole views, judged readings, your methodology
+
+Connect your self-hosted **Bitbucket Data Center** and **Jira** with a PAT in
+settings — everything is read-only, the token stays on the server side. A
+pull request opens as a full view — meta, checks, reviewers, open comments
+with file-and-line anchors, per-file diffs — and a Jira issue arrives as a
+clean card, its instance noise healed: sprints show names, not Greenhopper
+serialization; Development answers dev-summary counts; rank keys stay
+hidden.
+
+Two readings run on dedicated sessions. **Analyze a pull**: every open
+comment grows a footnote (gist, is it justified, how to fix), every file a
+verdict chip, the pull an overall verdict. **Compose a spec** from a Jira
+task: essence, plan grounded in your repository, testable acceptance
+criteria, open questions, bounds — rendered back as a card on the issue.
+Each answer is readable prose first with a collapsed machine digest tail;
+and the judging instructions both readings open with are **yours to edit**
+in Magic Prompts settings.
+
+[Details](README-FORK.md#bitbucket-data-center-read-whole-pull-requests-in-the-panel--0596c7fb8-d81078bbf)
 
 ## What you can do with OpenChamber
 

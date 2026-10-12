@@ -153,6 +153,46 @@ saved role from the very first reply. CRUD over five routes under
 files, every write an `openchamber:assistant-*` frame the open pages
 refetch on.
 
+### Bitbucket Data Center, read whole: pull requests in the panel — `0596c7fb8`, `d81078bbf`
+
+A read-only Bitbucket Data Center integration: PAT in settings, then a
+pull request opens as a view — meta, branches, checks, reviewers, open
+comments with their file-and-line anchors, and per-file diffs with the
+hunk framing the anchor, all loaded through the app's server so the
+token never reaches the browser. Selecting diff rows (a line or a dragged
+span) pins the excerpt to the next chat message the same way inline code
+comments do; the asking surface stays the chat the user already has.
+
+### Jira and pull analysis: read the task, judge the diff — `ea76bae29`, `a43100bcd`
+
+The two readers on top of the viewers. A pull's **Analyze** opens a
+dedicated session whose first message embeds the whole pull — comments,
+diffs inside per-file and total budgets — and every open comment grows a
+footnote (its gist, whether it is justified, what to do about it), every
+file a verdict chip, and the pull an overall verdict, all parsed back
+out of the session's JSON digest. A Jira task grows two faces of its
+own: **ask** pins the issue, a comment or its links to the next chat
+message, and **Compose spec** drafts a development spec in a session —
+essence, plan grounded in the repository, acceptance criteria, open
+questions, bounds — rendered back as a card on the issue. The Jira view
+itself stays read-only and heals the instance's machinery: sprints parse
+back to their names, the Development bean answers its dev-summary
+counts, rank keys and raw Java serialization never become rows.
+
+### The answer splits in two; the methodology becomes the user's — `ab566712b`, `6993a1ace`
+
+The analysis and spec answers settle into a two-part contract: a full
+readable text for the person first, a compact fenced JSON digest last.
+The chat folds that digest into one collapsed «machine digest» line —
+panels still read the raw text off the store, so footnotes, verdict
+chips and the spec card keep working. The judging instructions themselves
+— the methodology both sessions open with — move into Magic Prompts
+settings, a new Integrations group: default templates, user overrides,
+reset to default. The app always appends the material and the answer
+contract on its own, so no edited text can edit the panel out of
+working; the analysis keeps one slot, `{{task_instruction}}`, filled
+from the pull title's task key.
+
 ## Distribution
 
 `3fa5412` packages this fork as "OpenChamber Beta": own `productName`,
