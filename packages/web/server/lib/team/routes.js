@@ -90,9 +90,9 @@ export const registerTeamRoutes = (app, dependencies) => {
     }
   });
 
-  // The board's PR chips: live GitHub state for every task carrying a pull
-  // link, keyed by task id. Read-only decoration of data the overview route
-  // already serves; disconnection and rate limits surface as a status, not a
+  // The board's PR chips: live state, GitHub or Bitbucket Data Center, for
+  // every task carrying a pull link, keyed by task id. Read-only decoration
+  // of data the overview route already serves; disconnection and rate limits surface as a status, not a
   // route failure, so the board keeps rendering when GitHub is unreachable.
   app.get('/api/openchamber/teams/:teamId/pull-summaries', async (req, res) => {
     try {

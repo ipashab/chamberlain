@@ -79,6 +79,15 @@ brief and tool allowances — as the preset JSON the shelf round-trips.
   `task_assignment` message into the owner's mailbox and wakes it; the wake
   prompt carries the subject and the description. A `send_message` on top of
   an assignment is noise.
+- **The pull link is a URL, parsed once.** `prUrl` accepts two addresses:
+  a GitHub pull (`https://github.com/<owner>/<repo>/pull/<number>`) and a
+  Bitbucket Data Center pull
+  (`https://<instance>[/context]/projects/<p>/repos/<r>/pull-requests/<id>`).
+  The service stores parsed coordinates, not the string — GitHub pulls the
+  shape state has always carried, Bitbucket pulls its own fields plus the
+  instance coordinates the REST client needs — so the summaries route never
+  re-parses. Bitbucket credentials live in the Settings → Integrations
+  connection (`bitbucket/config-store.js`), never in teams.json.
 - **A finished task carries its answer.** The owner marks its own task
   `completed` with the optional `result` parameter — the final answer, the
   conclusion the user should read, capped at 8000 chars. The result lives on
@@ -142,15 +151,20 @@ The app's own team management rides the same routes:
   the notification, the wake carries the details. Tasks created this way carry
   the `'user'` pseudo-id in `createdBy`, which the panel renders as "You".
 - `GET /api/openchamber/teams/:teamId/pull-summaries` — the board's PR chips:
-  the live GitHub state of every task carrying a pull link, keyed by task id.
-  Answers follow the tracked-items status contract — `ok` with the map (a
-  task whose PR could not be resolved maps to `null`, meaning unknown, not
-  closed), or `disconnected` / `unavailable` with no map, so the board keeps
-  rendering when GitHub cannot answer. Summaries are cached per pull for a
-  short TTL window: the burst of `team-task` events a busy team produces costs
-  the cache, not the provider. The reader is wired in
-  `team/pull-status.js` over the same lazy GitHub loaders the tracked-items
-  readers use; runtimes without it answer `501`.
+  the live state of every task carrying a pull link, keyed by task id, from
+  either provider the `prUrl` contract accepts — GitHub or Bitbucket Data
+  Center. Answers follow the tracked-items status contract — `ok` with the
+  map (a task whose PR could not be resolved maps to `null`, meaning unknown,
+  not closed), or `disconnected` / `unavailable` with no map on a GitHub-only
+  board, so the board keeps rendering when GitHub cannot answer; a board that
+  carries Bitbucket pulls never asks GitHub at all, and a mixed board answers
+  per provider — one side's failure leaves its own tasks unknown and the
+  other's live. Summaries are cached per pull for a short TTL window, so the
+  burst of `team-task` events a busy team produces costs the cache, not the
+  providers. The reader is wired in `team/pull-status.js` over the same lazy
+  GitHub loaders the tracked-items readers use plus the fork's Bitbucket
+  client whose connection the Settings → Integrations card owns; runtimes
+  without them answer `501`.
 - `PUT /api/openchamber/teams/:teamId/tasks/:taskId/pr` — the details dialog's
   PR row: link a task to its pull request, or clear the link with an empty
   string. The same `prUrl` shape `team.task_create` and `team.task_update`

@@ -19,6 +19,9 @@ const GitView = lazyWithChunkRecovery(() => import('@/components/views/GitView')
 // The Linear rail icon stays hidden until a workspace is connected, so most
 // users never render this panel; keep it out of the main bundle.
 const PlanView = lazyWithChunkRecovery(() => import('@/components/views/PlanView').then((m) => ({ default: m.PlanView })));
+// The Bitbucket pull surface opens from the rail, not from the chat's hot
+// path; its view renderer and markdown stay out of the eager startup graph.
+const BitbucketPullsPanel = lazyWithChunkRecovery(() => import('@/components/bitbucket/BitbucketPullsPanel').then((m) => ({ default: m.BitbucketPullsPanel })));
 import { ProjectContextPanel } from './RightSidebarTabs';
 import { TeamBoardView } from '@/components/chat/work-status/TeamBoardView';
 import type { TeamMember } from '@/lib/team/team-board-api';
@@ -172,6 +175,7 @@ const getModeLabel = (
   if (mode === 'notes') return t('contextRail.surface.notes');
   if (mode === 'terminal') return t('layout.mainTab.terminal');
   if (mode === 'team') return t('contextPanel.mode.team');
+  if (mode === 'pulls') return t('contextPanel.mode.pulls');
   if (isPluginContextPanelMode(mode)) {
     const guest = useGuestsStore.getState().guests.find((entry) => entry.id === pluginIdFromMode(mode));
     return guest?.name ?? t('contextRail.surface.plugin');
@@ -284,6 +288,10 @@ const getTabIcon = (
 
   if (tab.mode === 'team') {
     return <Icon name="layout-column" className="h-3.5 w-3.5" />;
+  }
+
+  if (tab.mode === 'pulls') {
+    return <Icon name="git-pull-request" className="h-3.5 w-3.5" />;
   }
 
   if (tab.mode === 'plan') {
@@ -967,6 +975,8 @@ export const ContextPanel: React.FC = () => {
                     directory={effectiveDirectory}
                     chatColumn={renderTeamChatColumn}
                   /></div>
+            : activeTab?.mode === 'pulls'
+                ? <React.Suspense fallback={null}><BitbucketPullsPanel /></React.Suspense>
             : null;
 
   const browserTabs = React.useMemo(

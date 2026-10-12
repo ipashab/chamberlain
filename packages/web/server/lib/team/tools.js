@@ -40,13 +40,13 @@ export const TEAM_ACTION_DEFINITIONS = Object.freeze([
     action: 'team.task_create',
     title: 'Create a team task',
     leadOnly: false,
-    description: 'Add a task to the shared board; requires subject, optional description, owner (a teammate slotId), blockedBy (task ids that must finish first) and prUrl (the GitHub pull-request URL once the work is reviewable). Assigning an owner notifies and wakes that teammate with the task details, so no separate message is needed to hand work off',
+    description: 'Add a task to the shared board; requires subject, optional description, owner (a teammate slotId), blockedBy (task ids that must finish first) and prUrl (the GitHub or Bitbucket Data Center pull-request URL once the work is reviewable). Assigning an owner notifies and wakes that teammate with the task details, so no separate message is needed to hand work off',
   },
   {
     action: 'team.task_update',
     title: 'Update a team task',
     leadOnly: false,
-    description: 'Update a board task; requires taskId, optional status (pending, in_progress, completed, deleted), description, owner, prUrl or result. The owner of a task marks it in_progress when starting and completed when done, attaching its final answer as result — the conclusion the user should read; prUrl links the task to its GitHub pull request and takes an empty string to clear',
+    description: 'Update a board task; requires taskId, optional status (pending, in_progress, completed, deleted), description, owner, prUrl or result. The owner of a task marks it in_progress when starting and completed when done, attaching its final answer as result — the conclusion the user should read; prUrl links the task to its pull request (GitHub or Bitbucket Data Center) and takes an empty string to clear',
   },
   {
     action: 'team.task_list',
@@ -154,6 +154,6 @@ export const TEAM_PARAMETER_PROPERTIES = Object.freeze({
   status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'deleted'], description: 'Board status; team.task_update only' },
   owner: { type: 'string', description: 'slotId the task is assigned to; task actions only' },
   blockedBy: { type: 'array', items: { type: 'string' }, description: 'Task ids that must finish before this one starts; team.task_create only' },
-  prUrl: { type: 'string', description: 'GitHub pull-request URL (https://github.com/<owner>/<repo>/pull/<number>) linking the task to its PR; team.task_create and team.task_update, empty string clears' },
+  prUrl: { type: 'string', description: 'Pull-request URL linking the task to its PR — GitHub (https://github.com/<owner>/<repo>/pull/<number>) or Bitbucket Data Center (https://<instance>/projects/<project>/repos/<slug>/pull-requests/<number>); team.task_create and team.task_update, empty string clears' },
   result: { type: 'string', description: 'The finished task\'s final answer — the conclusion the user should read, not a log; attach it to your own task in the same team.task_update call that marks it completed, empty string clears' },
 });

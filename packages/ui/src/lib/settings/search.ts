@@ -765,6 +765,21 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
+    id: 'integrations.bitbucket-account',
+    page: 'integrations',
+    titleKey: 'settings.bitbucket.title',
+    descriptionKey: 'settings.bitbucket.info',
+    keywords: ['bitbucket', 'data center', 'pull request', 'pat', 'token', 'self-hosted'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'integrations.bitbucket-connect',
+    page: 'integrations',
+    titleKey: 'settings.bitbucket.actions.connect',
+    keywords: ['bitbucket', 'connect', 'token', 'instance', 'tls'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'routing.token',
     page: 'routing',
     titleKey: 'settings.routing.token.label',

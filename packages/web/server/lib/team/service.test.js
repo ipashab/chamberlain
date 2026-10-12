@@ -671,6 +671,39 @@ describe('createTaskFromUi', () => {
     await expect(service.setTaskPullFromUi({ teamId, taskId: 'task_none', prUrl: url }))
       .rejects.toMatchObject({ statusCode: 404 });
   });
+
+  it('links a Bitbucket Data Center pull and keeps the two providers apart', async () => {
+    const { service } = await makeService();
+    const { teamId } = await makeTeam(service);
+    const url = 'https://bitbucket.example.com/projects/OC/repos/core/pull-requests/7/';
+
+    const { task } = await service.createTaskFromUi({ teamId, input: { subject: 'Review the DC pull', prUrl: url } });
+    expect(task.pull).toEqual({
+      provider: 'bitbucket',
+      origin: 'https://bitbucket.example.com',
+      context: '',
+      project: 'OC',
+      slug: 'core',
+      number: 7,
+      url: 'https://bitbucket.example.com/projects/OC/repos/core/pull-requests/7',
+    });
+
+    const updated = await service.setTaskPullFromUi({ teamId, taskId: task.taskId, prUrl: url });
+    expect(updated.task.pull.number).toBe(7);
+
+    // A GitHub pull still stores the plain GitHub shape, provider-less.
+    const github = await service.createTaskFromUi({
+      teamId,
+      input: { subject: 'Ship it', prUrl: 'https://github.com/octo/repo/pull/42' },
+    });
+    expect(github.task.pull).toEqual({ owner: 'octo', repo: 'repo', number: 42, url: 'https://github.com/octo/repo/pull/42' });
+
+    // Hostile and malformed addresses stay refused with the same 400.
+    await expect(service.setTaskPullFromUi({ teamId, taskId: task.taskId, prUrl: 'https://bitbucket.example.com/projects/OC/repos/core' }))
+      .rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.setTaskPullFromUi({ teamId, taskId: task.taskId, prUrl: 'bitbucket.example.com/projects/OC/repos/core/pull-requests/7' }))
+      .rejects.toMatchObject({ statusCode: 400 });
+  });
 });
 
 describe('team service: sub-teams and live roster editing', () => {

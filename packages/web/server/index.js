@@ -153,6 +153,7 @@ import { createTeamService } from './lib/team/service.js';
 import { createMissionsService } from './lib/missions/service.js';
 import { createAssistantsService } from './lib/assistants/service.js';
 import { createTeamPresetStore } from './lib/team/presets.js';
+import { createBitbucketConfigStore } from './lib/bitbucket/config-store.js';
 import { createSessionMetadataStore, createOpenCodeSessionMetadata } from './lib/openchamber-sessions/session-metadata-store.js';
 import { createOpenCodeClient } from './lib/openchamber-sessions/opencode-client.js';
 import { createScheduledTaskService } from './lib/scheduled-tasks/service.js';
@@ -1682,6 +1683,10 @@ void teamService.init().catch((error) =>
 // Presets for the "New Team" dialog: built-in recipes plus the user's own,
 // persisted next to teams.json.
 const teamPresets = createTeamPresetStore({ fsPromises, path, dataDir: OPENCHAMBER_DATA_DIR });
+// The Bitbucket Data Center connection: one instance, one token, persisted
+// as bitbucket.json beside the team and mission files. Board PR chips read
+// through it; the settings card is its only writer.
+const bitbucketConfigStore = createBitbucketConfigStore({ fsPromises, path, dataDir: OPENCHAMBER_DATA_DIR });
 // Missions: goal prompts filed into a paced queue, each in a session or team
 // of its own. Completion is observed through the shared session-state probe.
 const missionsService = createMissionsService({
@@ -2484,6 +2489,7 @@ async function main(options = {}) {
     openchamberVersion: OPENCHAMBER_VERSION,
     teamService,
     teamPresets,
+    bitbucketConfigStore,
     missionsService,
     assistantsService,
     onGuestDeactivated: async (event) => {

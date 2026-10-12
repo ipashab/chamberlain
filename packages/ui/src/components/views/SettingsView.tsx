@@ -349,6 +349,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.mcp.title');
       case 'plugins':
         return t('settings.page.plugins.title');
+      case 'team-presets':
+        return t('settings.teams.title');
       case 'skills.installed':
         return t('settings.page.skills.title');
       case 'skills.catalog':

@@ -60,6 +60,16 @@ describe('getVisibleContextRailSurfaces', () => {
     expect(getVisibleContextRailSurfaces(baseOptions).some((s) => s.id === 'browser')).toBe(true);
   });
 
+  test('the Bitbucket pull surface is reachable empty, connected or not', () => {
+    // Unlike the GitHub/GitLab PR panel, this surface reads the configured
+    // Data Center instance through the server, so the rail offers it before
+    // any connection check: its landing state is the address input.
+    const pulls = CONTEXT_SURFACES.find((surface) => surface.id === 'pulls');
+    expect(pulls?.availability).toBe('always');
+    expect(getVisibleContextRailSurfaces({ ...baseOptions, sourceControlConnected: false }).some((s) => s.id === 'pulls')).toBe(true);
+    expect(getVisibleContextRailSurfaces({ ...baseOptions, isVSCode: true }).some((s) => s.id === 'pulls')).toBe(true);
+  });
+
   test('respects the persisted user rail order', () => {
     const surfaces = getVisibleContextRailSurfaces({ ...baseOptions, railOrder: ['git', 'context'] });
     expect(surfaces.slice(0, 2).map((surface) => surface.id)).toEqual(['git', 'context']);

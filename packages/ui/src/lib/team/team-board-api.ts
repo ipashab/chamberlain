@@ -62,13 +62,30 @@ const teamTaskSchema = z.object({
   owner: z.string().nullable(),
   blockedBy: z.array(z.string()),
   // The PR the task's work is reviewable in; nullish on servers and state
-  // that predate the link. Parsed coordinates, not the pasted string.
-  pull: z.object({
-    owner: z.string(),
-    repo: z.string(),
-    number: z.number().int(),
-    url: z.string(),
-  }).nullish(),
+  // that predate the link. Parsed coordinates, not the pasted string —
+  // one member per provider, discriminated by `provider`, with GitHub the
+  // default so links stored before Bitbucket parse as they always did.
+  pull: z.union([
+    // The GitHub member, also the shape of provider-less legacy links:
+    // any other provider value fails the literal, so the member cannot
+    // swallow a Bitbucket pull by stripping its fields.
+    z.object({
+      provider: z.literal('github').nullish(),
+      owner: z.string(),
+      repo: z.string(),
+      number: z.number().int(),
+      url: z.string(),
+    }),
+    z.object({
+      provider: z.literal('bitbucket'),
+      origin: z.string(),
+      context: z.string(),
+      project: z.string(),
+      slug: z.string(),
+      number: z.number().int(),
+      url: z.string(),
+    }),
+  ]).nullish(),
   // Same nullish tolerance as `description`.
   createdBy: z.string().nullish(),
   createdAt: z.number(),

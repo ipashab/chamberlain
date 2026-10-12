@@ -7,6 +7,7 @@ import {
   buildTeammateBriefing,
   buildWakePayload,
 } from './prompts.js';
+import { parseBitbucketPullUrl } from '../bitbucket/url.js';
 
 /**
  * Team Mode service.
@@ -69,16 +70,35 @@ const asNonEmptyString = (value) => {
 const asList = (value) => (Array.isArray(value) ? value : []);
 
 /**
- * A GitHub pull-request URL is the one PR address every producer of a PR can
- * paste — the agent that opened it, the user that filed the task. The service
- * stores the parsed coordinates, not the string, so the summaries route never
- * re-parses; the canonical URL is rebuilt from the parts.
+ * A pull-request URL is the one PR address every producer of a PR can
+ * paste — the agent that opened it, the user that filed the task. Two
+ * providers answer: GitHub
+ * (`https://github.com/<owner>/<repo>/pull/<number>`) and Bitbucket Data
+ * Center (`https://<instance>[/context]/projects/<p>/repos/<r>/pull-requests/<id>`).
+ * The service stores parsed coordinates, not the string, so the summaries
+ * route never re-parses; the canonical URL is rebuilt from the parts.
+ * GitHub pulls keep the shape state has always carried — owner, repo,
+ * number, url, no provider field — so old boards read exactly as they did;
+ * a `provider` key on a pull means Bitbucket, with the instance
+ * coordinates the REST client needs.
  */
 const GITHUB_PULL_URL_PATTERN = /^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/pull\/(\d+)\/?$/;
 
 const parsePullUrl = (value) => {
   const raw = asNonEmptyString(value);
   if (!raw) return null;
+  const bitbucket = parseBitbucketPullUrl(raw);
+  if (bitbucket) {
+    return {
+      provider: 'bitbucket',
+      origin: bitbucket.origin,
+      context: bitbucket.context,
+      project: bitbucket.project,
+      slug: bitbucket.slug,
+      number: bitbucket.number,
+      url: bitbucket.canonicalUrl,
+    };
+  }
   const match = GITHUB_PULL_URL_PATTERN.exec(raw);
   if (!match) return null;
   const [, owner, repo, number] = match;
@@ -95,7 +115,7 @@ const parseTaskPullInput = (value) => {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'string' || value.trim() === '') return null;
   const parsed = parsePullUrl(value);
-  if (!parsed) throw new TeamError('prUrl must be a GitHub pull-request URL: https://github.com/<owner>/<repo>/pull/<number>', 400);
+  if (!parsed) throw new TeamError('prUrl must be a GitHub pull-request URL (https://github.com/<owner>/<repo>/pull/<number>) or a Bitbucket Data Center pull-request URL (https://<instance>/projects/<project>/repos/<slug>/pull-requests/<number>)', 400);
   return parsed;
 };
 

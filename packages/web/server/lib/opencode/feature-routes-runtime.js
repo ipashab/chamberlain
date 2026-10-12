@@ -31,6 +31,7 @@ import { createTrackedItemReaders } from '../tracked-items/readers.js';
 import { createTrackedItemsPersistence } from '../tracked-items/persistence.js';
 import { registerTrackedItemsRoutes } from '../tracked-items/routes.js';
 import { registerOpenChamberSessionRoutes } from '../openchamber-sessions/routes.js';
+import { registerBitbucketRoutes } from '../bitbucket/routes.js';
 import { registerTeamRoutes } from '../team/routes.js';
 import { createTeamPullStatus } from '../team/pull-status.js';
 import { registerMissionsRoutes } from '../missions/routes.js';
@@ -244,6 +245,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       openchamberVersion,
       teamService,
       teamPresets,
+      bitbucketConfigStore,
     } = routeDependencies;
 
     registerSettingsUtilityRoutes(app, {
@@ -320,8 +322,12 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerTeamRoutes(app, {
       teamService,
       teamPresets,
-      teamPullStatuses: createTeamPullStatus(),
+      teamPullStatuses: createTeamPullStatus({
+        loadBitbucketConfig: bitbucketConfigStore ? () => bitbucketConfigStore.read() : undefined,
+      }),
     });
+
+    registerBitbucketRoutes(app, { bitbucketConfigStore });
 
     registerMissionsRoutes(app, { missionsService });
     registerAssistantsRoutes(app, { assistantsService });

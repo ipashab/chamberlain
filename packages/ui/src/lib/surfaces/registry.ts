@@ -17,7 +17,8 @@ type BuiltInContextSurfaceId =
   | 'context'
   | 'browser'
   | 'chat'
-  | 'team';
+  | 'team'
+  | 'pulls';
 
 export type ContextSurfaceId = BuiltInContextSurfaceId | `plugin:${string}`;
 
@@ -160,6 +161,19 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     icon: 'layout-column',
     labelKey: 'contextPanel.mode.team',
     availability: 'has-content',
+  },
+  {
+    // The Bitbucket pull surface is the one read-anywhere surface: no
+    // repository or session context, only the configured Data Center
+    // connection, so it is reachable empty — its landing state is the
+    // address input and the recently read pulls.
+    id: 'pulls',
+    descriptionKey: 'contextRail.surface.pulls.description',
+    defaultWidthFraction: 1 / 2,
+    mode: 'pulls',
+    icon: 'git-pull-request',
+    labelKey: 'contextPanel.mode.pulls',
+    availability: 'always',
   },
 ];
 

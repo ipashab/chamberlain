@@ -10,6 +10,7 @@ import { isGuestActive } from '@/lib/guests/capabilities';
 import { isMobileSurfaceRuntime } from '@/lib/runtimeSurface';
 import { GitHubIntegration } from './GitHubIntegration';
 import { GitLabSettings } from '@/components/sections/openchamber/GitLabSettings';
+import { BitbucketSettings } from '@/components/sections/openchamber/BitbucketSettings';
 import { LinearSettings } from './LinearSettings';
 import { ThirdPartyIntegrationsSection } from './ThirdPartyIntegrationsSection';
 import { CatalogExtensionsSection } from './CatalogExtensionsSection';
@@ -21,13 +22,14 @@ export const IntegrationsPage: React.FC = () => {
   // Hosting providers are OpenChamber server features; VS Code uses its own Git integration.
   const hasGitHub = !isVSCodeRuntime();
   const hasGitLab = !isVSCodeRuntime();
+  const hasBitbucket = !isVSCodeRuntime();
   const hasLinear = Boolean(getRegisteredRuntimeAPIs()?.linear);
   const guests = useGuestsStore((state) => state.guests);
   const runtimeKey = useGuestsStore((state) => state.runtimeKey);
   const builtInGuests = !isVSCodeRuntime() && !isMobileSurfaceRuntime()
     ? guests.filter((guest) => guest.source === 'bundled' && guest.integration && isGuestActive(guest))
     : [];
-  const hasBuiltIn = hasGitHub || hasGitLab || hasLinear || builtInGuests.length > 0;
+  const hasBuiltIn = hasGitHub || hasGitLab || hasBitbucket || hasLinear || builtInGuests.length > 0;
 
   return (
     <SettingsPageLayout
@@ -45,6 +47,7 @@ export const IntegrationsPage: React.FC = () => {
         >
           {hasGitHub ? <GitHubIntegration /> : null}
           {hasGitLab ? <GitLabSettings /> : null}
+          {hasBitbucket ? <BitbucketSettings /> : null}
           {hasLinear ? <LinearSettings /> : null}
           {builtInGuests.map((guest) => <GuestIntegrationCard key={`${runtimeKey}:${guest.id}`} guest={guest} />)}
         </SettingsSection>

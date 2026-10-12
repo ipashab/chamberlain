@@ -105,6 +105,28 @@ describe('TeamTaskDetailsDialog', () => {
     expect(markup).toContain('Change');
   });
 
+  test('a Bitbucket pull offers the read-only viewer beside the chip', () => {
+    const withBitbucketPull: TeamTask = {
+      ...fullTask,
+      pull: {
+        provider: 'bitbucket',
+        origin: 'https://bitbucket.example.com',
+        context: '',
+        project: 'AUTO',
+        slug: 'ai-reviewer',
+        number: 110,
+        url: 'https://bitbucket.example.com/projects/AUTO/repos/ai-reviewer/pull-requests/110',
+      },
+    };
+    const markup = markupFor(withBitbucketPull);
+
+    // The chip names the pull, "View" opens the read-only viewer, and the
+    // mounted viewer shows its loading word before the first answer.
+    expect(markup).toContain('PR #110');
+    expect(markup).toContain('View');
+    expect(markup).toContain('Reading the pull request…');
+  });
+
   test('a task without a PR offers to link one', () => {
     const markup = markupFor(bareTask);
 

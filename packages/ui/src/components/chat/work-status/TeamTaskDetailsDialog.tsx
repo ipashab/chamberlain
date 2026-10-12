@@ -17,6 +17,7 @@ import { formatDateTimeForPreference } from '@/lib/timeFormat';
 import { useUIStore } from '@/stores/useUIStore';
 import { setTeamTaskPull, type TeamPullSummary, type TeamTask, type TeamTaskStatus } from '@/lib/team/team-board-api';
 import { TeamPullStateChip } from './TeamPullStateChip';
+import { BitbucketPullDialog } from './BitbucketPullDialog';
 
 type TaskVisual = { icon: IconName; color?: string };
 
@@ -77,6 +78,7 @@ export const TeamTaskDetailsDialog: React.FC<Props> = ({
   const [pullDraft, setPullDraft] = React.useState('');
   const [pullSaving, setPullSaving] = React.useState(false);
   const [pullFailed, setPullFailed] = React.useState(false);
+  const [pullViewOpen, setPullViewOpen] = React.useState(false);
 
   // Fresh edit state for every open, and for every switch to another task
   // while the dialog stays open.
@@ -86,6 +88,7 @@ export const TeamTaskDetailsDialog: React.FC<Props> = ({
       setPullDraft('');
       setPullSaving(false);
       setPullFailed(false);
+      setPullViewOpen(false);
     }
   }, [open, task.taskId]);
 
@@ -133,6 +136,7 @@ export const TeamTaskDetailsDialog: React.FC<Props> = ({
   );
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
         <DialogHeader>
@@ -180,6 +184,15 @@ export const TeamTaskDetailsDialog: React.FC<Props> = ({
                 {pull && !pullEditing ? (
                   <>
                     <TeamPullStateChip pull={pull} summary={pullSummary} live={pullLive} />
+                    {pull.provider === 'bitbucket' ? (
+                      <button
+                        type="button"
+                        className="shrink-0 text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                        onClick={() => setPullViewOpen(true)}
+                      >
+                        {t('chat.workStatus.teamBoard.pullView.view')}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="shrink-0 text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
@@ -213,6 +226,9 @@ export const TeamTaskDetailsDialog: React.FC<Props> = ({
                   aria-label={t('chat.workStatus.teamBoard.taskDetails.pullUrlLabel')}
                   autoFocus
                 />
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  GitHub: https://github.com/&lt;owner&gt;/&lt;repo&gt;/pull/&lt;number&gt; · Bitbucket: https://&lt;instance&gt;/projects/&lt;project&gt;/repos/&lt;slug&gt;/pull-requests/&lt;number&gt;
+                </p>
                 {pullFailed ? (
                   <p role="alert" className="text-[13px]" style={{ color: 'var(--status-error)' }}>
                     {t('chat.workStatus.teamBoard.taskDetails.pullSaveError')}
@@ -281,5 +297,9 @@ export const TeamTaskDetailsDialog: React.FC<Props> = ({
         </div>
       </DialogContent>
     </Dialog>
+    {pull?.provider === 'bitbucket' ? (
+      <BitbucketPullDialog open={pullViewOpen} onOpenChange={setPullViewOpen} pull={pull} />
+    ) : null}
+    </>
   );
 };
