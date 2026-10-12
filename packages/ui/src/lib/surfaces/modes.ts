@@ -12,6 +12,7 @@ const BUILT_IN_CONTEXT_PANEL_MODES = [
   'terminal',
   'team',
   'pulls',
+  'jira',
 ] as const;
 
 type BuiltInContextPanelMode = (typeof BUILT_IN_CONTEXT_PANEL_MODES)[number];

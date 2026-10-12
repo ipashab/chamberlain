@@ -1,8 +1,23 @@
 import React from 'react';
 import { describe, expect, mock, test } from 'bun:test';
+import { plugin } from 'bun';
+import { pathToFileURL } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { I18nProvider } from '@/lib/i18n';
+
+// Bun does not implement Vite's worker asset-query imports, and the diff
+// rows now reach the syntax-coloring worker through the ask-reacting
+// components' import chain.
+plugin({
+  name: 'pulls-shiki-worker-url',
+  setup(build) {
+    build.onLoad({ filter: /markdown-shiki\.worker\.ts\?worker&url$/ }, ({ path }) => ({
+      contents: `export default ${JSON.stringify(pathToFileURL(path.split('?')[0]).href)};`,
+      loader: 'js',
+    }));
+  },
+});
 
 // The static markup reads a zustand store through its server snapshot — the
 // state of creation time, blind to setState — so the panel's memory is a
@@ -58,11 +73,11 @@ describe('BitbucketPullsPanel', () => {
 
   test('a remembered read draws its row with the pull it names', () => {
     memory.recents = [
-      { url: 'https://bitbucket.example/projects/AUTO/repos/ai-reviewer/pull-requests/110', number: 110, title: 'IDP-7004 map the modules', state: 'merged', at: 1760000000000 },
+      { url: 'https://bitbucket.example/projects/AUTO/repos/ai-reviewer/pull-requests/110', number: 110, title: 'DEMO-7004 map the modules', state: 'merged', at: 1760000000000 },
     ];
     const markup = markupFor();
     expect(markup).toContain('#110');
-    expect(markup).toContain('IDP-7004 map the modules');
+    expect(markup).toContain('DEMO-7004 map the modules');
     // The state chip carries the merged words, so a glance answers whether
     // the pull still needs reading.
     expect(markup).toContain('merged');

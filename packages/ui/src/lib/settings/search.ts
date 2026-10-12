@@ -780,6 +780,21 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
+    id: 'integrations.jira-account',
+    page: 'integrations',
+    titleKey: 'settings.jira.title',
+    descriptionKey: 'settings.jira.info',
+    keywords: ['jira', 'data center', 'issue', 'pat', 'token', 'self-hosted'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'integrations.jira-connect',
+    page: 'integrations',
+    titleKey: 'settings.jira.actions.connect',
+    keywords: ['jira', 'connect', 'token', 'instance', 'tls'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'routing.token',
     page: 'routing',
     titleKey: 'settings.routing.token.label',

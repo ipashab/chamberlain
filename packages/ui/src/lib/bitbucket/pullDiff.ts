@@ -80,3 +80,78 @@ export const excerptAround = (rows: readonly DiffRow[], index: number, radius = 
     const last = Math.min(rows.length, index + radius + 1);
     return rows.slice(first, last);
 };
+
+/**
+ * The rows of a chosen span — from one row to another, endpoints included —
+ * with the same breathing room `excerptAround` gives a single line, so a
+ * question about a range still arrives with its surroundings. The span's
+ * own rows always ride along regardless of the radius.
+ */
+export const excerptRange = (
+    rows: readonly DiffRow[],
+    fromIndex: number,
+    toIndex: number,
+    radius = 12,
+): DiffRow[] => {
+    const first = Math.max(0, Math.min(fromIndex, toIndex) - radius);
+    const last = Math.min(rows.length, Math.max(fromIndex, toIndex) + radius + 1);
+    return rows.slice(first, last);
+};
+
+/**
+ * One excerpt's rows as the ask carries them: a line number a side has
+ * promised, then the row's own text. Meta rows carry no number and ride
+ * along as they are.
+ */
+export const rowsAsQuote = (excerpt: readonly DiffRow[]): string =>
+    excerpt
+        .map((entry) => {
+            const number = entry.newLine ?? entry.oldLine;
+            return number === null ? entry.text : `${String(number).padStart(4, ' ')}| ${entry.text}`;
+        })
+        .join('\n');
+
+/**
+ * Where a comment's anchor lands in the file's rows: a comment hung on a
+ * removed line is addressed by the old side's numbering, everything else
+ * by the new side's. -1 when the anchor carries no line of its own or no
+ * row answers the line it names.
+ */
+export const anchorRowIndex = (
+    rows: readonly DiffRow[],
+    anchor: { line?: number | null; lineType?: string | null },
+): number => {
+    if (anchor.line === null || anchor.line === undefined) return -1;
+    for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index];
+        if (anchor.lineType === 'REMOVED' && row.oldLine === anchor.line) return index;
+        if (anchor.lineType !== 'REMOVED' && row.newLine === anchor.line) return index;
+    }
+    return -1;
+};
+
+/**
+ * The file's code as a highlighter wants it — file headers and hunk
+ * headers left out, prefix characters stripped — together with each
+ * row's place in that text, so a viewer tokenizes the whole diff once,
+ * in one worker call, and still knows which colored line belongs to
+ * which row. -1 marks a row the text leaves out.
+ */
+export interface DiffCodeMap {
+    code: string;
+    lineOf: number[];
+}
+
+export const codeMapOf = (rows: readonly DiffRow[]): DiffCodeMap => {
+    const pieces: string[] = [];
+    const lineOf: number[] = [];
+    for (const row of rows) {
+        if (row.kind === 'meta') {
+            lineOf.push(-1);
+            continue;
+        }
+        lineOf.push(pieces.length);
+        pieces.push(row.text.length > 1 ? row.text.slice(1) : '');
+    }
+    return { code: pieces.join('\n'), lineOf };
+};

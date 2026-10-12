@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { excerptAround, parseDiffRows } from './pullDiff';
+import { anchorRowIndex, codeMapOf, excerptAround, excerptRange, parseDiffRows, rowsAsQuote } from './pullDiff';
 
 const SAMPLE = [
     'diff --git a/checker.py b/checker.py',
@@ -83,5 +83,90 @@ describe('excerptAround', () => {
         const excerpt = excerptAround(rows, 0, 2);
         expect(excerpt[0]).toEqual(rows[0]);
         expect(excerpt).toHaveLength(3);
+    });
+});
+
+describe('excerptRange', () => {
+    const manyRows = parseDiffRows(
+        ['@@ -1,60 +1,60 @@', ...Array.from({ length: 60 }, (_, i) => ` ctx${i}`)].join('\n'),
+    );
+
+    test('covers the chosen span with the same breathing room on both sides', () => {
+        const excerpt = excerptRange(manyRows, 20, 25, 5);
+        // One past the hunk header: the window covers indexes 15 to 30,
+        // the context rows ctx14 through ctx29.
+        expect(excerpt[0].text).toBe(' ctx14');
+        expect(excerpt[excerpt.length - 1].text).toBe(' ctx29');
+        expect(excerpt).toHaveLength(16);
+    });
+
+    test('reads the same span whichever end the drag began at', () => {
+        expect(excerptRange(manyRows, 25, 20, 5)).toEqual(excerptRange(manyRows, 20, 25, 5));
+    });
+
+    test('clamps at the array edges instead of underflowing', () => {
+        const rows = parseDiffRows(SAMPLE);
+        const excerpt = excerptRange(rows, 0, rows.length - 1, 5);
+        expect(excerpt).toEqual(rows);
+    });
+});
+
+describe('rowsAsQuote', () => {
+    test('numbers the rows the sides promise and leaves meta bare', () => {
+        const rows = parseDiffRows(SAMPLE);
+        const quote = rowsAsQuote(rows);
+        const quoteLines = quote.split('\n');
+        // The file header and the hunk head arrive as they are.
+        expect(quoteLines[0]).toBe('diff --git a/checker.py b/checker.py');
+        expect(quoteLines[3]).toBe('@@ -10,4 +10,6 @@ def check(msisdn):');
+        // Numbered rows carry their number; the removed row counts old.
+        expect(quoteLines[4]).toBe('  10|  def check(msisdn):');
+        expect(quoteLines[5]).toBe('  11| -    return old()');
+        expect(quoteLines[6]).toBe('  11| +    headers = build()');
+        expect(quoteLines[9]).toBe('  14|  # trailing note');
+    });
+});
+
+describe('anchorRowIndex', () => {
+    test('a removed anchor counts the old side, every other the new one', () => {
+        const rows = parseDiffRows(SAMPLE);
+        expect(anchorRowIndex(rows, { line: 11, lineType: 'REMOVED' })).toBe(5);
+        expect(anchorRowIndex(rows, { line: 11, lineType: 'ADDED' })).toBe(6);
+        expect(anchorRowIndex(rows, { line: 13, lineType: null })).toBe(8);
+    });
+
+    test('a context anchor reads the new side, the way the instance numbers it', () => {
+        const rows = parseDiffRows(SAMPLE);
+        expect(anchorRowIndex(rows, { line: 14, lineType: 'CONTEXT' })).toBe(9);
+    });
+
+    test('an anchor without a line, or one the diff no longer holds, has no row', () => {
+        const rows = parseDiffRows(SAMPLE);
+        expect(anchorRowIndex(rows, { line: null, lineType: 'ADDED' })).toBe(-1);
+        expect(anchorRowIndex(rows, { line: 999, lineType: 'ADDED' })).toBe(-1);
+    });
+});
+
+describe('codeMapOf', () => {
+    test('strips the prefix and leaves header rows out of the text', () => {
+        const rows = parseDiffRows(SAMPLE);
+        const codeMap = codeMapOf(rows);
+        expect(codeMap.code).toBe([
+            'def check(msisdn):',
+            '    return old()',
+            '    headers = build()',
+            '    return new(headers)',
+            '',
+            '# trailing note',
+        ].join('\n'));
+        // Each row keeps its place in that text; headers read back as none.
+        expect(codeMap.lineOf).toEqual([-1, -1, -1, -1, 0, 1, 2, 3, 4, 5]);
+    });
+
+    test('a code row that carries only its prefix maps to an empty line', () => {
+        const rows = parseDiffRows('@@ -1,1 +1,1 @@\n+');
+        const codeMap = codeMapOf(rows);
+        expect(codeMap.code).toBe('');
+        expect(codeMap.lineOf).toEqual([-1, 0]);
     });
 });

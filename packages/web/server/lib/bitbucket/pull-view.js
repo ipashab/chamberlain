@@ -56,6 +56,11 @@ const commentBodySchema = z.object({
   threadResolved: z.boolean().nullish(),
   severity: z.string().nullish(),
   author: personBodySchema.nullish(),
+  anchor: z.object({
+    path: z.string().nullish(),
+    line: z.number().nullish(),
+    lineType: z.string().nullish(),
+  }).nullish(),
   comments: z.array(z.lazy(() => commentBodySchema)).nullish(),
 });
 
@@ -133,6 +138,11 @@ const activitiesPageSchema = z.object({
     createdDate: z.number().nullish(),
     action: z.string().nullish(),
     comment: commentBodySchema.nullish(),
+    commentAnchor: z.object({
+      path: z.string().nullish(),
+      line: z.number().nullish(),
+      lineType: z.string().nullish(),
+    }).nullish(),
   })).nullish(),
 });
 
@@ -212,6 +222,16 @@ const personSlugOf = (person) => person?.slug || null;
 // A participant's name lives one level in, a bare person's on itself.
 const authorNameOf = (author) => (author?.user ? personNameOf(author.user) : personNameOf(author));
 const authorSlugOf = (author) => (author?.user ? personSlugOf(author.user) : personSlugOf(author));
+
+/**
+ * The comment's place in the diff, in the shape the UI quotes by. An anchor
+ * without a path anchors nothing: it reads back as null, and the comment
+ * joins the pull-level crowd.
+ */
+const anchorOf = (anchor) =>
+  anchor?.path
+    ? { path: anchor.path, line: anchor.line ?? null, lineType: anchor.lineType ?? null }
+    : null;
 
 /**
  * The full view of one pull. The meta walks first (the checks need its head
@@ -299,6 +319,11 @@ export const readPullView = async ({ request, config, ref }) => {
       createdAt: activity.comment?.createdDate ?? activity.createdDate ?? null,
       resolved: activity.comment?.threadResolved === true,
       severity: activity.comment?.severity ?? null,
+      // Where the comment hangs: DC anchors review comments to a file and a
+      // line of the diff (lineType tells added, context or removed lines);
+      // a comment of the overview carries no anchor and belongs to the pull
+      // as a whole. The UI groups by this and quotes the anchored hunk.
+      anchor: anchorOf(activity.commentAnchor ?? activity.comment?.anchor),
       replies: (activity.comment?.comments ?? []).map((reply) => ({
         author: personNameOf(reply.author),
         authorSlug: personSlugOf(reply.author),

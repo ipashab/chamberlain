@@ -120,6 +120,16 @@ People carry both words and handles: every author field travels beside its
 `authorSlug` — the instance's stable handle the avatar proxy builds its
 URL from; a person the instance did not name by slug reads back null.
 
+Each comment also carries its `anchor` — where it hangs on the diff: the
+anchor's `path`, `line` and `lineType` (`ADDED`, `CONTEXT` or `REMOVED`,
+the side the line numbers count), read from the activity's
+`commentAnchor` with the comment's own `anchor` as the spelling DC's older
+replies carry. A comment of the pull's overview answers no anchor: its
+`anchor` reads `null`, and the viewer reads that as the pull-level crowd.
+An anchor without a path anchors nothing and reads back `null` the same
+way. Replies answer by their parent's anchor: the anchor describes the
+thread, not each answer.
+
 Local processing is the point: everything the viewer and the chat's
 "ask about this pull request" quote carry is assembled on the user's
 machine from GETs to the pull's own resources. The instance receives

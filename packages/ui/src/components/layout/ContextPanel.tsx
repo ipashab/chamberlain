@@ -22,6 +22,9 @@ const PlanView = lazyWithChunkRecovery(() => import('@/components/views/PlanView
 // The Bitbucket pull surface opens from the rail, not from the chat's hot
 // path; its view renderer and markdown stay out of the eager startup graph.
 const BitbucketPullsPanel = lazyWithChunkRecovery(() => import('@/components/bitbucket/BitbucketPullsPanel').then((m) => ({ default: m.BitbucketPullsPanel })));
+// The Jira issue surface is the same kind of rail-opened read; its body
+// and its sanitized HTML stay out of the eager startup graph too.
+const JiraIssuesPanel = lazyWithChunkRecovery(() => import('@/components/jira/JiraIssuesPanel').then((m) => ({ default: m.JiraIssuesPanel })));
 import { ProjectContextPanel } from './RightSidebarTabs';
 import { TeamBoardView } from '@/components/chat/work-status/TeamBoardView';
 import type { TeamMember } from '@/lib/team/team-board-api';
@@ -176,6 +179,7 @@ const getModeLabel = (
   if (mode === 'terminal') return t('layout.mainTab.terminal');
   if (mode === 'team') return t('contextPanel.mode.team');
   if (mode === 'pulls') return t('contextPanel.mode.pulls');
+  if (mode === 'jira') return t('contextPanel.mode.jira');
   if (isPluginContextPanelMode(mode)) {
     const guest = useGuestsStore.getState().guests.find((entry) => entry.id === pluginIdFromMode(mode));
     return guest?.name ?? t('contextRail.surface.plugin');
@@ -977,6 +981,8 @@ export const ContextPanel: React.FC = () => {
                   /></div>
             : activeTab?.mode === 'pulls'
                 ? <React.Suspense fallback={null}><BitbucketPullsPanel /></React.Suspense>
+            : activeTab?.mode === 'jira'
+                ? <React.Suspense fallback={null}><JiraIssuesPanel /></React.Suspense>
             : null;
 
   const browserTabs = React.useMemo(

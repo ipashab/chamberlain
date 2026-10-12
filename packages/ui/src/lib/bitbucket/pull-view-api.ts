@@ -65,6 +65,14 @@ export const bitbucketPullViewSchema = z.object({    pull: z.object({
         createdAt: z.number().nullish(),
         resolved: z.boolean(),
         severity: z.string().nullish(),
+        // Where the comment hangs in the diff; null is a pull-level comment.
+        anchor: z
+            .object({
+                path: z.string(),
+                line: z.number().nullish(),
+                lineType: z.string().nullish(),
+            })
+            .nullish(),
         replies: z.array(z.object({
             author: z.string().nullish(),
             authorSlug: z.string().nullish(),

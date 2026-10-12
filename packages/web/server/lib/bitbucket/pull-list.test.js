@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { BitbucketError } from './client.js';
 import { readOpenPulls } from './pull-list.js';
 
-const entry = ({ id, title, open, updatedDate = 1000, state, project = 'OTHER', slug = 'playtest' }) => ({
+const entry = ({ id, title, open, updatedDate = 1000, state, project = 'DEMO', slug = 'demo-service' }) => ({
   id,
   title,
   state: state ?? (open ? 'OPEN' : 'MERGED'),
   open,
   createdDate: updatedDate - 1000,
   updatedDate,
-  author: { user: { displayName: 'Pavel Ivanov', name: 'pivanov', slug: 'pivanov' } },
+  author: { user: { displayName: 'Alex Coder', name: 'acoder', slug: 'acoder' } },
   fromRef: { repository: { slug, project: { key: project } } },
 });
 
@@ -32,33 +32,33 @@ describe('readOpenPulls', () => {
   it('keeps the open pulls of the dashboard, drops the rest', async () => {
     const request = makeRequest([
       page([
-        entry({ id: 8689, title: 'Add tracing headers', open: true, updatedDate: 2000 }),
+        entry({ id: 4244, title: 'Add tracing headers', open: true, updatedDate: 2000 }),
         entry({ id: 8500, title: 'Merged long ago', open: false, updatedDate: 3000 }),
-        entry({ id: 8667, title: 'Automate experiments', open: true, updatedDate: 1000 }),
+        entry({ id: 4242, title: 'Automate the reports', open: true, updatedDate: 1000 }),
       ]),
     ]);
     const list = await readOpenPulls({ request, config });
     expect(list).toEqual({
       pulls: [
         {
-          number: 8689,
-          url: 'https://bitbucket.example.com/projects/OTHER/repos/playtest/pull-requests/8689',
+          number: 4244,
+          url: 'https://bitbucket.example.com/projects/DEMO/repos/demo-service/pull-requests/4244',
           title: 'Add tracing headers',
           state: 'open',
-          author: 'Pavel Ivanov',
-          authorSlug: 'pivanov',
-          repo: { project: 'OTHER', slug: 'playtest' },
+          author: 'Alex Coder',
+          authorSlug: 'acoder',
+          repo: { project: 'DEMO', slug: 'demo-service' },
           createdAt: 1000,
           updatedAt: 2000,
         },
         {
-          number: 8667,
-          url: 'https://bitbucket.example.com/projects/OTHER/repos/playtest/pull-requests/8667',
-          title: 'Automate experiments',
+          number: 4242,
+          url: 'https://bitbucket.example.com/projects/DEMO/repos/demo-service/pull-requests/4242',
+          title: 'Automate the reports',
           state: 'open',
-          author: 'Pavel Ivanov',
-          authorSlug: 'pivanov',
-          repo: { project: 'OTHER', slug: 'playtest' },
+          author: 'Alex Coder',
+          authorSlug: 'acoder',
+          repo: { project: 'DEMO', slug: 'demo-service' },
           createdAt: 0,
           updatedAt: 1000,
         },
@@ -89,7 +89,7 @@ describe('readOpenPulls', () => {
     expect(list.pulls.map((pull) => pull.number)).toEqual([11, 10]);
     expect(list.pulls[0].author).toBeNull();
     expect(list.pulls[0].authorSlug).toBeNull();
-    expect(list.pulls[1].author).toBe('Pavel Ivanov');
+    expect(list.pulls[1].author).toBe('Alex Coder');
   });
 
   it('stops at the cap and says so when open pulls may exist beyond it', async () => {

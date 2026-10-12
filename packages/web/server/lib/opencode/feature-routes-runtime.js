@@ -32,6 +32,7 @@ import { createTrackedItemsPersistence } from '../tracked-items/persistence.js';
 import { registerTrackedItemsRoutes } from '../tracked-items/routes.js';
 import { registerOpenChamberSessionRoutes } from '../openchamber-sessions/routes.js';
 import { registerBitbucketRoutes } from '../bitbucket/routes.js';
+import { registerJiraRoutes } from '../jira/routes.js';
 import { registerTeamRoutes } from '../team/routes.js';
 import { createTeamPullStatus } from '../team/pull-status.js';
 import { registerMissionsRoutes } from '../missions/routes.js';
@@ -246,6 +247,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       teamService,
       teamPresets,
       bitbucketConfigStore,
+      jiraConfigStore,
     } = routeDependencies;
 
     registerSettingsUtilityRoutes(app, {
@@ -328,6 +330,8 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     });
 
     registerBitbucketRoutes(app, { bitbucketConfigStore });
+
+    registerJiraRoutes(app, { jiraConfigStore });
 
     registerMissionsRoutes(app, { missionsService });
     registerAssistantsRoutes(app, { assistantsService });

@@ -342,8 +342,8 @@ describe('the open pulls route', () => {
     open: true,
     createdDate: updatedDate - 1000,
     updatedDate,
-    author: { user: { displayName: 'Pavel Ivanov', name: 'pivanov', slug: 'pivanov' } },
-    fromRef: { repository: { slug: 'playtest', project: { key: 'OTHER' } } },
+    author: { user: { displayName: 'Alex Coder', name: 'acoder', slug: 'acoder' } },
+    fromRef: { repository: { slug: 'demo-service', project: { key: 'DEMO' } } },
   });
 
   it('answers the open pulls of the token\'s dashboard', async () => {
@@ -353,7 +353,7 @@ describe('the open pulls route', () => {
       {
         isLastPage: true,
         values: [
-          openPull(8689, 'Add tracing headers', 1789669800000),
+          openPull(4244, 'Add tracing headers', 1789669800000),
           { id: 8500, title: 'Merged long ago', state: 'MERGED', open: false, author: {}, fromRef: {} },
         ],
       },
@@ -364,13 +364,13 @@ describe('the open pulls route', () => {
     expect(res.body).toEqual({
       pulls: [
         {
-          number: 8689,
-          url: 'https://bitbucket.example.com/projects/OTHER/repos/playtest/pull-requests/8689',
+          number: 4244,
+          url: 'https://bitbucket.example.com/projects/DEMO/repos/demo-service/pull-requests/4244',
           title: 'Add tracing headers',
           state: 'open',
-          author: 'Pavel Ivanov',
-          authorSlug: 'pivanov',
-          repo: { project: 'OTHER', slug: 'playtest' },
+          author: 'Alex Coder',
+          authorSlug: 'acoder',
+          repo: { project: 'DEMO', slug: 'demo-service' },
           createdAt: 1789669799000,
           updatedAt: 1789669800000,
         },
@@ -450,10 +450,10 @@ describe('the avatar proxy route', () => {
       return { contentType: 'image/png', bytes: Buffer.from('png-bytes') };
     };
     registerBitbucketRoutes(app, { bitbucketConfigStore: store, createAvatarRequest: () => avatarRequest });
-    const res = await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'pivanov' } });
+    const res = await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'acoder' } });
     expect(res.statusCode).toBe(200);
     expect(calls).toEqual([
-      { path: '/users/pivanov/avatar.png', search: '?s=48', token: 'BBDC-live' },
+      { path: '/users/acoder/avatar.png', search: '?s=48', token: 'BBDC-live' },
     ]);
     expect(res.body.toString()).toBe('png-bytes');
     expect(res.headers['content-type']).toBe('image/png');
@@ -471,11 +471,11 @@ describe('the avatar proxy route', () => {
         return { contentType: 'image/png', bytes: Buffer.from('x') };
       },
     });
-    const res = await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'pivanov', size: '64' } });
+    const res = await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'acoder', size: '64' } });
     expect(res.statusCode).toBe(200);
     expect(asked).toBe('?s=64');
     // Any other size reads back as the default, not an error.
-    await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'pivanov', size: '999' } });
+    await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'acoder', size: '999' } });
     expect(asked).toBe('?s=48');
   });
 
@@ -494,7 +494,7 @@ describe('the avatar proxy route', () => {
     const app = makeApp();
     const avatarRequest = vi.fn();
     registerBitbucketRoutes(app, { bitbucketConfigStore: store, createAvatarRequest: () => avatarRequest });
-    const res = await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'pivanov' } });
+    const res = await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'acoder' } });
     expect(res.statusCode).toBe(409);
     expect(avatarRequest).not.toHaveBeenCalled();
   });
@@ -522,7 +522,7 @@ describe('the avatar proxy route', () => {
         throw new BitbucketError('unauthorized', 'the access token was rejected', 401);
       },
     });
-    const res = await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'pivanov' } });
+    const res = await callRoute(app, 'GET', AVATAR_ROUTE, { query: { slug: 'acoder' } });
     expect(res.statusCode).toBe(502);
   });
 });

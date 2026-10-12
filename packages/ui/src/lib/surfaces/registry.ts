@@ -18,7 +18,8 @@ type BuiltInContextSurfaceId =
   | 'browser'
   | 'chat'
   | 'team'
-  | 'pulls';
+  | 'pulls'
+  | 'jira';
 
 export type ContextSurfaceId = BuiltInContextSurfaceId | `plugin:${string}`;
 
@@ -173,6 +174,19 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     mode: 'pulls',
     icon: 'git-pull-request',
     labelKey: 'contextPanel.mode.pulls',
+    availability: 'always',
+  },
+  {
+    // The Jira issue surface is the second read-anywhere surface: no
+    // repository or session context, only the configured Data Center
+    // connection, so it is reachable empty — its landing state is the
+    // address input and the recently viewed issues.
+    id: 'jira',
+    descriptionKey: 'contextRail.surface.jira.description',
+    defaultWidthFraction: 1 / 2,
+    mode: 'jira',
+    icon: 'task',
+    labelKey: 'contextPanel.mode.jira',
     availability: 'always',
   },
 ];

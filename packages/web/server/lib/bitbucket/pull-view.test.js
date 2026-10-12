@@ -13,7 +13,7 @@ const META_BODY = {
   updatedDate: 1789669800000,
   author: { user: { displayName: 'Sv Gorbunov', name: 'sgorbunov', slug: 'sgorbunov' }, role: 'AUTHOR', approved: false, status: 'UNAPPROVED' },
   reviewers: [
-    { approved: true, status: 'APPROVED', user: { displayName: 'Pavel Ivanov', slug: 'pivanov' } },
+    { approved: true, status: 'APPROVED', user: { displayName: 'Alex Coder', slug: 'acoder' } },
     { approved: false, status: 'UNAPPROVED', user: { displayName: null, name: null, slug: 'ci' } },
   ],
   fromRef: { id: 'refs/heads/fix', displayId: 'fix', latestCommit: 'abc123' },
@@ -93,6 +93,34 @@ const ACTIVITY_WITH_COMMENT = {
   },
 };
 
+// A review comment hangs on a file and a line: DC sends the anchor on the
+// activity, and the same anchor inside the comment.
+const ACTIVITY_WITH_ANCHORED_COMMENT = {
+  id: 5767341,
+  createdDate: 1789750000000,
+  action: 'COMMENTED',
+  commentAnchor: {
+    path: 'autotests/experiments/src/client.py',
+    line: 15,
+    lineType: 'ADDED',
+    fileType: 'TO',
+  },
+  comment: {
+    id: 99010,
+    text: 'свагера не было?',
+    threadResolved: false,
+    severity: 'NORMAL',
+    createdDate: 1789750000000,
+    author: { displayName: 'Robin Stone', slug: 'r.stone' },
+    anchor: {
+      path: 'autotests/experiments/src/client.py',
+      line: 15,
+      lineType: 'ADDED',
+    },
+    comments: [],
+  },
+};
+
 const ACTIVITY_NON_COMMENT = {
   id: 5653044,
   createdDate: 1789669800000,
@@ -112,7 +140,7 @@ const COMMITS_BODY = {
     },
     {
       id: '111222333444555',
-      author: { name: 'Pavel Ivanov' },
+      author: { name: 'Alex Coder' },
       authorTimestamp: 1789661200,
       message: 'Add the removal note',
     },
@@ -162,7 +190,7 @@ describe('readPullView', () => {
       fromBranch: 'fix',
       toBranch: 'master',
       reviewers: [
-        { name: 'Pavel Ivanov', slug: 'pivanov', approved: true },
+        { name: 'Alex Coder', slug: 'acoder', approved: true },
         // DisplayName and name missing: the slug is the last honest word.
         { name: 'ci', slug: 'ci', approved: false },
       ],
@@ -235,7 +263,7 @@ describe('readPullView', () => {
       {
         sha: '111222333444555',
         shortSha: '111222333444',
-        author: 'Pavel Ivanov',
+        author: 'Alex Coder',
         summary: 'Add the removal note',
         date: 1789661200000,
       },
@@ -254,8 +282,14 @@ describe('readPullView', () => {
     const view = await readPullView({
       request: makeRequest({
         pages: [
-          { size: 2, limit: 100, start: 0, isLastPage: false, values: [ACTIVITY_NON_COMMENT, ACTIVITY_WITH_COMMENT] },
-          { size: 0, limit: 100, start: 2, isLastPage: true, values: [] },
+          {
+            size: 3,
+            limit: 100,
+            start: 0,
+            isLastPage: false,
+            values: [ACTIVITY_NON_COMMENT, ACTIVITY_WITH_COMMENT, ACTIVITY_WITH_ANCHORED_COMMENT],
+          },
+          { size: 0, limit: 100, start: 3, isLastPage: true, values: [] },
         ],
       }),
       config,
@@ -270,7 +304,25 @@ describe('readPullView', () => {
         createdAt: 1789664696177,
         resolved: false,
         severity: null,
+        // A comment of the overview: nothing to quote by.
+        anchor: null,
         replies: [{ author: 'Sv Gorbunov', authorSlug: 'sgorbunov', text: 'Acknowledged.', createdAt: 1789664999000 }],
+      },
+      {
+        id: 99010,
+        author: 'Robin Stone',
+        authorSlug: 'r.stone',
+        text: 'свагера не было?',
+        createdAt: 1789750000000,
+        resolved: false,
+        severity: 'NORMAL',
+        // The place in the diff the comment hangs on, path/line/lineType.
+        anchor: {
+          path: 'autotests/experiments/src/client.py',
+          line: 15,
+          lineType: 'ADDED',
+        },
+        replies: [],
       },
     ]);
     expect(view.truncated.comments).toBe(false);

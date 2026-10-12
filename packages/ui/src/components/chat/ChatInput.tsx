@@ -47,6 +47,7 @@ import { btwModelAvailability, resolveBtwSelection, useBtwStore } from '@/stores
 import { wasPromotedBtwSession } from '@/lib/sessionBtwMetadata';
 import { buildBtwSyntheticTexts, preparePendingBtwSend, startBtwSession } from '@/lib/btw';
 import { AttachedFilesList, AttachedVSCodeFileChips, ActiveEditorFileSuggestion } from './FileAttachment';
+import { JiraIssueMentionHint } from '@/components/jira/JiraIssueMentionHint';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
 import type { ToolPopupContent } from './message/types';
 import { QueuedMessageChips } from './QueuedMessageChips';
@@ -4036,6 +4037,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                                 <AttachedFilesList draftIdentity={chatDraftIdentity} onShowPopup={handleShowAttachmentPreview} className="pt-2" />
                                 {linkedReferenceChips}
                                 {contextChips}
+                                {!isBtwActive ? <JiraIssueMentionHint message={message} /> : null}
                             </div>
                         )}
                         bottomRow={mobileModelAgentRow}
@@ -4153,6 +4155,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                             <AttachedFilesList draftIdentity={chatDraftIdentity} onShowPopup={handleShowAttachmentPreview} className="pt-2" />
                             {!isBtwActive ? linkedReferenceChips : null}
                             {contextChips}
+                            {!isBtwActive ? <JiraIssueMentionHint message={message} /> : null}
                             <AttachedVSCodeFileChips draftIdentity={chatDraftIdentity} onShowPopup={handleShowAttachmentPreview} />
                             {!isBtwActive ? <ActiveEditorFileSuggestion /> : null}
                         </div>

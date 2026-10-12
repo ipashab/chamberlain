@@ -87,4 +87,46 @@ describe('fetchBitbucketPullView', () => {
         ]);
         expect(result.view.truncated.commits).toBe(true);
     });
+
+    test('parses the comments the server sends: author, anchor, thread state', async () => {
+        const result = await fetchBitbucketPullView(
+            'https://bitbucket.example.com/projects/AUTO/repos/ai-reviewer/pull-requests/110',
+            async () =>
+                jsonResponse(200, {
+                    ...VIEW_BODY,
+                    comments: [
+                        {
+                            id: 99001,
+                            author: 'Robin Stone',
+                            authorSlug: 'r.stone',
+                            text: 'line, please',
+                            createdAt: 1789750000000,
+                            resolved: false,
+                            severity: 'NORMAL',
+                            // Where the comment hangs in the diff.
+                            anchor: { path: 'autotests/src/client.py', line: 15, lineType: 'ADDED' },
+                            replies: [],
+                        },
+                        {
+                            id: 99002,
+                            author: 'AIR',
+                            authorSlug: 'ci',
+                            text: '## Review run info',
+                            createdAt: 1789664696177,
+                            resolved: true,
+                            severity: null,
+                            // A comment of the overview carries no anchor.
+                            anchor: null,
+                            replies: [{ author: 'Sv Gorbunov', authorSlug: 'sgorbunov', text: 'Acknowledged.', createdAt: 1789664999000 }],
+                        },
+                    ],
+                }),
+        );
+        if (!result.ok) throw new Error('expected a ready view');
+        if (result.view.comments[0]?.anchor === undefined) throw new Error('expected the anchor to parse');
+        expect(result.view.comments[0]?.anchor?.path).toBe('autotests/src/client.py');
+        expect(result.view.comments[0]?.anchor?.line).toBe(15);
+        expect(result.view.comments[0]?.anchor?.lineType).toBe('ADDED');
+        expect(result.view.comments[1]?.anchor).toBeNull();
+    });
 });

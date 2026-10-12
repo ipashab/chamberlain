@@ -4,7 +4,7 @@
 // pure functions so the semantics are testable without a mounted panel.
 
 /**
- * The number a query names — `#8667` and `8667` both read as 8667 — or
+ * The number a query names — `#4242` and `4242` both read as 4242 — or
  * null when the words are not a number at all.
  */
 export const pullNumberOf = (query: string): number | null => {

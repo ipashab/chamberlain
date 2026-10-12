@@ -24,7 +24,7 @@ const makeView = (over: {
         updatedAt: 1789669800000,
         fromBranch: 'fix',
         toBranch: 'master',
-        reviewers: over.reviewers ?? [{ name: 'Pavel Ivanov', slug: 'pivanov', approved: true }],
+        reviewers: over.reviewers ?? [{ name: 'Alex Coder', slug: 'acoder', approved: true }],
         checks: { state: 'failure', total: 2 },
     },
     files: over.files ?? [{
@@ -53,7 +53,7 @@ describe('buildPullViewMaterial', () => {
         expect(material).toContain('URL: https://bitbucket.example.com/projects/AUTO/repos/ai-reviewer/pull-requests/110');
         expect(material).toContain('State: merged · Author: Sv Gorbunov · fix → master · build statuses: failure (2)');
         expect(material).toContain('## Description\nThe flag has served its purpose.');
-        expect(material).toContain('## Reviewers\n- Pavel Ivanov — approved');
+        expect(material).toContain('## Reviewers\n- Alex Coder — approved');
         expect(material).toContain('## Changed files (1)\n- src/files.py — modified');
         expect(material).toContain('## Comments (1)');
         expect(material).toContain('> Sv Gorbunov');
