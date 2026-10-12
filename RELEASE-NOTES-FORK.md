@@ -8,7 +8,7 @@ set that shipped then.
 
 ---
 
-## `2.2.0-fork4` — read-only Bitbucket pull requests
+## `2.2.0-fork4` — Bitbucket and Jira, read whole and asked about
 
 **Bitbucket Data Center joins the context panel.** One instance config —
 origin, token, ssl choice — on the settings' integrations card; the token
@@ -32,6 +32,33 @@ observes, it never writes.
 - The team task dialog reuses the reader: **View** on a task's
   Bitbucket pull opens the same body in a dialog.
 - New UI strings carry real translations in all thirteen dictionaries.
+
+**Jira Data Center joins the panel the same shape of way.** One more
+integrations card — origin, token, ssl choice — and the same read-only
+promise: issue view, search and every page behind them is a GET, the
+token never leaving the server.
+
+- Paste an issue URL or key, search the project, read one issue whole:
+  **overview**, **description**, **comments** with replies, **history**,
+  **links**, **attachments**.
+- **Ask** pins the issue to the composer as a context chip; issue keys
+  typed in chat turn into chips themselves.
+- The issue body grows a **spec card**: a session reads the task and
+  writes the development spec — essence, a plan bound to the repository,
+  acceptance, open questions, out of scope — the card following the
+  answer live.
+
+**The pull now answers two pointed questions.** The comments analysis
+reads only the open threads and weighs each note against its own line
+and file, proposing what would settle it when the note is fair. The
+files analysis holds the diff against the task the pull title names —
+the key fetched from Jira when it reads, an honest look at the title
+alone when it does not. Both report through their own analysing session,
+opened from the pull's header.
+
+And the diff's range picker grew a second gesture: press a line and
+drag across rows — the span follows the mouse, and the release leaves
+it held with its question mark. The two-click flow stays.
 
 Assets for this release: `OpenChamber-beta-2.2.0-fork4-mac-arm64.dmg` (and
 the zip) — macOS, Apple silicon.
