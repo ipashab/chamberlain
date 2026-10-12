@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { JiraIssueView } from '@/lib/jira/issue-view-api';
+import { getDefaultMagicPromptTemplate } from '@/lib/magicPrompts';
 import { buildIssueSpecPrompt, issueSpecSessionTitle, parseIssueSpecResult } from './issueSpec';
 
 const VIEW: JiraIssueView = {
@@ -54,8 +55,13 @@ describe('issueSpecSessionTitle', () => {
 });
 
 describe('buildIssueSpecPrompt', () => {
+    // The instructions the spec opens with — the Magic Prompts default
+    // the settings may override, exactly as the session starter passes
+    // it after reading the overrides.
+    const defaultMethodology = getDefaultMagicPromptTemplate('jira.issue.spec.methodology');
+
     test('embeds the issue material and demands the one JSON block', () => {
-        const prompt = buildIssueSpecPrompt(VIEW);
+        const prompt = buildIssueSpecPrompt(VIEW, defaultMethodology);
         // The material rides inside: meta, description, comments — so the
         // spec session needs no Jira access of its own.
         expect(prompt).toContain('DEMO-3223');
@@ -71,7 +77,7 @@ describe('buildIssueSpecPrompt', () => {
     });
 
     test('the answer is a readable spec first, the JSON block a digest tail', () => {
-        const prompt = buildIssueSpecPrompt(VIEW);
+        const prompt = buildIssueSpecPrompt(VIEW, defaultMethodology);
         expect(prompt).toContain('Сначала — полное читаемое ТЗ по-русски');
         expect(prompt).toContain('суть задачи — одной-двумя строками');
         expect(prompt).toContain('план доработок');
@@ -81,6 +87,17 @@ describe('buildIssueSpecPrompt', () => {
         // The digest is demanded after the readable half, so the person
         // reads prose before any block.
         expect(prompt.indexOf('читаемое ТЗ')).toBeLessThan(prompt.indexOf('```json'));
+    });
+
+    test('a custom methodology replaces the guidance, never the material or the contract', () => {
+        const prompt = buildIssueSpecPrompt(VIEW, 'Мои требования: план только по фронтенду.');
+        expect(prompt).toContain('Мои требования: план только по фронтенду.');
+        expect(prompt).not.toContain('читай репозиторий текущей директории');
+        // The app owns the rest: the material and the card contract ride
+        // along untouched, so the spec card keeps parsing.
+        expect(prompt).toContain('DEMO-3223');
+        expect(prompt).toContain('Сборка падает на шаге выгрузки артефактов');
+        expect(prompt).toContain('ровно один блок JSON');
     });
 });
 

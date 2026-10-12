@@ -1270,6 +1270,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
+    id: 'magic-prompts.methodology',
+    page: 'magic-prompts',
+    titleKey: 'settings.magicPrompts.page.block.methodology',
+    keywords: ['review methodology', 'pull request analysis', 'jira spec', 'analysis prompt', 'integration prompts'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'shortcuts.keyboard-shortcuts',
     page: 'shortcuts',
     titleKey: 'settings.openchamber.keyboardShortcuts.title',

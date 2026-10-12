@@ -41,13 +41,15 @@ export type MagicPromptId =
   | 'session.explore.instructions'
   | 'session.fusion.visible'
   | 'session.fusion.instructions'
-  | 'session.fusion.codeInstructions';
+  | 'session.fusion.codeInstructions'
+  | 'bitbucket.pull.analysis.methodology'
+  | 'jira.issue.spec.methodology';
 
 interface MagicPromptDefinition {
   id: MagicPromptId;
   title: string;
   description: string;
-  group: 'Git' | 'GitHub' | 'Linear' | 'Planning' | 'Session';
+  group: 'Git' | 'GitHub' | 'Linear' | 'Planning' | 'Session' | 'Integrations';
   template: string;
   placeholders?: Array<{ key: string; description: string }>;
 }
@@ -837,6 +839,32 @@ How to work:
 Read diffs selectively, file by file; do not print every attempt in full.
 
 --- FUSION INPUTS START ---`,
+  },
+  {
+    id: 'bitbucket.pull.analysis.methodology',
+    title: 'Pull Request Analysis Methodology',
+    group: 'Integrations',
+    description:
+      'The judging instructions the pull request analysis session opens with. The pull material and the two-part answer contract are always appended by the app, so the footnotes and verdict chips keep working whatever the text says.',
+    placeholders: [
+      {
+        key: 'task_instruction',
+        description:
+          'How to obtain the requirements the diffs are judged against: from the Jira task key read out of the pull title, or inferred from the title and description when no key reads.',
+      },
+    ],
+    template: `Разбираются только открытые (resolved — нет) замечания. Оцени каждое по существу: справедливо ли оно относительно выбранной строки/файла и контекста диффа; если замечание требует доработки — предложи конкретное решение.
+Проверь доработки на корректность относительно постановки задачи: решают ли диффы задачу, что недоработано, что лишнее.
+{{task_instruction}}`,
+  },
+  {
+    id: 'jira.issue.spec.methodology',
+    title: 'Jira Issue Spec Methodology',
+    group: 'Integrations',
+    description:
+      'The instructions the spec-drafting session opens with. The issue material and the two-part answer contract are always appended by the app, so the spec card keeps working whatever the text says.',
+    template: `Задача — понять из постановки, что нужно сделать, и составить ТЗ на разработку: суть; план доработок, по возможности на уровне исходного кода; проверяемые критерии приёмки; открытые вопросы и границы.
+Для привязки плана к коду разрешено пользоваться инструментами сессии: читай репозиторий текущей директории, доступные интеграции (Jira/Confluence), поиск — там, где это помогает назвать конкретные файлы, модули, функции или эндпоинты. Если репозиторий недоступен или задача не про код — план формулируй по постановке, а невозможность привязки вынеси в «openQuestions».`,
   },
 ] as const;
 

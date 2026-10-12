@@ -17,7 +17,23 @@ import { useSelectionStore } from '@/sync/selection-store';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 
 import type { JiraIssueView } from '@/lib/jira/issue-view-api';
+import { fetchMagicPromptOverrides, getDefaultMagicPromptTemplate, type MagicPromptId } from '@/lib/magicPrompts';
 import { buildIssueSpecPrompt, issueSpecSessionTitle } from './issueSpec';
+
+/** The settings entry whose override replaces the default instructions. */
+const SPEC_METHODOLOGY_PROMPT_ID: MagicPromptId = 'jira.issue.spec.methodology';
+
+/**
+ * The instructions the spec session opens with: the user's override when
+ * the Magic Prompts settings carry one, the default template otherwise.
+ * The fetch is cached after the first read, so of every spec only the
+ * opening moment pays for it.
+ */
+const effectiveSpecMethodology = async (): Promise<string> => {
+    const overrides = await fetchMagicPromptOverrides().catch((): Record<string, string> => ({}));
+    const override = overrides[SPEC_METHODOLOGY_PROMPT_ID];
+    return typeof override === 'string' ? override : getDefaultMagicPromptTemplate(SPEC_METHODOLOGY_PROMPT_ID);
+};
 
 const STORAGE_KEY = 'oc.jira.issueSpec.v1';
 
@@ -130,7 +146,7 @@ export const startIssueSpec = async (
     ui.setCurrentSession(session.id, entry.directory);
 
     await ui.sendMessage(
-        buildIssueSpecPrompt(view),
+        buildIssueSpecPrompt(view, await effectiveSpecMethodology()),
         config.currentProviderId,
         config.currentModelId,
         config.currentAgentName || undefined,

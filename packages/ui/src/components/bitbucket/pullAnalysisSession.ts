@@ -17,7 +17,23 @@ import { useSelectionStore } from '@/sync/selection-store';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 
 import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
+import { fetchMagicPromptOverrides, getDefaultMagicPromptTemplate, type MagicPromptId } from '@/lib/magicPrompts';
 import { analysisSessionTitle, buildAnalysisPrompt, type AnalysisScope } from './pullAnalysis';
+
+/** The settings entry whose override replaces the default judging text. */
+const ANALYSIS_METHODOLOGY_PROMPT_ID: MagicPromptId = 'bitbucket.pull.analysis.methodology';
+
+/**
+ * The methodology the analysis opens with: the user's override when the
+ * Magic Prompts settings carry one, the default template otherwise. The
+ * fetch is cached after the first read, so of every analysis only the
+ * opening moment pays for it.
+ */
+const effectiveAnalysisMethodology = async (): Promise<string> => {
+    const overrides = await fetchMagicPromptOverrides().catch((): Record<string, string> => ({}));
+    const override = overrides[ANALYSIS_METHODOLOGY_PROMPT_ID];
+    return typeof override === 'string' ? override : getDefaultMagicPromptTemplate(ANALYSIS_METHODOLOGY_PROMPT_ID);
+};
 
 const STORAGE_KEY = 'oc.bitbucket.pullAnalysis.v1';
 
@@ -131,7 +147,7 @@ export const startPullAnalysis = async (
     ui.setCurrentSession(session.id, entry.directory);
 
     await ui.sendMessage(
-        buildAnalysisPrompt(view, scope),
+        buildAnalysisPrompt(view, scope, await effectiveAnalysisMethodology()),
         config.currentProviderId,
         config.currentModelId,
         config.currentAgentName || undefined,

@@ -47,6 +47,13 @@ export const MagicPromptsSidebar: React.FC<MagicPromptsSidebarProps> = ({ onItem
           { id: 'session.fusion', titleKey: 'settings.magicPrompts.sidebar.item.sessionFusion' },
         ],
       },
+      {
+        groupKey: 'settings.magicPrompts.sidebar.group.integration',
+        items: [
+          { id: 'bitbucket.pull.analysis', titleKey: 'settings.magicPrompts.sidebar.item.bitbucketPullAnalysis' },
+          { id: 'jira.issue.spec', titleKey: 'settings.magicPrompts.sidebar.item.jiraIssueSpec' },
+        ],
+      },
     ] as const;
   }, []);
 

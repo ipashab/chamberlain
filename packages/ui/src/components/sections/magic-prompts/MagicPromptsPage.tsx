@@ -158,6 +158,20 @@ const PROMPT_PAGE_MAP: Record<string, PromptPageConfig> = {
       { id: 'session.fusion.codeInstructions', titleKey: 'settings.magicPrompts.page.block.codeFusionInstructions' },
     ],
   },
+  'bitbucket.pull.analysis': {
+    titleKey: 'settings.magicPrompts.page.group.bitbucketPullAnalysis.title',
+    descriptionKey: 'settings.magicPrompts.page.group.bitbucketPullAnalysis.description',
+    blocks: [
+      { id: 'bitbucket.pull.analysis.methodology', titleKey: 'settings.magicPrompts.page.block.methodology' },
+    ],
+  },
+  'jira.issue.spec': {
+    titleKey: 'settings.magicPrompts.page.group.jiraIssueSpec.title',
+    descriptionKey: 'settings.magicPrompts.page.group.jiraIssueSpec.description',
+    blocks: [
+      { id: 'jira.issue.spec.methodology', titleKey: 'settings.magicPrompts.page.block.methodology' },
+    ],
+  },
 };
 
 const hasOwn = (input: Record<string, string>, key: string) => Object.prototype.hasOwnProperty.call(input, key);
@@ -308,6 +322,11 @@ export const MagicPromptsPage: React.FC = () => {
         const isInvalidEmptyVisiblePrompt = isVisiblePromptId(block.id) && draft.trim().length === 0;
         const saving = savingIds[block.id] === true;
         const resetting = resettingIds[block.id] === true;
+        const settingsItemId = isVisiblePromptId(block.id)
+          ? 'magic-prompts.visible-prompt'
+          : block.id.endsWith('.methodology')
+            ? 'magic-prompts.methodology'
+            : 'magic-prompts.instructions';
 
         return (
           <SettingsSection
@@ -320,7 +339,7 @@ export const MagicPromptsPage: React.FC = () => {
                 : undefined
             }
             divider={index > 0}
-            settingsItem={isVisiblePromptId(block.id) ? 'magic-prompts.visible-prompt' : 'magic-prompts.instructions'}
+            settingsItem={settingsItemId}
             contentClassName="space-y-3"
           >
             <Textarea

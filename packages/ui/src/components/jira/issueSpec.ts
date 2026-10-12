@@ -49,21 +49,24 @@ export const issueSpecSessionTitle = (view: JiraIssueView): string =>
     `Jira ${view.issue.key}: ${view.issue.summary}`.slice(0, 80);
 
 /**
- * The asking message: what to read, what to weigh, what to answer. It
- * embeds the whole issue as the ask flow's material — meta, details,
- * description, linked issues, comments — so the spec session needs no
- * Jira access of its own. But the spec is a development one: the session
- * may and should use its own tools (the repository it runs in, available
- * integrations) to name concrete files, modules and endpoints. Where
- * that grounding is impossible, the plan stays faithful to the issue
- * text and the gap lands in the open questions.
+ * The asking message: what to read, what to weigh, what to answer. The
+ * instructions are the caller's to pass — the Magic Prompts settings own
+ * their default and override — while the material and the answer
+ * contract stay the app's: the spec card hangs off the contract, and no
+ * methodology text replaces it. The message embeds the whole issue as
+ * the ask flow's material — meta, details, description, linked issues,
+ * comments — so the spec session needs no Jira access of its own. But
+ * the spec is a development one: the session may and should use its own
+ * tools (the repository it runs in, available integrations) to name
+ * concrete files, modules and endpoints. Where that grounding is
+ * impossible, the plan stays faithful to the issue text and the gap
+ * lands in the open questions.
  */
-export const buildIssueSpecPrompt = (view: JiraIssueView): string => {
+export const buildIssueSpecPrompt = (view: JiraIssueView, methodology: string): string => {
     const parts = [
         `Составь техническое задание на разработку по Jira-задаче ${view.issue.key}: ${view.issue.summary}.`,
         'Материал задачи встроен в сообщение: ходить в Jira не нужно — источником постановки служит этот текст.',
-        'Задача — понять из постановки, что нужно сделать, и составить ТЗ на разработку: суть; план доработок, по возможности на уровне исходного кода; проверяемые критерии приёмки; открытые вопросы и границы.',
-        'Для привязки плана к коду разрешено пользоваться инструментами сессии: читай репозиторий текущей директории, доступные интеграции (Jira/Confluence), поиск — там, где это помогает назвать конкретные файлы, модули, функции или эндпоинты. Если репозиторий недоступен или задача не про код — план формулируй по постановке, а невозможность привязки вынеси в «openQuestions».',
+        methodology,
         '',
         '## Задача',
         '',

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
+import { getDefaultMagicPromptTemplate } from '@/lib/magicPrompts';
 
 import {
     analysisSessionTitle,
@@ -8,6 +9,11 @@ import {
     parseAnalysisResult,
     taskIdOfTitle,
 } from './pullAnalysis';
+
+// The judging guidance the analysis opens with — the Magic Prompts
+// default the settings may override, exactly as the session starter
+// passes it after reading the overrides.
+const defaultMethodology = getDefaultMagicPromptTemplate('bitbucket.pull.analysis.methodology');
 
 // A pull view with two comments and two files, small enough to read whole.
 const baseView: BitbucketPullView = {
@@ -166,7 +172,7 @@ describe('parseAnalysisResult', () => {
 
 describe('buildAnalysisPrompt', () => {
     test('carries meta, open comments and files when all is in scope', () => {
-        const prompt = buildAnalysisPrompt(baseView, allScope);
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology);
         expect(prompt).toContain('#4242');
         expect(prompt).toContain('Не хватает таймаута');
         expect(prompt).toContain('Ответ Анна: Добавлю.');
@@ -175,7 +181,7 @@ describe('buildAnalysisPrompt', () => {
     });
 
     test('the answer is a readable analysis first, the JSON block a digest tail', () => {
-        const prompt = buildAnalysisPrompt(baseView, allScope);
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology);
         expect(prompt).toContain('Сначала — полный читаемый разбор по-русски');
         expect(prompt).toContain('каждое открытое замечание (101)');
         expect(prompt).toContain('каждый файл (`autotests/experiments/src/model.py`, `autotests/common/configs/config.yaml`)');
@@ -188,7 +194,7 @@ describe('buildAnalysisPrompt', () => {
     });
 
     test('resolved comments stay out of the material and the contract', () => {
-        const prompt = buildAnalysisPrompt(baseView, allScope);
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology);
         expect(prompt).not.toContain('Форматирование.');
         expect(prompt).not.toContain('102');
         expect(prompt).toContain('101');
@@ -196,21 +202,21 @@ describe('buildAnalysisPrompt', () => {
     });
 
     test('honours the scope checkboxes', () => {
-        const prompt = buildAnalysisPrompt(baseView, { ...noScope, files: true });
+        const prompt = buildAnalysisPrompt(baseView, { ...noScope, files: true }, defaultMethodology);
         expect(prompt).toContain('+class Model');
         expect(prompt).not.toContain('Не хватает таймаута');
         expect(prompt).not.toContain('Открытые комментарии');
     });
 
     test('the files reading carries the task for the model to fetch', () => {
-        const prompt = buildAnalysisPrompt(baseView, { ...noScope, files: true });
+        const prompt = buildAnalysisPrompt(baseView, { ...noScope, files: true }, defaultMethodology);
         expect(prompt).toContain('Сначала получи постановку задачи DEMO-3223');
         expect(prompt).toContain('проверь доработки на корректность относительно постановки');
     });
 
     test('a task without a readable key says so instead of pretending', () => {
         const view: BitbucketPullView = { ...baseView, pull: { ...baseView.pull, title: 'правки без ключа' } };
-        const prompt = buildAnalysisPrompt(view, { ...noScope, files: true });
+        const prompt = buildAnalysisPrompt(view, { ...noScope, files: true }, defaultMethodology);
         expect(prompt).toContain('Номер задачи в заголовке ПРа не читается');
         expect(prompt).toContain('постановку выведи из заголовка и описания ПРа');
     });
@@ -221,26 +227,26 @@ describe('buildAnalysisPrompt', () => {
             ...baseView,
             files: [{ path: 'big.py', changeType: 'modify', truncated: false, diffText: long }],
         };
-        const prompt = buildAnalysisPrompt(view, { ...allScope, comments: false });
+        const prompt = buildAnalysisPrompt(view, { ...allScope, comments: false }, defaultMethodology);
         expect(prompt).toContain('more lines truncated');
         expect(prompt).toContain('дифф усечён');
     });
 
     test('the contract names the real ids and paths', () => {
-        const prompt = buildAnalysisPrompt(baseView, allScope);
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology);
         expect(prompt).toContain('101');
         expect(prompt).not.toContain('101, 102');
         expect(prompt).toContain('`autotests/common/configs/config.yaml`');
     });
 
     test('the contract narrows to the checked scope', () => {
-        const commentsOnly = buildAnalysisPrompt(baseView, { ...noScope, comments: true });
+        const commentsOnly = buildAnalysisPrompt(baseView, { ...noScope, comments: true }, defaultMethodology);
         expect(commentsOnly).toContain('101');
         expect(commentsOnly).toContain('«files»: в материале нет файлов');
         expect(commentsOnly).not.toContain('`autotests/common/configs/config.yaml`');
         expect(commentsOnly).not.toContain('Сначала получи постановку задачи');
 
-        const filesOnly = buildAnalysisPrompt(baseView, { ...noScope, files: true });
+        const filesOnly = buildAnalysisPrompt(baseView, { ...noScope, files: true }, defaultMethodology);
         expect(filesOnly).toContain('`autotests/experiments/src/model.py`');
         expect(filesOnly).toContain('открытых комментариев в материале нет');
         expect(filesOnly).not.toContain('101');
@@ -248,5 +254,22 @@ describe('buildAnalysisPrompt', () => {
 
     test('the session title stays short and names the pull', () => {
         expect(analysisSessionTitle(baseView)).toBe('PR #4242: DEMO-3223: Автоматизация приёмочных сценариев');
+    });
+
+    test('a custom methodology replaces the guidance, never the material or the contract', () => {
+        const prompt = buildAnalysisPrompt(baseView, allScope, 'Моя методика: смотри на пайплайны и логи.');
+        expect(prompt).toContain('Моя методика: смотри на пайплайны и логи.');
+        expect(prompt).not.toContain('Разбираются только открытые');
+        // The app owns the rest: the material and the digest contract ride
+        // along untouched, so the panel keeps its footnotes and verdicts.
+        expect(prompt).toContain('Не хватает таймаута');
+        expect(prompt).toContain('+class Model');
+        expect(prompt).toContain('ровно один блок JSON');
+    });
+
+    test('a methodology without the task slot drops the task fetch, by its author\'s choice', () => {
+        const prompt = buildAnalysisPrompt(baseView, { ...noScope, files: true }, 'Смотри только код ПРа.');
+        expect(prompt).not.toContain('постановку задачи DEMO-3223');
+        expect(prompt).toContain('Смотри только код ПРа.');
     });
 });

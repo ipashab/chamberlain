@@ -187,18 +187,36 @@ const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string =
 };
 
 /**
- * The asking message: what to read, what to weigh, what to answer. It
- * embeds the whole reading material — meta, comments with their anchors,
- * diffs inside the two budgets — so the analysis session can work without
- * any Bitbucket access of its own. The language of the answer is Russian,
- * the keys of the block are English, and nothing here promises a button
- * the panel does not render.
+ * The asking message: what to read, what to weigh, what to answer. The
+ * judging instructions are the caller's to pass — the Magic Prompts
+ * settings own their default and override — while the material and the
+ * answer contract stay the app's: the panel's footnotes and verdict
+ * chips hang off the contract, and no methodology text replaces it. The
+ * message embeds the whole reading material — meta, comments with their
+ * anchors, diffs inside the two budgets — so the analysis session can
+ * work without any Bitbucket access of its own. The language of the
+ * answer is Russian, and nothing here promises a button the panel does
+ * not render.
  */
-export const buildAnalysisPrompt = (view: BitbucketPullView, scope: AnalysisScope): string => {
+export const buildAnalysisPrompt = (view: BitbucketPullView, scope: AnalysisScope, methodology: string): string => {
     const taskId = taskIdOfTitle(view.pull.title);
+    // How to reach the requirements the diffs answer to: by the task key
+    // when the title carries one, or honestly without one. The slot
+    // fills only for a files reading — comments alone are judged against
+    // their own lines, and a task fetch nobody asked for is noise. The
+    // methodology's `{{task_instruction}}` slot decides where the words
+    // land; an override without the slot keeps its own way of saying it.
+    const filesTaskInstruction = taskId
+        ? `Сначала получи постановку задачи ${taskId}: возьми её доступными инструментами (Jira/Confluence-интеграции, MCP, поиск — можно выходить за пределы этого сообщения) или найди сведения в доступных источниках. Затем проверь доработки на корректность относительно постановки: решают ли диффы задачу, что недоработано, что лишнее.`
+        : 'Номер задачи в заголовке ПРа не читается — постановку выведи из заголовка и описания ПРа (при возможности дополни доступными источниками) и прямо скажи об этом в вердиктах. Доработки проверяй на корректность относительно этой постановки.';
+    const taskInstruction = scope.files ? filesTaskInstruction : '';
+    const methodologyText = methodology.replace(/\{\{\s*task_instruction\s*\}\}/g, taskInstruction);
+
     const head = [
         `Проанализируй Bitbucket pull request #${view.pull.number}: ${view.pull.title}.`,
         'Материал ПРа встроен в сообщение: в сам Bitbucket ходить не нужно — комментариев и диффов здесь столько, сколько есть.',
+        '',
+        methodologyText,
         '',
         '## Pull request',
         '',
@@ -215,8 +233,6 @@ export const buildAnalysisPrompt = (view: BitbucketPullView, scope: AnalysisScop
     if (scope.comments && openComments.length > 0) {
         const lines = [
             '## Открытые комментарии',
-            '',
-            'Разбираются только открытые (resolved — нет) замечания. Оцени каждое по существу: справедливо ли оно относительно выбранной строки/файла и контекста диффа; если замечание требует доработки — предложи конкретное решение.',
             '',
         ];
         for (const comment of openComments) {
@@ -239,12 +255,6 @@ export const buildAnalysisPrompt = (view: BitbucketPullView, scope: AnalysisScop
 
     if (scope.files && view.files.length > 0) {
         const lines = ['## Диффы файлов', ''];
-        lines.push(
-            taskId
-                ? `Сначала получи постановку задачи ${taskId}: возьми её доступными инструментами (Jira/Confluence-интеграции, MCP, поиск — можно выходить за пределы этого сообщения) или найди сведения в доступных источниках. Затем проверь доработки на корректность относительно постановки: решают ли диффы задачу, что недоработано, что лишнее.`
-                : 'Номер задачи в заголовке ПРа не читается — постановку выведи из заголовка и описания ПРа (при возможности дополни доступными источниками) и прямо скажи об этом в вердиктах. Доработки проверяй на корректность относительно этой постановки.',
-            '',
-        );
         let budget = DIFF_TOTAL_BUDGET;
         const omitted: string[] = [];
         for (const file of view.files) {
