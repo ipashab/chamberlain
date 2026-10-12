@@ -146,6 +146,8 @@ export const dict = {
   'terminalView.toast.pasteFailed': 'Kan het klembord niet lezen. Gebruik de sneltoets voor plakken.',
   'terminalView.actions.restart': 'Terminal herstarten',
   'chat.message.terminalContext': '{terminal}, regels {start}-{end}',
+  'chat.message.machineDigestSingle': 'Machine-uitvoer voor het paneel — {count} regel',
+  'chat.message.machineDigestPlural': 'Machine-uitvoer voor het paneel — {count} regels',
   'chat.message.context.codeComment': 'Commentaar op {file}, regels {start}-{end}',
   'chat.message.context.codeCommentLine': 'Commentaar op {file}, regel {line}',
   'chat.message.context.chatQuote': 'Geciteerd uit een eerder bericht',

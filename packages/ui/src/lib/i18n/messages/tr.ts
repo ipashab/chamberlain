@@ -86,6 +86,8 @@ export const dict = {
   'terminalView.toast.pasteFailed': 'Pano okunamadı. Yapıştırmak için klavye kısayolunu kullanın.',
   'terminalView.actions.restart': 'Terminali yeniden başlat',
   'chat.message.terminalContext': '{terminal}, {start}-{end}. satırlar',
+  'chat.message.machineDigestSingle': 'Panel için makine özeti — {count} satır',
+  'chat.message.machineDigestPlural': 'Panel için makine özeti — {count} satır',
   'chat.chatInput.terminalContext': '{terminal}, {start}-{end}. satırlar',
   'chat.chatInput.terminalContextRemove': 'Terminal bağlamını kaldır',
   'chat.chatInput.prCommentContext': 'PR yorumları',

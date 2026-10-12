@@ -264,7 +264,10 @@ Why: only navigation tools use the compact static path; all other tools need obs
 
 ## Quick map of files in this folder
 
-- Text: `AssistantTextPart.tsx`, `UserTextPart.tsx`
+- Text: `AssistantTextPart.tsx`, `UserTextPart.tsx`. A finalized assistant
+  text part that ends in one fenced JSON object folds that tail into a
+  collapsed line (`trailingJsonDigest.ts`) — panels read the raw text from
+  the store, so folding is display-only.
 - Attachment citations: the composer writes `[name.png]` into the text for each
   pasted or picked file. `UserTextPart` gets the message's file names and draws
   each citation of one of them as an inline chip with its file-type icon. The

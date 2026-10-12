@@ -69,6 +69,19 @@ describe('buildIssueSpecPrompt', () => {
         expect(prompt).toContain('ходить в Jira не нужно');
         expect(prompt).toContain('читай репозиторий текущей директории');
     });
+
+    test('the answer is a readable spec first, the JSON block a digest tail', () => {
+        const prompt = buildIssueSpecPrompt(VIEW);
+        expect(prompt).toContain('Сначала — полное читаемое ТЗ по-русски');
+        expect(prompt).toContain('суть задачи — одной-двумя строками');
+        expect(prompt).toContain('план доработок');
+        expect(prompt).toContain('критерии приёмки');
+        expect(prompt).toContain('ровно один блок JSON');
+        expect(prompt).toContain('без повторения текста разбора');
+        // The digest is demanded after the readable half, so the person
+        // reads prose before any block.
+        expect(prompt.indexOf('читаемое ТЗ')).toBeLessThan(prompt.indexOf('```json'));
+    });
 });
 
 describe('parseIssueSpecResult', () => {

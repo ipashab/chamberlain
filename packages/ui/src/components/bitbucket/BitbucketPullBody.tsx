@@ -535,7 +535,7 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                                         </div>
                                         {fileAnalysis?.notes && expanded.has(file.path) ? (
                                             <div className="px-2 pb-1.5 text-[11px] leading-4 text-muted-foreground">
-                                                {fileAnalysis.notes}
+                                                <SimpleMarkdownRenderer content={fileAnalysis.notes} disableLinkSafety variant="tool" enableFileReferences={false} />
                                             </div>
                                         ) : null}
                                         {expanded.has(file.path) ? (
@@ -650,7 +650,13 @@ const CommentAnnotation: React.FC<{ annotation: CommentAnalysis }> = ({ annotati
         >
             <div className="flex items-start gap-1.5">
                 <Icon name="sparkling" className="mt-0.5 size-3 shrink-0" />
-                <span className="min-w-0 flex-1">{annotation.summary}</span>
+                <SimpleMarkdownRenderer
+                    className="min-w-0 flex-1"
+                    content={annotation.summary}
+                    disableLinkSafety
+                    variant="tool"
+                    enableFileReferences={false}
+                />
                 {annotation.justified !== null ? (
                     <span
                         className="shrink-0 rounded-full px-1.5 text-[10px] font-medium leading-4"

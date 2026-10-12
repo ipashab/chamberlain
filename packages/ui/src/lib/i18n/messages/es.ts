@@ -157,6 +157,8 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.toast.pasteFailed': 'No se pudo leer el portapapeles. Usa el atajo de teclado para pegar.',
   'terminalView.actions.restart': 'Reiniciar terminal',
   'chat.message.terminalContext': '{terminal}, líneas {start}-{end}',
+  'chat.message.machineDigestSingle': 'Extracto automático para el panel — {count} línea',
+  'chat.message.machineDigestPlural': 'Extracto automático para el panel — {count} líneas',
   'chat.message.context.codeComment': 'Comentario en {file}, líneas {start}-{end}',
   'chat.message.context.codeCommentLine': 'Comentario en {file}, línea {line}',
   'chat.message.context.chatQuote': 'Cita de un mensaje anterior',

@@ -174,6 +174,19 @@ describe('buildAnalysisPrompt', () => {
         expect(prompt).toContain('постановку задачи DEMO-3223');
     });
 
+    test('the answer is a readable analysis first, the JSON block a digest tail', () => {
+        const prompt = buildAnalysisPrompt(baseView, allScope);
+        expect(prompt).toContain('Сначала — полный читаемый разбор по-русски');
+        expect(prompt).toContain('каждое открытое замечание (101)');
+        expect(prompt).toContain('каждый файл (`autotests/experiments/src/model.py`, `autotests/common/configs/config.yaml`)');
+        expect(prompt).toContain('общий вывод по ПРу в конце.');
+        expect(prompt).toContain('ровно один блок JSON');
+        expect(prompt).toContain('без повторения текста разбора');
+        // The digest is demanded after the readable half, so the person
+        // reads prose before any block.
+        expect(prompt.indexOf('читаемый разбор')).toBeLessThan(prompt.indexOf('```json'));
+    });
+
     test('resolved comments stay out of the material and the contract', () => {
         const prompt = buildAnalysisPrompt(baseView, allScope);
         expect(prompt).not.toContain('Форматирование.');

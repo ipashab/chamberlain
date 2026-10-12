@@ -147,6 +147,8 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.toast.pasteFailed': 'Nie udało się odczytać schowka. Użyj skrótu klawiaturowego do wklejania.',
   'terminalView.actions.restart': 'Uruchom terminal ponownie',
   'chat.message.terminalContext': '{terminal}, wiersze {start}-{end}',
+  'chat.message.machineDigestSingle': 'Podsumowanie maszynowe dla panelu — {count} wiersz',
+  'chat.message.machineDigestPlural': 'Podsumowanie maszynowe dla panelu — {count} wierszy',
   'chat.message.context.codeComment': 'Komentarz do {file}, wiersze {start}-{end}',
   'chat.message.context.codeCommentLine': 'Komentarz do {file}, wiersz {line}',
   'chat.message.context.chatQuote': 'Cytat z wcześniejszej wiadomości',

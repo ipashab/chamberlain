@@ -3349,6 +3349,8 @@ export const dict = {
   'terminalView.toast.pasteFailed': 'Die Zwischenablage konnte nicht gelesen werden. Verwende die Tastenkombination zum Einfügen.',
   'terminalView.actions.restart': 'Terminal neu starten',
   'chat.message.terminalContext': '{terminal}, Zeilen {start}-{end}',
+  'chat.message.machineDigestSingle': 'Maschinenprotokoll für das Panel — {count} Zeile',
+  'chat.message.machineDigestPlural': 'Maschinenprotokoll für das Panel — {count} Zeilen',
   'chat.message.context.codeComment': 'Kommentar zu {file}, Zeilen {start}-{end}',
   'chat.message.context.codeCommentLine': 'Kommentar zu {file}, Zeile {line}',
   'chat.message.context.chatQuote': 'Zitat aus einer früheren Nachricht',

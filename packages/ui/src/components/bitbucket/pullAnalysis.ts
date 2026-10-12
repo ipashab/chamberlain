@@ -5,11 +5,13 @@
 // as text in, structure out.
 //
 // The shape of the deal: the panel opens a dedicated session whose first
-// message embeds the pull (meta, comments, capped diffs) and demands one
-// fenced JSON block back. The parser is deliberately forgiving about where
-// that block sits in the answer and strict about what is inside it — an
-// answer that does not fit is no analysis at all, and the panel says so
-// rather than guessing.
+// message embeds the pull (meta, comments, capped diffs) and demands a
+// two-part answer — a readable analysis for the person first, a compact
+// fenced JSON block last. The block is machine food: the panel hangs its
+// footnotes and verdict chips off it and the person reads the prose. The
+// parser is deliberately forgiving about where that block sits in the
+// answer and strict about what is inside it — an answer that does not fit
+// is no analysis at all, and the panel says so rather than guessing.
 
 import { z } from 'zod';
 
@@ -119,9 +121,12 @@ const cappedDiff = (diffText: string, cap: number): CappedDiff => {
 };
 
 /**
- * The fenced block the answer must contain, as the prompt states it. Keys
- * are the ids and paths the material carries; a verdict is one of three;
- * only entities that exist in the material may appear.
+ * The answer contract: what the readable half must cover, and the shape of
+ * the machine half. The readable analysis is the main deliverable — a
+ * person opens the session to read it — and the JSON block is a compact
+ * digest of that same text, ordered into keys the panel can hang its
+ * footnotes and verdict chips on. Repeating the analysis in full inside
+ * the block is a failure of the contract, not its spirit.
  */
 const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string => {
     // The contract may only name entities that are actually in the material:
@@ -129,14 +134,37 @@ const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string =
     // verdict demanded over unseen data is a verdict invited to invent.
     const commentIds = scope.comments ? openCommentsOf(view).map((comment) => comment.id).join(', ') : '';
     const filePaths = scope.files ? view.files.map((file) => `\`${file.path}\``).join(', ') : '';
+
+    // What the readable half owes the person: exactly the bodies the scope
+    // let into the material, in a fixed order, closing on the whole pull.
+    const readable: string[] = [];
+    if (scope.comments) {
+        readable.push(
+            commentIds
+                ? `- каждое открытое замечание (${commentIds}): суть в пару строк, справедливо ли оно относительно своей строки/файла — и что сделать, если доработка нужна;`
+                : '- открытых замечаний в материале нет — этой части в разборе не будет;',
+        );
+    }
+    if (scope.files) {
+        readable.push(
+            filePaths
+                ? `- каждый файл (${filePaths}): вердикт с обоснованием — решает ли дифф постановку, что недоработано, что лишнее;`
+                : '- файлов в материале нет — этой части в разборе не будет;',
+        );
+    }
+    readable.push('- общий вывод по ПРу в конце.');
+
     const parts = [
         '## Ответ',
         '',
-        'Последним сообщением выдай ровно один блок JSON, обёрнутый в тройные кавычки с языком `json`, без комментариев внутри. Структура:',
+        'Ответ из двух частей. Сначала — полный читаемый разбор по-русски, для человека: связный текст обычными абзацами и списками (без всякого JSON). Именно он — главный ответ, раскрывай каждый пункт по существу. В нём:',
+        ...readable,
+        '',
+        'Затем, после разбора, последним сообщением — ровно один блок JSON, обёрнутый в тройные кавычки с языком `json`: машинная выжимка того же разбора для панели интерфейса, не для чтения. Значения короткие, без повторения текста разбора, без комментариев внутри. Структура:',
         '',
         '```json',
         '{',
-        '  "comments": { "<id": { "summary": "суть замечания одной-двумя строками",',
+        '  "comments": { "<id>": { "summary": "суть замечания одной-двумя строками",',
         '                              "justified": true | false,',
         '                              "variants": ["вариант доработки", "..."] } },',
         '  "files":    { "<path>": { "verdict": "ok" | "questions" | "concerns",',
@@ -153,7 +181,7 @@ const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string =
             ? `- «files»: ключи — только пути файлов из материала (${filePaths}); «verdict» честный: усечённый диф не «ok» без слов о том.`
             : '- «files»: в материале нет файлов — поле опущено.',
         '- «overall»: оценка ПРа целиком; «notes» — по-русски, по делу.',
-        '- Никаких ключей сверх перечисленных; текст вне JSON-блока — обычный разбор.',
+        '- Никаких ключей сверх перечисленных; разбор перед блоком — обычный текст, без JSON.',
     ];
     return parts.join('\n');
 };

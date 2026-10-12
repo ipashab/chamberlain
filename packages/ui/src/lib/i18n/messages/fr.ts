@@ -146,6 +146,8 @@ export const dict = {
   'terminalView.toast.pasteFailed': 'Impossible de lire le presse-papiers. Utilisez le raccourci clavier pour coller.',
   'terminalView.actions.restart': 'Redémarrer le terminal',
   'chat.message.terminalContext': '{terminal}, lignes {start}-{end}',
+  'chat.message.machineDigestSingle': 'Synthèse machine pour le panneau — {count} ligne',
+  'chat.message.machineDigestPlural': 'Synthèse machine pour le panneau — {count} lignes',
   'chat.message.context.codeComment': 'Commentaire sur {file}, lignes {start}-{end}',
   'chat.message.context.codeCommentLine': 'Commentaire sur {file}, ligne {line}',
   'chat.message.context.chatQuote': 'Citation d’un message précédent',

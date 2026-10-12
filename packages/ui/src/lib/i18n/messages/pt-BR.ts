@@ -157,6 +157,8 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.toast.pasteFailed': 'Não foi possível ler a área de transferência. Use o atalho de teclado para colar.',
   'terminalView.actions.restart': 'Reiniciar terminal',
   'chat.message.terminalContext': '{terminal}, linhas {start}-{end}',
+  'chat.message.machineDigestSingle': 'Digesto automático para o painel — {count} linha',
+  'chat.message.machineDigestPlural': 'Digesto automático para o painel — {count} linhas',
   'chat.message.context.codeComment': 'Comentário em {file}, linhas {start}-{end}',
   'chat.message.context.codeCommentLine': 'Comentário em {file}, linha {line}',
   'chat.message.context.chatQuote': 'Citação de uma mensagem anterior',

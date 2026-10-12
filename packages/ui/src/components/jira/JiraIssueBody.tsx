@@ -3,6 +3,7 @@ import DOMPurify, { type DOMPurify as DOMPurifyInstance } from 'dompurify';
 import { toast } from 'sonner';
 
 import { Icon } from '@/components/icon/Icon';
+import type { IconName } from '@/components/icon/icons';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import { openExternalUrl } from '@/lib/url';
@@ -15,6 +16,7 @@ import {
     attachIssueLinksAsk,
     type IssueAskResult,
 } from './issueAsk';
+import { SimpleMarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { useIssueSpec } from './useIssueSpec';
 import type { IssueSpec } from './issueSpec';
 import { JiraAvatar } from './JiraAvatar';
@@ -138,21 +140,26 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
     const SpecCard: React.FC<{ spec: IssueSpec }> = ({ spec: card }) => (
         <section className="space-y-1.5 rounded-lg border border-border px-3 py-2">
             <div className="flex items-center justify-between gap-2">
-                <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <Icon name="sparkling" className="size-3 shrink-0" />
                     {t('jiraView.specCardTitle')}
-                </h4>
+                </div>
                 {reading.entry !== null ? (
                     <Button type="button" variant="ghost" size="xs" onClick={reading.openSession}>
                         {t('jiraView.specOpenSession')}
                     </Button>
                 ) : null}
             </div>
-            <p className="text-[13px] leading-relaxed">{card.essence}</p>
+            <div className="flex items-start gap-1.5">
+                <Icon name="lightbulb" className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <p className="min-w-0 flex-1 text-[13px] leading-relaxed">{card.essence}</p>
+            </div>
             {card.plan.length > 0 ? (
                 <div className="space-y-0.5">
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                        <Icon name="list-check-2" className="size-3 shrink-0" />
                         {t('jiraView.specPlan')}
-                    </span>
+                    </div>
                     <ul className="list-disc space-y-0.5 pl-5">
                         {card.plan.map((item) => (
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
@@ -162,9 +169,10 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
             ) : null}
             {card.acceptance.length > 0 ? (
                 <div className="space-y-0.5">
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                        <Icon name="checkbox-circle" className="size-3 shrink-0" />
                         {t('jiraView.specAcceptance')}
-                    </span>
+                    </div>
                     <ul className="list-disc space-y-0.5 pl-5">
                         {card.acceptance.map((item) => (
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
@@ -174,9 +182,10 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
             ) : null}
             {card.openQuestions.length > 0 ? (
                 <div className="space-y-0.5">
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                        <Icon name="question" className="size-3 shrink-0" />
                         {t('jiraView.specQuestions')}
-                    </span>
+                    </div>
                     <ul className="list-disc space-y-0.5 pl-5">
                         {card.openQuestions.map((item) => (
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
@@ -186,9 +195,10 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
             ) : null}
             {card.outOfScope.length > 0 ? (
                 <div className="space-y-0.5">
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                        <Icon name="close-circle" className="size-3 shrink-0" />
                         {t('jiraView.specOutOfScope')}
-                    </span>
+                    </div>
                     <ul className="list-disc space-y-0.5 pl-5">
                         {card.outOfScope.map((item) => (
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
@@ -197,6 +207,14 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                 </div>
             ) : null}
         </section>
+    );
+
+    /** One section heading row, same accent everywhere: sprite icon + label. */
+    const SectionHeading: React.FC<{ icon: IconName; children: React.ReactNode; className?: string }> = ({ icon, children, className }) => (
+        <div className={`flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground ${className ?? ''}`}>
+            <Icon name={icon} className="size-3 shrink-0" />
+            {children}
+        </div>
     );
 
     const statusColorOf = (category: string | null | undefined): string => {
@@ -234,7 +252,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
 
     return (
         <div className="space-y-4">
-            <header className="space-y-1.5">
+            <header className="space-y-1.5 rounded-lg border border-border bg-[var(--surface-muted)] px-3 py-2.5">
                 <h3 className="text-[15px] font-semibold leading-tight break-words">
                     {issue.summary}{' '}
                     <a
@@ -251,10 +269,16 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                 </h3>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
                     {issue.status.name ? (
-                        <Chip color={statusColorOf(issue.status.category)}>{issue.status.name}</Chip>
+                        <Chip color={statusColorOf(issue.status.category)}>
+                            <span
+                                className="mr-1 inline-block size-1.5 rounded-full"
+                                style={{ backgroundColor: statusColorOf(issue.status.category) }}
+                            />
+                            {issue.status.name}
+                        </Chip>
                     ) : null}
                     {issue.type.name ? <span>{issue.type.name}</span> : null}
-                    {issue.priority.name ? <span>·</span> : null}
+                    {issue.priority.name ? <span aria-hidden>·</span> : null}
                     {issue.priority.name ? <span>{issue.priority.name}</span> : null}
                     {issue.resolution ? (
                         <>
@@ -312,9 +336,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
             {reading.spec !== null ? <SpecCard spec={reading.spec} /> : null}
 
             <section className="rounded-lg border border-border px-3 py-2">
-                <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t('jiraView.sectionDetails')}
-                </h4>
+                <SectionHeading icon="information">{t('jiraView.sectionDetails')}</SectionHeading>
                 <div className="mt-1.5">
                     {issue.assignee === null ? (
                         <Row label={t('jiraView.fieldAssignee')}>—</Row>
@@ -365,10 +387,8 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
             </section>
 
             {descriptionHtml !== null || view.description.wiki ? (
-                <section className="space-y-1.5">
-                    <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        {t('jiraView.sectionDescription')}
-                    </h4>
+                <section className="space-y-1.5 rounded-lg border border-border px-3 py-2">
+                    <SectionHeading icon="file-text">{t('jiraView.sectionDescription')}</SectionHeading>
                     {descriptionHtml !== null ? (
                         <div
                             className="jira-rendered break-words text-[13px] leading-relaxed [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-2 [&_code]:font-mono [&_code]:text-[12px] [&_h1]:mt-3 [&_h1]:text-[13px] [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-[13px] [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-[var(--surface-muted)] [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[12px] [&_table]:my-2 [&_td]:border [&_td]:border-border [&_td]:px-1.5 [&_th]:border [&_th]:border-border [&_th]:px-1.5 [&_ul]:list-disc [&_ul]:pl-5"
@@ -385,10 +405,10 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                 </section>
             ) : null}
 
-            <section className="space-y-1.5">
-                <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <section className="space-y-1.5 rounded-lg border border-border px-3 py-2">
+                <SectionHeading icon="chat-3">
                     {t('jiraView.sectionComments', { count: view.comments.length })}
-                </h4>
+                </SectionHeading>
                 {view.comments.length === 0 ? (
                     <p className="text-[12px] text-muted-foreground">{t('jiraView.commentsEmpty')}</p>
                 ) : (
@@ -421,9 +441,13 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                                         html={comment.html}
                                     />
                                 ) : comment.text ? (
-                                    <p className="whitespace-pre-wrap break-words pl-6 text-[13px] leading-relaxed">
-                                        {comment.text}
-                                    </p>
+                                    <SimpleMarkdownRenderer
+                                        className="break-words pl-6 text-[13px] leading-relaxed"
+                                        content={comment.text}
+                                        disableLinkSafety
+                                        variant="tool"
+                                        enableFileReferences={false}
+                                    />
                                 ) : null}
                             </div>
                         ))}
@@ -435,13 +459,13 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
             </section>
 
             {view.issueLinks.length > 0 || view.subtasks.length > 0 ? (
-                <section className="space-y-1.5">
+                <section className="space-y-1.5 rounded-lg border border-border px-3 py-2">
                     <div className="flex items-center justify-between">
-                        <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                            {view.subtasks.length > 0 && view.issueLinks.length === 0
-                                ? t('jiraView.sectionSubtasks')
-                                : t('jiraView.sectionLinks')}
-                        </h4>
+                        {view.subtasks.length > 0 && view.issueLinks.length === 0 ? (
+                            <SectionHeading icon="task">{t('jiraView.sectionSubtasks')}</SectionHeading>
+                        ) : (
+                            <SectionHeading icon="link">{t('jiraView.sectionLinks')}</SectionHeading>
+                        )}
                         {view.issueLinks.length > 0 ? (
                             <Button
                                 type="button"

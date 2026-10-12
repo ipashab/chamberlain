@@ -1,12 +1,14 @@
 import React from 'react';
 import type { Part } from '@/lib/opencode/model';
 import { MarkdownRenderer } from '../../MarkdownRenderer';
+import { useI18n } from '@/lib/i18n';
 import type { StreamPhase, ToolPopupContent } from '../types';
 import { useStreamingTextThrottle } from '../../hooks/useStreamingTextThrottle';
 import { resolveAssistantDisplayText, resolveAssistantTextStreaming, shouldRenderAssistantText } from './assistantTextVisibility';
 import { streamPerfCount, streamPerfObserve } from '@/stores/utils/streamDebug';
 import { GeneratedJsonResultCard } from './GeneratedJsonResultCard';
 import { parseGeneratedJsonResult } from './generatedJsonResult';
+import { splitTrailingJsonDigest } from './trailingJsonDigest';
 
 type PartWithText = Part & { text?: string; content?: string; value?: string; time?: { start?: number; end?: number } };
 
@@ -29,6 +31,7 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
     // Use part directly from props — parent provides the latest version from the store.
     // No store subscription here to avoid re-render cascade from unrelated delta events.
     const partWithText = part as PartWithText;
+    const { t } = useI18n();
     const rawText = typeof partWithText.text === 'string' ? partWithText.text : '';
     const contentText = typeof partWithText.content === 'string' ? partWithText.content : '';
     const valueText = typeof partWithText.value === 'string' ? partWithText.value : '';
@@ -82,6 +85,45 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
                 key={part.id || `${messageId}-text`}
             >
                 <GeneratedJsonResultCard result={generatedResult} />
+            </div>
+        );
+    }
+
+    // A finalized text answer that ends in one fenced JSON object carries a
+    // machine digest: the prose stays on the page, and the tail folds into
+    // a collapsed line the reader can still open. The panels read the raw
+    // text from the store, so folding the display costs them nothing.
+    const trailingDigest =
+        part.type === 'text' && !isStreaming && isFinalized
+            ? splitTrailingJsonDigest(displayTextContent)
+            : null;
+    if (trailingDigest) {
+        return (
+            <div
+                className={`group/assistant-text relative break-words ${chatRenderMode === 'live' ? 'my-1' : ''}`}
+                key={part.id || `${messageId}-text`}
+            >
+                <MarkdownRenderer
+                    content={trailingDigest.prose}
+                    part={part}
+                    messageId={messageId}
+                    isAnimated={false}
+                    isStreaming={false}
+                    disableStreamAnimation={chatRenderMode === 'sorted'}
+                    variant="assistant"
+                    enableFileReferences
+                    onShowPopup={onShowPopup}
+                />
+                <details className="mt-1 rounded-md border border-[var(--interactive-border)] bg-[var(--surface-elevated)] px-2 py-1.5 text-xs">
+                    <summary className="cursor-pointer select-none text-muted-foreground">
+                        {trailingDigest.lines === 1
+                            ? t('chat.message.machineDigestSingle', { count: trailingDigest.lines })
+                            : t('chat.message.machineDigestPlural', { count: trailingDigest.lines })}
+                    </summary>
+                    <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-4">
+                        {trailingDigest.digest}
+                    </pre>
+                </details>
             </div>
         );
     }

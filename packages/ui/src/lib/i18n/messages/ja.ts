@@ -147,6 +147,8 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.toast.pasteFailed': 'クリップボードを読み取れませんでした。貼り付けのキーボードショートカットを使用してください。',
   'terminalView.actions.restart': 'ターミナルを再起動',
   'chat.message.terminalContext': '{terminal}、{start}〜{end}行',
+  'chat.message.machineDigestSingle': 'パネル用の機械データ — {count} 行',
+  'chat.message.machineDigestPlural': 'パネル用の機械データ — {count} 行',
   'chat.message.context.codeComment': '{file} の {start}〜{end} 行へのコメント',
   'chat.message.context.codeCommentLine': '{file} の {line} 行へのコメント',
   'chat.message.context.chatQuote': '以前のメッセージからの引用',

@@ -146,6 +146,8 @@ export const dict = {
   'terminalView.toast.pasteFailed': 'Could not read the clipboard. Use the paste keyboard shortcut.',
   'terminalView.actions.restart': 'Restart terminal',
   'chat.message.terminalContext': '{terminal}, lines {start}-{end}',
+  'chat.message.machineDigestSingle': 'Machine digest for the panel — {count} line',
+  'chat.message.machineDigestPlural': 'Machine digest for the panel — {count} lines',
   'chat.message.context.codeComment': 'Comment on {file}, lines {start}-{end}',
   'chat.message.context.codeCommentLine': 'Comment on {file}, line {line}',
   'chat.message.context.chatQuote': 'Quoted from an earlier message',

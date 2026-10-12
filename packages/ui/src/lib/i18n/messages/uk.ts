@@ -157,6 +157,8 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.toast.pasteFailed': 'Не вдалося прочитати буфер обміну. Скористайтеся комбінацією клавіш для вставлення.',
   'terminalView.actions.restart': 'Перезапустити термінал',
   'chat.message.terminalContext': '{terminal}, рядки {start}-{end}',
+  'chat.message.machineDigestSingle': 'Машинний витяг для панелі — {count} рядок',
+  'chat.message.machineDigestPlural': 'Машинний витяг для панелі — {count} рядків',
   'chat.message.context.codeComment': 'Коментар до {file}, рядки {start}-{end}',
   'chat.message.context.codeCommentLine': 'Коментар до {file}, рядок {line}',
   'chat.message.context.chatQuote': 'Цитата з попереднього повідомлення',

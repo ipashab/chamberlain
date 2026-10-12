@@ -6,10 +6,12 @@
 //
 // The shape of the deal: the panel opens a dedicated session whose first
 // message embeds the issue — the same material the ask flow pins — and
-// demands one fenced JSON block back. The parser is deliberately
-// forgiving about where that block sits in the answer and strict about
-// what is inside it — an answer that does not fit is no spec at all, and
-// the panel says so rather than guessing.
+// demands a two-part answer — a readable spec for the person first, a
+// compact fenced JSON block last. The block is machine food: the card in
+// the issue body is built from it, while the person reads the prose. The
+// parser is deliberately forgiving about where that block sits in the
+// answer and strict about what is inside it — an answer that does not fit
+// is no spec at all, and the panel says so rather than guessing.
 
 import { z } from 'zod';
 
@@ -69,7 +71,13 @@ export const buildIssueSpecPrompt = (view: JiraIssueView): string => {
         '',
         '## Ответ',
         '',
-        'Последним сообщением выдай ровно один блок JSON, обёрнутый в тройные кавычки с языком `json`, без комментариев внутри. Структура:',
+        'Ответ из двух частей. Сначала — полное читаемое ТЗ по-русски, для человека: связный текст обычными абзацами и списками (без всякого JSON). Именно он — главный ответ. В нём раскрывай каждый пункт по существу:',
+        '- суть задачи — одной-двумя строками, понятными заказчику;',
+        '- план доработок: что и где менять, по возможности с файлами, модулями, функциями или эндпоинтами — и почему именно так;',
+        '- критерии приёмки: каждый проверяем сам по себе;',
+        '- открытые вопросы и границы задачи — прямо, без домыслов.',
+        '',
+        'Затем, после ТЗ, последним сообщением — ровно один блок JSON, обёрнутый в тройные кавычки с языком `json`: машинная выжимка того же ТЗ для карточки интерфейса, не для чтения. Значения короткие, без повторения текста разбора, без комментариев внутри. Структура:',
         '',
         '```json',
         '{',
@@ -86,7 +94,7 @@ export const buildIssueSpecPrompt = (view: JiraIssueView): string => {
         '- «plan»: 2–8 пунктов, каждый про одно конкретное изменение; где код доступен — с привязкой к файлам и функциям. Пункты без привязки к коду всё равно конкретны по смыслу.',
         '- «acceptance»: 3–8 пунктов, каждый проверяем сам по себе; «сделать хорошо» — не критерий.',
         '- «outOfScope»: пустой список, если границ задачи материал не намечает.',
-        '- Никаких ключей сверх перечисленных; текст вне JSON-блока — обычный разбор постановки.',
+        '- Никаких ключей сверх перечисленных; ТЗ перед блоком — обычный текст, без JSON.',
     ];
     return parts.join('\n');
 };

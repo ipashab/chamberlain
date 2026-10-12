@@ -147,6 +147,8 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.toast.pasteFailed': '无法读取剪贴板。请使用粘贴快捷键。',
   'terminalView.actions.restart': '重启终端',
   'chat.message.terminalContext': '{terminal}，第 {start}-{end} 行',
+  'chat.message.machineDigestSingle': '面板用的机器摘要 — {count} 行',
+  'chat.message.machineDigestPlural': '面板用的机器摘要 — {count} 行',
   'chat.message.context.codeComment': '对 {file} 第 {start}-{end} 行的评论',
   'chat.message.context.codeCommentLine': '对 {file} 第 {line} 行的评论',
   'chat.message.context.chatQuote': '引用自先前的消息',

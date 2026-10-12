@@ -147,6 +147,8 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.toast.pasteFailed': '클립보드를 읽을 수 없습니다. 붙여넣기 단축키를 사용하세요.',
   'terminalView.actions.restart': '터미널 다시 시작',
   'chat.message.terminalContext': '{terminal}, {start}-{end}행',
+  'chat.message.machineDigestSingle': '패널용 머신 요약 — {count} 줄',
+  'chat.message.machineDigestPlural': '패널용 머신 요약 — {count} 줄',
   'chat.message.context.codeComment': '{file} {start}-{end}행에 대한 댓글',
   'chat.message.context.codeCommentLine': '{file} {line}행에 대한 댓글',
   'chat.message.context.chatQuote': '이전 메시지에서 인용',

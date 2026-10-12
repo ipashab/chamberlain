@@ -180,6 +180,102 @@ const epicKeySchema = z.string().trim().regex(JIRA_ISSUE_KEY_PATTERN);
 
 const sprintBodySchema = z.array(z.object({ name: z.string().nullish() }));
 
+// GreenHopper serializes sprints as their raw `toString()` — one long
+// `com.atlassian.greenhopper.service.sprint.Sprint@hash[key=value,...]`
+// line per sprint. The only value a person reads out of it is the name,
+// so that is the only value the parse keeps: `name=` up to the next
+// top-level `key=` boundary or the closing bracket.
+const SPRINT_TO_STRING_NAME = /(?:^|,\s*)name=((?:[^,=[\]]|\[[^[\]]*\])*)/g;
+
+const sprintNameOfToString = (raw) => {
+  const names = [];
+  for (const match of raw.matchAll(SPRINT_TO_STRING_NAME)) {
+    const name = (match[1] ?? '').trim();
+    if (name) names.push(name);
+  }
+  return names.length > 0 ? names : null;
+};
+
+// The sprint names a person reads, the dev counts a person reads, and a
+// quarantine for everything the instance spells as its own machinery:
+// a custom field exists for the panel's reader, not for Jira's internals.
+const RANK_FIELD_NAME = /(^|\s)rank(\s*\(obsolete\))?$/i;
+
+// Java's default `toString()` — `com.example.Bean@1a2b3c[key=value,...]` —
+// anywhere in a row's text means the rest is machinery too.
+const MACHINE_SERIALIZED = /@[0-9a-f]{6,}\[/;
+
+/**
+ * The Development field a Data Center instance carries is the dev-status
+ * plugin's whole summary bean, spelled twice — once as Java `toString()`,
+ * once as real JSON after `devSummaryJson=`. The JSON half is the one
+ * worth reading: a small per-category count line. Anything that does not
+ * yield that line answers null, and the row drops.
+ */
+const devSummaryLineOf = (rawValue) => {
+  const rawString = z.string().safeParse(rawValue);
+  if (!rawString.success) return null;
+  const marker = 'devSummaryJson=';
+  const markerAt = rawString.data.indexOf(marker);
+  if (markerAt < 0) return null;
+  let candidate = rawString.data.slice(markerAt + marker.length);
+  // The bean's own closing braces trail the JSON; trim until it parses.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const devSummarySchema = z.object({
+        cachedValue: z.object({
+          summary: z
+            .object({
+              pullrequest: z.object({ overall: z.object({ details: z.object({ openCount: z.number().nullish() }).nullish(), state: z.string().nullish(), count: z.number().nullish() }).nullish() }).nullish(),
+              branch: z.object({ overall: z.object({ count: z.number().nullish() }).nullish() }).nullish(),
+              build: z.object({ overall: z.object({ count: z.number().nullish() }).nullish() }).nullish(),
+              repository: z.object({ overall: z.object({ count: z.number().nullish() }).nullish() }).nullish(),
+            })
+            .nullish(),
+        }),
+      });
+      const parsedDev = devSummarySchema.parse(JSON.parse(candidate));
+      const summary = parsedDev.cachedValue.summary ?? {};
+      const parts = [];
+      const pull = summary.pullrequest?.overall;
+      if (pull && (pull.count ?? 0) > 0) {
+        const open = pull.details?.openCount ?? pull.count ?? 0;
+        parts.push(`pull requests: ${pull.count}${open > 0 ? ` (${open} open)` : ''}`);
+      }
+      const branches = summary.branch?.overall?.count ?? 0;
+      if (branches > 0) parts.push(`branches: ${branches}`);
+      const builds = summary.build?.overall?.count ?? 0;
+      if (builds > 0) parts.push(`builds: ${builds}`);
+      const commits = summary.repository?.overall?.count ?? 0;
+      if (commits > 0) parts.push(`commits: ${commits}`);
+      return parts.length > 0 ? parts.join(' · ') : null;
+    } catch {
+      candidate = candidate.replace(/\}\s*$/, '');
+    }
+  }
+  return null;
+};
+
+// GreenHopper's `toString()` may arrive bare or as a list of lines; both
+// spell every sprint the same serialized way.
+const sprintStringsSchema = z.union([z.string(), z.array(z.string())]);
+
+const sprintNamesOf = (rawValue) => {
+  const parsedSprints = sprintBodySchema.safeParse(rawValue);
+  if (parsedSprints.success) {
+    const sprintNames = parsedSprints.data
+      .map((sprint) => sprint.name)
+      .filter((sprintName) => sprintName !== null && sprintName !== '');
+    if (sprintNames.length > 0) return sprintNames;
+  }
+  const parsedStrings = sprintStringsSchema.safeParse(rawValue);
+  if (!parsedStrings.success) return null;
+  const raws = Array.isArray(parsedStrings.data) ? parsedStrings.data : [parsedStrings.data];
+  const names = raws.flatMap((raw) => sprintNameOfToString(raw) ?? []);
+  const unique = [...new Set(names)];
+  return unique.length > 0 ? unique : null;
+};
+
 const CUSTOM_FIELD_PATTERN = /^customfield_\d+$/;
 
 const parseBody = (schema, body, what) => {
@@ -235,21 +331,34 @@ const customFieldsOf = (fields, names) => {
     if (!CUSTOM_FIELD_PATTERN.test(fieldId)) continue;
     const name = names?.[fieldId] ?? null;
     if (!name) continue;
+    // Rank and its relatives are board ordering keys — a person reads
+    // nothing out of `1|hzzn87:`, so the row never exists.
+    if (RANK_FIELD_NAME.test(name)) continue;
+    // The Sprint row shows the parsed names, never GreenHopper's raw
+    // `toString()` serialization — the same cleanup the dedicated sprint
+    // reader applies.
+    if (name === 'Sprint') {
+      const sprintNames = sprintNamesOf(rawValue);
+      if (sprintNames !== null) {
+        rows.push({ id: fieldId, name, text: sprintNames.join(', ') });
+        sprints = sprintNames;
+      }
+      continue;
+    }
+    if (name.toLowerCase() === 'development') {
+      const devLine = devSummaryLineOf(rawValue);
+      if (devLine !== null) rows.push({ id: fieldId, name, text: devLine });
+      continue;
+    }
     const text = displayTextOf(rawValue);
     if (text === null) continue;
+    // Whatever else the instance spells as Java serialization is
+    // machinery, not a value — the row drops instead of showing it raw.
+    if (MACHINE_SERIALIZED.test(text)) continue;
     rows.push({ id: fieldId, name, text });
     if (name === 'Epic Link') {
       const parsedEpicKey = epicKeySchema.safeParse(rawValue);
       if (parsedEpicKey.success) epicKey = parsedEpicKey.data;
-    }
-    if (name === 'Sprint') {
-      const parsedSprints = sprintBodySchema.safeParse(rawValue);
-      if (parsedSprints.success) {
-        const sprintNames = parsedSprints.data
-          .map((sprint) => sprint.name)
-          .filter((sprintName) => sprintName !== null && sprintName !== '');
-        if (sprintNames.length > 0) sprints = sprintNames;
-      }
     }
   }
   return { rows, epicKey, sprints };
