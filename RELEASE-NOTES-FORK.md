@@ -8,6 +8,36 @@ set that shipped then.
 
 ---
 
+## `2.2.0-fork4` — read-only Bitbucket pull requests
+
+**Bitbucket Data Center joins the context panel.** One instance config —
+origin, token, ssl choice — on the settings' integrations card; the token
+stays on the server, and every call the fork makes is a GET: the viewer
+observes, it never writes.
+
+- The panel grows a **pull requests surface**: paste a pull URL or pick
+  from the open list, search it by id, title, author or repo; a
+  recently-read section remembers where you were.
+- A pull reads whole into tabs: **overview**, **comments** with replies,
+  **commits**, **changes**.
+- **Changes is an interactive diff**: line-number gutters, added and
+  removed tint bands, hover, click-select. The ask button on a line
+  attaches the file's ±12-line window as a draft quote — a context chip
+  in the composer, sent only by your hand.
+- **People carry their avatars**: the server proxies
+  `/users/<slug>/avatar.png`, so real photos arrive while the token
+  never leaves the server; a name-stable initials circle stands in
+  whenever the photo cannot (missing slug, failed load, or a runtime
+  with images off).
+- The team task dialog reuses the reader: **View** on a task's
+  Bitbucket pull opens the same body in a dialog.
+- New UI strings carry real translations in all thirteen dictionaries.
+
+Assets for this release: `OpenChamber-beta-2.2.0-fork4-mac-arm64.dmg` (and
+the zip) — macOS, Apple silicon.
+
+---
+
 ## `2.2.0-fork3` — a finished task carries its result
 
 **The board answers "what did it conclude?" without opening the chat.**
