@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { leavesOf } from '../lib/workspace/layoutTree';
+import { leavesOf, CHAT_NODE } from '../lib/workspace/layoutTree';
 import { CONTEXT_SURFACES, sortContextSurfaces } from '../lib/surfaces/registry';
 import {
   forgetBrowserTabOpenedWithAddress,
@@ -660,7 +660,8 @@ describe('useUIStore openContextSurface', () => {
     useUIStore.getState().openContextSurface(directory, 'diff');
 
     const state = useUIStore.getState().contextPanelByDirectory[directory];
-    expect(state?.isOpen).toBe(false);
+    // The region closed; its tab stays in the strip for the next open.
+    expect(state?.layout.kind).toBe('chat');
     expect(state?.tabs.map((tab) => tab.mode)).toEqual(['diff']);
   });
 
@@ -1018,31 +1019,11 @@ describe('useUIStore closeContextPanelTabs bulk', () => {
   });
 });
 
-describe('useUIStore per-surface panel widths', () => {
+describe('useUIStore panel width memories', () => {
   const directory = '/repo';
-
-  test('setContextPanelWidth stores a clamped manual width for one mode only', () => {
-    useUIStore.getState().openContextPanelTab(directory, { mode: 'diff' });
-    useUIStore.getState().setContextPanelWidth(directory, 'diff', 700);
-    useUIStore.getState().setContextPanelWidth(directory, 'git', 100);
-
-    const state = useUIStore.getState().contextPanelByDirectory[directory];
-    expect(state?.widthByMode.diff).toBe(700);
-    expect(state?.widthByMode.git).toBe(320);
-    expect(state?.widthByMode.browser).toBe(undefined);
-  });
-
-  test('a later resize replaces the remembered width', () => {
-    const store = useUIStore.getState();
-    store.setContextPanelWidth(directory, 'walkthrough', 800);
-    store.setContextPanelWidth(directory, 'walkthrough', 600.4);
-    const panel = useUIStore.getState().contextPanelByDirectory[directory];
-    expect(panel?.widthByMode.walkthrough).toBe(600);
-  });
 
   test('tree resizing and visibility changes preserve the full editor width', () => {
     const store = useUIStore.getState();
-    store.setContextPanelWidth(directory, 'file', 800);
     store.openContextFile(directory, '/repo/a.ts');
     store.setContextEditorTreeWidth(260);
     store.toggleContextEditor();
@@ -1053,9 +1034,7 @@ describe('useUIStore per-surface panel widths', () => {
     const fileIds = useUIStore.getState().contextPanelByDirectory[directory]?.tabs.map((tab) => tab.id) ?? [];
     store.closeContextPanelTabs(directory, fileIds);
 
-    const panel = useUIStore.getState().contextPanelByDirectory[directory];
     expect(useUIStore.getState().contextEditorTreeWidth).toBe(300);
-    expect(panel?.widthByMode).toEqual({ file: 800 });
   });
 
   test('restores the shared tree width and ignores obsolete tree-only panel widths', async () => {
@@ -1241,100 +1220,68 @@ describe('useUIStore closeContextFile (the editor\'s Cmd/Ctrl+W)', () => {
   });
 });
 
-describe('useUIStore workspace zones', () => {
+describe('useUIStore workspace regions', () => {
   beforeEach(() => {
     useUIStore.setState({ contextSurfaceZones: {} });
   });
 
   const panel = (directory = '/repo') => useUIStore.getState().contextPanelByDirectory[directory];
-
-  test('with nothing moved every surface opens in the right zone, as before zones', () => {
-    const store = useUIStore.getState();
-    store.openContextSurface('/repo', 'git');
-
-    expect(panel()?.isOpen).toBe(true);
-    expect(panel()?.activeTabId).toBe('git');
-    expect(panel()?.zones.left.isOpen).toBe(false);
-    expect(panel()?.zones.bottom.isOpen).toBe(false);
-  });
-
-  test('a moved surface opens in its zone and toggles there, beside the right zone', () => {
-    const store = useUIStore.getState();
-    store.moveContextSurfaceToZone('terminal', 'bottom');
-    store.openContextSurface('/repo', 'git');
-    store.openContextSurface('/repo', 'terminal');
-
-    expect(panel()?.isOpen).toBe(true);
-    expect(panel()?.activeTabId).toBe('git');
-    expect(panel()?.zones.bottom).toMatchObject({ isOpen: true, activeTabId: 'terminal' });
-
-    store.openContextSurface('/repo', 'terminal');
-    expect(panel()?.zones.bottom.isOpen).toBe(false);
-    expect(panel()?.isOpen).toBe(true);
-  });
-
-  test('moving the surface on screen carries it to the new zone in every project', () => {
-    const store = useUIStore.getState();
-    store.openContextSurface('/a', 'git');
-    store.openContextSurface('/b', 'git');
-    store.moveContextSurfaceToZone('git', 'left');
-
-    for (const directory of ['/a', '/b']) {
-      expect(panel(directory)?.isOpen).toBe(false);
-      expect(panel(directory)?.zones.left).toMatchObject({ isOpen: true, activeTabId: 'git' });
+  const layout = (directory = '/repo') => panel(directory)?.layout;
+  const leaves = (directory = '/repo') => leavesOf(layout(directory) ?? CHAT_NODE);
+  const shownTab = (directory = '/repo') => {
+    for (const leaf of leaves(directory)) {
+      const tab = panel(directory)?.tabs.find((entry) => entry.id === leaf.activeTabId);
+      if (tab) return tab;
     }
-    expect(useUIStore.getState().contextSurfaceZones).toEqual({ git: 'left' });
+    return null;
+  };
 
-    store.moveContextSurfaceToZone('git', 'right');
-    expect(useUIStore.getState().contextSurfaceZones).toEqual({});
-    expect(panel('/a')?.isOpen).toBe(true);
-    expect(panel('/a')?.zones.left.isOpen).toBe(false);
+  test('opening a surface places it in a region and clicking it again closes that region', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'terminal');
+
+    expect(shownTab()?.mode).toBe('terminal');
+
+    store.openContextSurface('/repo', 'terminal');
+    expect(layout()?.kind).toBe('chat');
+    expect(panel()?.tabs.some((tab) => tab.mode === 'terminal')).toBe(true);
   });
 
-  test('a background open fills its zone without opening it', () => {
+  test('a background open fills the strip without disturbing the regions', () => {
     const store = useUIStore.getState();
-    store.moveContextSurfaceToZone('browser', 'left');
+    store.openContextSurface('/repo', 'git');
+    const before = layout();
     store.openContextPanelTab('/repo', { mode: 'browser', dedupeKey: 'http://x' }, { reveal: false });
 
-    expect(panel()?.zones.left.isOpen).toBe(false);
-    expect(panel()?.zones.left.activeTabId).toBe('browser:http://x');
-    expect(panel()?.isOpen).toBe(false);
+    expect(layout()).toBe(before);
+    expect(panel()?.tabs.find((tab) => tab.dedupeKey === 'browser:http://x')).not.toBeNull();
+    expect(shownTab()?.mode).toBe('git');
   });
 
-  test('closing the last tab of a zone closes that zone only', () => {
+  test('closing the last tab in one region leaves the others standing', () => {
     const store = useUIStore.getState();
-    store.moveContextSurfaceToZone('terminal', 'bottom');
     store.openContextSurface('/repo', 'git');
     store.openContextSurface('/repo', 'terminal');
-    store.closeContextPanelTab('/repo', 'terminal');
+    store.splitLayoutRegion('/repo', { leafId: leaves()[0].id }, 'row', 0.5);
+    const targetLeaf = leaves()[0];
+    store.moveContextPanelTabToLeaf('/repo', panel()?.tabs.find((tab) => tab.mode === 'terminal')?.id ?? '', leaves()[1].id);
+    store.closeContextPanelTab('/repo', panel()?.tabs.find((tab) => tab.mode === 'terminal')?.id ?? '');
 
-    expect(panel()?.zones.bottom.isOpen).toBe(false);
-    expect(panel()?.isOpen).toBe(true);
-    expect(panel()?.activeTabId).toBe('git');
+    expect(leaves().length).toBe(2);
+    expect(shownTab()?.mode).toBe('git');
+    expect(targetLeaf.tabs).not.toContain(panel()?.tabs.find((tab) => tab.mode === 'terminal')?.id);
   });
 
-  test('closing the last file in a moved zone falls back to the file tree there', () => {
+  test('closing the last file falls back to the file tree in its region', () => {
     const store = useUIStore.getState();
-    store.moveContextSurfaceToZone('file', 'left');
     store.openContextFile('/repo', '/repo/a.ts');
     const fileTab = panel()?.tabs.find((tab) => tab.targetPath === '/repo/a.ts');
+    const leafId = leaves().find((leaf) => leaf.tabs.includes(fileTab?.id ?? ''))?.id ?? '';
     store.closeContextPanelTab('/repo', fileTab?.id ?? '');
 
     const placeholder = panel()?.tabs.find((tab) => tab.mode === 'file');
     expect(placeholder?.targetPath).toBeNull();
-    expect(panel()?.zones.left).toMatchObject({ isOpen: true, activeTabId: placeholder?.id });
-  });
-
-  test('one zone is expanded at a time', () => {
-    const store = useUIStore.getState();
-    store.moveContextSurfaceToZone('terminal', 'bottom');
-    store.openContextSurface('/repo', 'git');
-    store.openContextSurface('/repo', 'terminal');
-    store.toggleContextPanelExpanded('/repo');
-    store.toggleContextPanelExpanded('/repo', 'bottom');
-
-    expect(panel()?.expanded).toBe(false);
-    expect(panel()?.zones.bottom.expanded).toBe(true);
+    expect(leaves().find((leaf) => leaf.id === leafId)?.activeTabId).toBe(placeholder?.id);
   });
 
   test('state saved before zones loads with every surface on the right', async () => {
@@ -1389,19 +1336,14 @@ describe('useUIStore layout tree mirror', () => {
     expect(leavesOf(layout())[0].activeTabId).toBe('git');
   });
 
-  test('later surfaces join the first leaf, and the tree stays on zone moves', () => {
+  test('later surfaces join the first leaf, and the tree is where a region\'s tabs are', () => {
     const store = useUIStore.getState();
     store.openContextSurface('/repo', 'git');
     store.openContextSurface('/repo', 'terminal');
-    const before = layout();
 
-    // Where a surface is placed is zone business; the tree does not follow.
-    store.moveContextSurfaceToZone('terminal', 'bottom');
-    expect(layout()).toBe(before);
-
-    const leaves = leavesOf(layout());
-    expect(leaves.map((leaf) => leaf.tabs)).toEqual([['git', 'terminal']]);
-    expect(leaves[0].activeTabId).toBe('terminal');
+    const leavesNow = leavesOf(layout() ?? CHAT_NODE);
+    expect(leavesNow.map((leaf) => leaf.tabs)).toEqual([['git', 'terminal']]);
+    expect(leavesNow[0].activeTabId).toBe('terminal');
   });
 
   test('closing the last tab leaves its region standing, empty, waiting', () => {

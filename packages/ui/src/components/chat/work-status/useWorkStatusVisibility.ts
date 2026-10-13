@@ -1,7 +1,7 @@
 import React from 'react';
 import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
-import { isZoneShown } from '@/lib/workspace/zones';
+import { CHAT_NODE, edgeRegionShowsTabs } from '@/lib/workspace/layoutTree';
 
 /**
  * Fixed panel width. The panel is not user-resizable: it is an object inside
@@ -78,16 +78,15 @@ export const useWorkStatusVisibility = ({ isMobile, isVSCode }: Options): Result
     [effectiveDirectory],
   );
 
-  // Mirrors ContextPanel's own derivation: a zone with `isOpen` but no
-  // resolvable tab of its own renders nothing, and must not displace this
-  // panel. Only the right zone shares this card's slot; the left and bottom
-  // zones leave it in place.
+  // Mirrors the workspace row's own derivation: the card's column stands at
+  // the row's end edge, so only a region showing tabs there displaces it —
+  // regardless of how deep the splits go. (RTL is settled by the layout's
+  // own logical-direction mapping, not here.)
   const contextPanelOpen = useUIStore(
     React.useCallback(
-      (state) => isZoneShown(
-        directoryKey ? state.contextPanelByDirectory[directoryKey] : undefined,
-        state.contextSurfaceZones,
-        'right',
+      (state) => edgeRegionShowsTabs(
+        (directoryKey ? state.contextPanelByDirectory[directoryKey] : undefined)?.layout ?? CHAT_NODE,
+        'end',
       ),
       [directoryKey],
     ),

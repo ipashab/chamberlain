@@ -7,7 +7,6 @@ import { navigateSessionHistory } from '@/lib/sessionNavigationHistory';
 import { useSelectionStore } from '@/sync/selection-store';
 import * as sessionActions from '@/sync/session-actions';
 import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
-import { shownContextModes, zoneOfMode } from '@/lib/workspace/zones';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useCurrentSessionActivity } from '@/hooks/useSessionActivity';
 import { useKeybinds } from '@/hooks/useKeybind';
@@ -128,15 +127,12 @@ export const useKeyboardShortcuts = () => {
     useUIStore.getState().openContextSurface(normalizeContextPanelDirectoryKey(currentDirectory), 'terminal');
   };
 
+  // The expanded zone is gone with zones; the shortcut shows the terminal:
+  // openContextSurface places its tab in a region and is idempotent when
+  // one already shows it.
   const toggleTerminalSurfaceExpanded = () => {
     if (!currentDirectory) return;
-    const key = normalizeContextPanelDirectoryKey(currentDirectory);
-    const state = useUIStore.getState();
-    const panel = state.contextPanelByDirectory[key];
-    if (!shownContextModes(panel, state.contextSurfaceZones).has('terminal')) {
-      state.openContextSurface(key, 'terminal');
-    }
-    state.toggleContextPanelExpanded(key, zoneOfMode(state.contextSurfaceZones, 'terminal'));
+    useUIStore.getState().openContextSurface(normalizeContextPanelDirectoryKey(currentDirectory), 'terminal');
   };
 
   useKeybinds({

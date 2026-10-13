@@ -20,7 +20,6 @@ import { isVSCodeRuntime } from '@/lib/desktop';
 import { noteBrowserTabOpenedWithAddress, requestBrowserTabLoad } from '@/lib/browser/devServerWait';
 import { isContextPanelMode, type ContextPanelMode } from '@/lib/surfaces/modes';
 import {
-  carrySurfaceToZone,
   getZoneView,
   resolveZoneActiveTabId,
   keepZoneViewsOnTabs,
@@ -37,10 +36,16 @@ import {
   type MovedZoneViews,
 } from '@/lib/workspace/zones';
 import {
+  balanceSplitAt,
   CHAT_NODE,
+  closeLeaf,
+  leavesOf,
+  moveTabToLeaf,
   openSurfaceInTree,
   renameTabsInTree,
   sanitizeTree,
+  splitChat,
+  splitLeaf,
   storedTreeSchema,
   treeFromZonedPanel,
   activateTab as activateTabInTree,
@@ -89,7 +94,9 @@ function normalizeFileEditorKeymap(value: unknown): FileEditorKeymap {
   return value === 'vim' ? 'vim' : 'default';
 }
 
-type ContextPanelTab = {
+/** One entry of the context panel's shared tab strip. A tab belongs to at
+    most one layout leaf; its DOM keeps alive wherever the leaf is. */
+export type ContextPanelTab = {
   id: string;
   mode: ContextPanelMode;
   targetPath: string | null;
@@ -641,15 +648,15 @@ const upsertContextPanelTab = (
   const clampedTabs = clampContextPanelTabs(tabs, CONTEXT_PANEL_MAX_TABS, activeTabId);
 
   // The tree mirrors the strip: tabs the open replaced or the clamp retired
-  // leave their leaves, and the opened tab lands by the one rule
+  // leave their leaves, and an opened-and-revealed tab lands by the one rule
   // openSurfaceInTree encodes — where its surface already shows, else the
-  // first filled leaf, else the first empty one, else a fresh split.
-  const layout = openSurfaceInTree(
-    sanitizeTree(layoutOrChat(current.layout), new Set(clampedTabs.map((tab) => tab.id))),
-    clampedTabs,
-    nextTab.id,
-    nextTab.mode,
-  ).tree;
+  // first filled leaf, else the first empty one, else a fresh split. A
+  // background open places nothing: the tab lives in the strip, its pane
+  // alive in the layout's limbo, until an open reveals it.
+  const sanitizedLayout = sanitizeTree(layoutOrChat(current.layout), new Set(clampedTabs.map((tab) => tab.id)));
+  const layout = reveal
+    ? openSurfaceInTree(sanitizedLayout, clampedTabs, nextTab.id, nextTab.mode).tree
+    : sanitizedLayout;
 
   return settleZones(withZoneView({
     ...current,
@@ -1263,16 +1270,20 @@ interface UIStore {
   closeContextPanelTabs: (directory: string, tabIds: readonly string[]) => void;
   /** Closes the right zone. */
   closeContextPanel: (directory: string) => void;
-  closeContextZone: (directory: string, zone: ContextZone) => void;
-  /** One zone is expanded at a time; expanding one collapses the others. */
-  toggleContextPanelExpanded: (directory: string, zone?: ContextZone) => void;
-  setContextPanelWidth: (directory: string, mode: ContextPanelMode, width: number) => void;
-  setContextPanelHeight: (directory: string, mode: ContextPanelMode, height: number) => void;
   /**
-   * Places a surface in a zone for every project on this device. Where it is
-   * on screen it goes along: the zone it left closes and the new one opens on it.
+   * Splits one region of the layout in two: a layout leaf by its id, or
+   * `'chat'` for the chat's region. The new region starts empty at
+   * `fraction` of the space.
    */
-  moveContextSurfaceToZone: (mode: ContextPanelMode, zone: ContextZone) => void;
+  splitLayoutRegion: (directory: string, target: { leafId: string } | 'chat', axis: 'row' | 'column', fraction?: number) => void;
+  /** Closes a region. Its tabs stay in the strip and re-enter a region the next time they open. */
+  closeLayoutRegion: (directory: string, leafId: string) => void;
+  /** Ends a divider drag: the trailing child of the pair takes `trailingShare` of the pair. */
+  balanceLayoutSplit: (directory: string, splitId: string, leadingIndex: number, trailingIndex: number, trailingShare: number) => void;
+  /** Moves one tab to a region leaf, activating it there. */
+  moveContextPanelTabToLeaf: (directory: string, tabId: string, leafId: string, index?: number) => void;
+  /** Ids of every tab of one surface, the strip's whole `mode` group. */
+  closeContextSurfaceTabs: (directory: string, mode: ContextPanelMode) => void;
   setNotesPanelHeight: (height: number) => void;
   setWorkStatusSectionExpanded: (sectionId: string, expanded: boolean) => void;
   setMessageQueueExpanded: (expanded: boolean) => void;
@@ -1738,13 +1749,20 @@ export const useUIStore = create<UIStore>()(
           }
 
           const state = get();
-          const placement = state.contextSurfaceZones;
           const panelState = state.contextPanelByDirectory[normalizedDirectory];
           const tabs = panelState?.tabs ?? [];
-          const zone = zoneOfMode(placement, mode);
-          const zoneView = panelState ? getZoneView(panelState, zone) : null;
-          const activeTabId = resolveZoneActiveTabId(tabs, placement, zone, zoneView?.activeTabId ?? null);
-          const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
+          // The tree decides what is on screen: the surface a region shows
+          // is its active tab's. Clicking that surface's rail icon closes
+          // the region it shows in — its tabs stay in the strip, alive for
+          // the next open.
+          let shownLeafId: string | null = null;
+          for (const leaf of leavesOf(panelState?.layout ?? CHAT_NODE)) {
+            const tab = tabs.find((entry) => entry.id === leaf.activeTabId);
+            if (tab?.mode === mode) {
+              shownLeafId = leaf.id;
+              break;
+            }
+          }
           const clearTerminalTarget = () => {
             if (mode === 'terminal') {
               const terminalTab = tabs.find((tab) => tab.mode === 'terminal') ?? null;
@@ -1759,9 +1777,9 @@ export const useUIStore = create<UIStore>()(
             }
           };
 
-          if (zoneView?.isOpen && activeTab?.mode === mode) {
+          if (shownLeafId !== null) {
             clearTerminalTarget();
-            state.closeContextZone(normalizedDirectory, zone);
+            state.closeLayoutRegion(normalizedDirectory, shownLeafId);
             return;
           }
 
@@ -2146,125 +2164,117 @@ export const useUIStore = create<UIStore>()(
         },
 
         closeContextPanel: (directory) => {
-          get().closeContextZone(directory, 'right');
-        },
-
-        closeContextZone: (directory, zone) => {
+          // The whole layout collapses back to the chat; tabs stay in the
+          // strip and re-enter a region the next time they open.
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           if (!normalizedDirectory) {
             return;
           }
-
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
-            if (!prev || !getZoneView(prev, zone).isOpen) {
+            if (!prev || prev.layout.kind === 'chat') {
               return state;
             }
-
             const byDirectory = {
               ...state.contextPanelByDirectory,
-              [normalizedDirectory]: withZoneView(touchContextPanelState(prev, state.contextSurfaceZones), zone, { isOpen: false }),
+              [normalizedDirectory]: { ...prev, layout: CHAT_NODE },
             };
-
             return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
           });
         },
 
-        toggleContextPanelExpanded: (directory, zone = 'right') => {
+        splitLayoutRegion: (directory, target, axis, fraction) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           if (!normalizedDirectory) {
             return;
           }
-
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
             const current = touchContextPanelState(prev, state.contextSurfaceZones);
-            const expanded = !getZoneView(current, zone).expanded;
-            let next = current;
-            for (const other of CONTEXT_ZONES) {
-              next = withZoneView(next, other, { expanded: other === zone ? expanded : false });
-            }
-            const byDirectory = {
-              ...state.contextPanelByDirectory,
-              [normalizedDirectory]: next,
-            };
-
-            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
-          });
-        },
-
-        setContextPanelWidth: (directory, mode, width) => {
-          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
-          if (!normalizedDirectory) {
-            return;
-          }
-
-          set((state) => {
-            const prev = state.contextPanelByDirectory[normalizedDirectory];
-            const current = touchContextPanelState(prev, state.contextSurfaceZones);
-            const clampedWidth = clampContextPanelWidth(width);
-            const byDirectory = {
-              ...state.contextPanelByDirectory,
-              [normalizedDirectory]: {
-                ...current,
-                widthByMode: {
-                  ...current.widthByMode,
-                  [mode]: clampedWidth,
-                },
-              },
-            };
-
-            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
-          });
-        },
-
-        setContextPanelHeight: (directory, mode, height) => {
-          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
-          if (!normalizedDirectory) {
-            return;
-          }
-
-          set((state) => {
-            const prev = state.contextPanelByDirectory[normalizedDirectory];
-            const current = touchContextPanelState(prev, state.contextSurfaceZones);
-            const byDirectory = {
-              ...state.contextPanelByDirectory,
-              [normalizedDirectory]: {
-                ...current,
-                heightByMode: {
-                  ...current.heightByMode,
-                  [mode]: clampContextPanelHeight(height),
-                },
-              },
-            };
-
-            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
-          });
-        },
-
-        moveContextSurfaceToZone: (mode, zone) => {
-          set((state) => {
-            const from = zoneOfMode(state.contextSurfaceZones, mode);
-            if (from === zone) {
+            const split = target === 'chat'
+              ? splitChat(current.layout, axis, { fraction })
+              : splitLeaf(current.layout, target.leafId, axis, { fraction });
+            if (split === null) {
               return state;
             }
-
-            const placement: ContextZonePlacement = { ...state.contextSurfaceZones };
-            if (zone === 'right') {
-              delete placement[mode];
-            } else {
-              placement[mode] = zone;
-            }
-
-            // Every project's panel follows, so the surface is where the user
-            // put it whichever project they switch to.
-            const byDirectory: Record<string, ContextPanelDirectoryState> = {};
-            for (const [directory, panel] of Object.entries(state.contextPanelByDirectory)) {
-              byDirectory[directory] = carrySurfaceToZone(panel, mode, from, zone, placement);
-            }
-
-            return { contextSurfaceZones: placement, contextPanelByDirectory: byDirectory };
+            const byDirectory = {
+              ...state.contextPanelByDirectory,
+              [normalizedDirectory]: { ...current, layout: split.tree },
+            };
+            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
           });
+        },
+
+        closeLayoutRegion: (directory, leafId) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory) {
+            return;
+          }
+          set((state) => {
+            const prev = state.contextPanelByDirectory[normalizedDirectory];
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
+            const next = closeLeaf(current.layout, leafId);
+            if (next === current.layout) {
+              return state;
+            }
+            const byDirectory = {
+              ...state.contextPanelByDirectory,
+              [normalizedDirectory]: { ...current, layout: next },
+            };
+            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+          });
+        },
+
+        balanceLayoutSplit: (directory, splitId, leadingIndex, trailingIndex, trailingShare) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory) {
+            return;
+          }
+          set((state) => {
+            const prev = state.contextPanelByDirectory[normalizedDirectory];
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
+            const next = balanceSplitAt(current.layout, splitId, leadingIndex, trailingIndex, trailingShare);
+            if (next === current.layout) {
+              return state;
+            }
+            const byDirectory = {
+              ...state.contextPanelByDirectory,
+              [normalizedDirectory]: { ...current, layout: next },
+            };
+            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+          });
+        },
+
+        moveContextPanelTabToLeaf: (directory, tabId, leafId, index) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory) {
+            return;
+          }
+          set((state) => {
+            const prev = state.contextPanelByDirectory[normalizedDirectory];
+            const current = touchContextPanelState(prev, state.contextSurfaceZones);
+            const layout = moveTabToLeaf(current.layout, tabId, leafId, index === undefined ? undefined : { index });
+            if (layout === current.layout) {
+              return state;
+            }
+            const byDirectory = {
+              ...state.contextPanelByDirectory,
+              [normalizedDirectory]: { ...current, layout },
+            };
+            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+          });
+        },
+
+        closeContextSurfaceTabs: (directory, mode) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory) {
+            return;
+          }
+          const panel = get().contextPanelByDirectory[normalizedDirectory];
+          const ids = (panel?.tabs ?? []).filter((tab) => tab.mode === mode).map((tab) => tab.id);
+          if (ids.length > 0) {
+            get().closeContextPanelTabs(normalizedDirectory, ids);
+          }
         },
 
         setNotesPanelHeight: (height) => {

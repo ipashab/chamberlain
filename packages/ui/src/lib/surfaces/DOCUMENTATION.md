@@ -4,9 +4,9 @@
 
 `packages/ui/src/lib/surfaces` owns the declarative registry of context panel
 surfaces — the desktop workspaces switched by the vertical rail on the right
-edge (`components/layout/ContextPanelRail.tsx`) and rendered in the zones
-around the chat by `components/layout/ContextPanel.tsx` (one per zone) and
-`components/layout/ContextSurfacePanes.tsx`.
+edge (`components/layout/ContextPanelRail.tsx`) and rendered in the regions
+of the workspace layout by `components/layout/ContextPanel.tsx` (one per
+layout leaf) and `components/layout/ContextSurfacePanes.tsx`.
 
 ## Model
 
@@ -62,41 +62,41 @@ Full-screen extension pages are separate from this rail registry. `contributes.p
   until a tab of their mode exists. Both consumers use it so the digit shown
   on a rail badge always maps to the same surface the shortcut opens.
 
-## Zones
+## Workspace regions
 
-Surfaces open in one of three zones around the chat (`lib/workspace/zones.ts`):
-`right` (the context panel, and the default), `left` (between the session
-sidebar and the chat) or `bottom` (under the chat column only; the side zones
-keep the full height). The chat is always the centre and cannot move.
+Surfaces open in regions of a recursive layout tree
+(`lib/workspace/layoutTree.ts`): `chat` (exactly one — the chat is a region
+like any other), `leaf` (a region frame holding tab ids from the shared
+strip), and `split` (`row` or `column`, fractions summing to 1). Splits nest
+without limit; a leaf splits again from its header, and closing a leaf
+collapses its divider, leaving its tabs in the strip.
 
-- Placement is per surface and per device: `useUIStore.contextSurfaceZones`
-  maps a mode to `left` or `bottom`; a mode not in it is on the right. A user
-  who never moves anything sees the single right panel as before.
-- Each zone works like the right panel always has: the rail switches what it
-  shows, multi-instance surfaces list their instances in its strip, and it
-  closes, expands (one zone at a time) and resizes on its own. Per directory,
-  the right zone keeps the panel's original top-level fields and the other two
-  live in `zones`; read them through `getZoneView` / `resolveZoneActiveTab`,
-  which never return a tab whose surface is placed elsewhere.
-- A surface moves by dragging a rail icon out of the rail, a tab out of its
-  strip (the zone's own, or a surface's own such as the terminal's, through
-  `zoneSurfaceDragContext`), or a zone header anywhere no control takes the
-  pointer (`components/layout/zoneDrag.ts`; a native listener, since surface
-  toolbars are portalled into the header), or from "Move panel to …" on a
-  tab's or rail icon's context menu. Targets are
-  measured once at drag start; the layout changes once, on drop
-  (`moveContextSurfaceToZone`). A surface that was on screen stays on screen
-  in its new zone, in every project; one that was not is opened by the drop.
+- The tree is per directory, in `contextPanelByDirectory[..].layout`; the
+  renderer (`components/layout/WorkspaceLayout.tsx`) reads it and nothing
+  else. `lib/workspace/zones.ts` survives only behind the persist boundary:
+  `contextSurfaceZones` and the per-zone mirror still hydrate from state
+  saved before the tree, which is built from them by placement
+  (`treeFromZonedPanel`) on rehydration.
+- Opening a surface (`openSurfaceInTree`'s rule) reveals it where its mode
+  already shows, else in the first filled leaf, else in the first empty one,
+  else it splits the chat 70/30 as the old right panel did. Clicking the
+  rail icon of a surface a region shows closes that region
+  (`closeLeaf`), tabs alive; everything is idempotent. A background open
+  (`reveal: false`) places nothing: the tab joins the strip only.
 - Keep-alive surfaces mount once in `ContextSurfacePanes` and are portalled
-  into the body of their zone (`MovablePane`), so a move keeps the editor's
-  unsaved text and undo, the terminal session and the walkthrough's place. An
-  Electron webview reloads whenever its element moves, so a browser tab
-  reloads when its surface moves to another zone; nothing else moves it.
-- In a narrow window the chat keeps 400 px: a side zone that opens without
-  room folds the session sidebar, then closes the other side zone, and both
-  come back when it closes (`ZoneFitArbiter`, `lib/workspace/zoneFit.ts`).
-- Another window's move is adopted through the `storage` event
-  (`zoneSync.ts`); each window keeps its own open zones.
+  into the body of the leaf holding their tab (`MovablePane` keyed by leaf
+  id through `components/layout/regionHosts.ts`), so a move between regions
+  keeps the editor's unsaved text and undo, the terminal session and the
+  walkthrough's place. A tab with no leaf keeps its pane mounted off-document
+  and intact until an open places it again. An Electron webview reloads
+  whenever its element moves, so a browser tab reloads when its tab moves
+  regions; nothing else moves it.
+- Region sizes come from the enclosing split's fractions; dragging a divider
+  rebalances the pair (`balanceLayoutSplit`). Pixels floors keep a region
+  on screen while a drag passes through.
+- The inline work-status card keeps the row's end edge whenever no region
+  shows tabs there (`edgeRegionShowsTabs`); a narrow chat still folds the
+  card by row width, as before.
 
 ## Adding a surface
 
@@ -151,7 +151,7 @@ chat/palette go through the `openContext*` actions in `useUIStore`.
   surfaces must restore their state from stores or snapshots.
 - Portalled menus and dialogs handle their own Escape key. The panel's capture
   handler ignores their events so dismissing an overlay does not close the panel.
-  Escape closes the zone it was pressed in: the frame and each keep-alive pane
+  Escape closes the region it was pressed in: the frame and each keep-alive pane
   run the same handler (`zoneEscape.ts`), since a pane's React events do not
   pass through its frame.
 - Runtime scope: desktop/web `MainLayout` only. VS Code and the dedicated

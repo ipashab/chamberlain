@@ -5,7 +5,6 @@ import { getSyncSessions } from '@/sync/sync-refs';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
-import { getZoneView, resolveZoneActiveTabId, shownContextModes, zoneOfMode } from '@/lib/workspace/zones';
 import { useUpdateStore } from '@/stores/useUpdateStore';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { sessionEvents } from '@/lib/sessionEvents';
@@ -217,17 +216,14 @@ export const useMenuActions = (
           if (!directory) break;
           const uiState = useUIStore.getState();
           const directoryKey = normalizeContextPanelDirectoryKey(directory);
-          // The right zone only: it is the panel this menu item always meant.
+          // The panel this menu item always meant: with any region on
+          // screen the layout collapses; without one the surface the panel
+          // had — or the git one, its old first tab — returns.
           const panelState = uiState.contextPanelByDirectory[directoryKey];
-          const rightTabId = panelState
-            ? resolveZoneActiveTabId(panelState.tabs, uiState.contextSurfaceZones, 'right', getZoneView(panelState, 'right').activeTabId)
-            : null;
-          if (panelState?.isOpen) {
+          if (panelState && panelState.layout.kind !== 'chat') {
             uiState.closeContextPanel(directoryKey);
-          } else if (rightTabId) {
-            uiState.setActiveContextPanelTab(directoryKey, rightTabId);
           } else {
-            uiState.openContextSurface(directoryKey, 'git');
+            uiState.openContextSurface(directoryKey, panelState?.tabs[0]?.mode && panelState.tabs[0].mode !== 'chat' ? panelState.tabs[0].mode : 'git');
           }
           break;
         }
@@ -256,13 +252,10 @@ export const useMenuActions = (
         case 'toggle-terminal-expanded': {
           const directory = useDirectoryStore.getState().currentDirectory;
           if (!directory) break;
-          const key = normalizeContextPanelDirectoryKey(directory);
-          const uiState = useUIStore.getState();
-          const panel = uiState.contextPanelByDirectory[key];
-          if (!shownContextModes(panel, uiState.contextSurfaceZones).has('terminal')) {
-            uiState.openContextSurface(key, 'terminal');
-          }
-          uiState.toggleContextPanelExpanded(key, zoneOfMode(uiState.contextSurfaceZones, 'terminal'));
+          // The expanded zone is gone with zones; the toggle now shows the
+          // terminal: openContextSurface places its tab in a region and is
+          // idempotent when one already shows it.
+          useUIStore.getState().openContextSurface(normalizeContextPanelDirectoryKey(directory), 'terminal');
           break;
         }
 

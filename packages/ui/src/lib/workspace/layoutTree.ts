@@ -19,7 +19,7 @@ import { z } from 'zod';
  * one per child, always summing to one.
  */
 
-type SplitAxis = 'row' | 'column';
+export type SplitAxis = 'row' | 'column';
 
 interface ChatNode {
   kind: 'chat';
@@ -40,7 +40,7 @@ interface SplitNode {
   children: readonly WorkspaceNode[];
 }
 
-type WorkspaceNode = ChatNode | LeafNode | SplitNode;
+export type WorkspaceNode = ChatNode | LeafNode | SplitNode;
 export type WorkspaceTree = WorkspaceNode;
 
 /** The layout a project starts with: just the chat. */
@@ -160,6 +160,22 @@ const normalize = (fractions: readonly number[], childCount: number): number[] =
 
 const containsChat = (node: WorkspaceNode): boolean =>
   node.kind === 'chat' || (node.kind === 'split' && node.children.some(containsChat));
+
+/**
+ * Whether the region at one edge of the workspace row shows tabs: the
+ * end-edge chain of row splits decides if the inline work-status card's
+ * column is free. A column split holds the whole edge, so any leaf under it
+ * counts; an empty leaf does not — it displaces nothing.
+ */
+export const edgeRegionShowsTabs = (tree: WorkspaceTree, edge: 'start' | 'end'): boolean => {
+  let node = tree;
+  // SAFETY: every narrowing below mirrors WorkspaceNode's own discriminants.
+  while (node.kind === 'split') {
+    if (node.axis !== 'row') return node.children.some((child) => edgeRegionShowsTabs(child, edge));
+    node = node.children[edge === 'end' ? node.children.length - 1 : 0];
+  }
+  return node.kind === 'leaf' && node.tabs.length > 0;
+};
 
 /**
  * A tree without its chat is invalid. This wraps whatever is there in a row

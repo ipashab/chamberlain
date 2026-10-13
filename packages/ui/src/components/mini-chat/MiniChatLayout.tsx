@@ -24,7 +24,6 @@ import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { buildSessionContextUsage, isSameContextUsage } from '@/stores/utils/tokenUtils';
 import type { SessionContextUsage } from '@/stores/types/sessionTypes';
 import { isChatDirectoryPath } from '@/lib/chatDirectories';
-import { followZonePlacementOfOtherWindows } from '@/components/layout/zoneSync';
 
 type MiniChatMode = 'session' | 'draft';
 
@@ -286,10 +285,6 @@ const MiniChatHeader: React.FC<{ mode: MiniChatMode }> = ({ mode }) => {
 
 export const MiniChatLayout: React.FC<MiniChatLayoutProps> = ({ mode, autoOpenDraft = false, unavailable = false }) => {
   const { t } = useI18n();
-  // This window persists the same ui-store as the main window. Without
-  // adopting a surface move made there, its next save would write the old
-  // placement back and the main window would follow it.
-  React.useEffect(() => followZonePlacementOfOtherWindows(), []);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background text-foreground">

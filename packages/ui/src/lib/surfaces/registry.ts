@@ -212,19 +212,12 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   },
 ];
 
-const DEFAULT_WIDTH_BY_MODE = new Map(CONTEXT_SURFACES.map((surface) => [surface.mode, surface.defaultWidth]));
-
 /** A guest panel's default width, and the fallback for any unlisted mode. */
 export const GUEST_SURFACE_DEFAULT_WIDTH = 540;
 
 // Tablet width and up: below this the walkthrough cannot show a stop and its
 // code side by side, which is the whole point of the surface.
 export const WALKTHROUGH_MIN_WIDTH = 768;
-
-export const getContextSurfaceDefaultWidth = (mode: ContextPanelMode): number => {
-  if (isPluginContextPanelMode(mode)) return GUEST_SURFACE_DEFAULT_WIDTH;
-  return DEFAULT_WIDTH_BY_MODE.get(mode) ?? GUEST_SURFACE_DEFAULT_WIDTH;
-};
 
 const isKnownSurfaceId = (value: string, byId: ReadonlyMap<string, ContextSurfaceDescriptor>): boolean => {
   return byId.has(value);

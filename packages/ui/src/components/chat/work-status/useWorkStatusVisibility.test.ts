@@ -3,11 +3,20 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 type ZoneView = { isOpen: boolean; expanded: boolean; activeTabId: string | null };
+/** The tree shape the hook reads: enough of layoutTree's WorkspaceTree. */
+type PanelLayout = {
+  kind: 'split';
+  id: string;
+  axis: 'row';
+  fractions: number[];
+  children: { kind: string; id?: string; tabs?: string[]; activeTabId?: string | null }[];
+};
 type PanelState = {
   isOpen: boolean;
   tabs: { id: string; mode: string }[];
   activeTabId: string | null;
   zones?: { left: ZoneView; bottom: ZoneView };
+  layout?: PanelLayout;
 };
 
 let panelByDirectory: Record<string, PanelState> = {};
@@ -16,6 +25,18 @@ type SurfacePlacement = { git?: 'left' };
 let surfaceZones: SurfacePlacement = {};
 let panelEnabled = true;
 let effectiveDirectory: string | undefined = '/repo';
+
+/** A workspace tree with one leaf at the row's end edge showing `tab-1`. */
+const layoutCoveringEdge: PanelLayout = {
+  kind: 'split',
+  id: 'root-split',
+  axis: 'row',
+  fractions: [0.7, 0.3],
+  children: [
+    { kind: 'chat' },
+    { kind: 'leaf', id: 'leaf-1', tabs: ['tab-1'], activeTabId: 'tab-1' },
+  ],
+};
 
 mock.module('@/stores/useUIStore', () => ({
   useUIStore: (selector: (state: unknown) => unknown) =>
@@ -234,7 +255,7 @@ describe('useWorkStatusVisibility', () => {
     // reveals it. Stopping cost a frame: closing the context panel widened the
     // chat, and only then did the panel reappear and narrow it again.
     panelByDirectory = {
-      '/repo': { isOpen: true, tabs: [{ id: 'tab-1', mode: 'git' }], activeTabId: 'tab-1' },
+      '/repo': { isOpen: true, tabs: [{ id: 'tab-1', mode: 'git' }], activeTabId: 'tab-1', layout: layoutCoveringEdge },
     };
     const { result, rowNode, teardown } = renderVisibility(
       { isMobile: false, isVSCode: false },
@@ -264,7 +285,7 @@ describe('useWorkStatusVisibility', () => {
   test('keeps reporting room for the column while the context panel covers it', () => {
     // The right slot keeps the card's column on this, so closing the context
     // panel narrows the slot straight to the card instead of to nothing first.
-    panelByDirectory['/repo'] = { isOpen: true, tabs: [{ id: 'tab-1', mode: 'git' }], activeTabId: 'tab-1' };
+    panelByDirectory['/repo'] = { isOpen: true, tabs: [{ id: 'tab-1', mode: 'git' }], activeTabId: 'tab-1', layout: layoutCoveringEdge };
     const { result, teardown } = renderVisibility({ isMobile: false, isVSCode: false }, REQUIRED);
     expect(result.fits).toBe(false);
     expect(result.roomy).toBe(true);
@@ -292,7 +313,7 @@ describe('useWorkStatusVisibility', () => {
     // directory. The context panel is still keyed by the directory the app is
     // on, and looking it up under the chat's empty one answered "closed".
     panelByDirectory = {
-      '/repo': { isOpen: true, tabs: [{ id: 'tab-1', mode: 'git' }], activeTabId: 'tab-1' },
+      '/repo': { isOpen: true, tabs: [{ id: 'tab-1', mode: 'git' }], activeTabId: 'tab-1', layout: layoutCoveringEdge },
     };
     const { result, teardown } = renderVisibility({ isMobile: false, isVSCode: false }, REQUIRED);
     expect(result.visible).toBe(false);

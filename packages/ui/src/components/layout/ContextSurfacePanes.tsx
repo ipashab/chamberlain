@@ -15,11 +15,9 @@ import { guestHasSharedSurface, guestSurfaceDocking, type GuestSurfaceDocking } 
 import { GUEST_SURFACE_DOCK_SIZE_MIN } from '@openchamber/sdk';
 import { isPluginContextPanelMode, pluginIdFromMode, type PluginContextPanelMode } from '@/lib/surfaces/modes';
 import {
-  getZoneView,
-  resolveZoneActiveTab,
-  zoneOfMode,
-  type ContextZone,
-} from '@/lib/workspace/zones';
+  CHAT_NODE,
+  leavesOf,
+} from '@/lib/workspace/layoutTree';
 import { useFilesViewTabsStore } from '@/stores/useFilesViewTabsStore';
 import { clampContextEditorTreeWidth, normalizeContextPanelDirectoryKey, useUIStore, type PendingDiffScope } from '@/stores/useUIStore';
 import { markSessionViewed } from '@/sync/notification-store';
@@ -29,11 +27,7 @@ import { getSessionIDFromDedupeKey } from './contextPanelSessionTitles';
 import { MovablePane } from './MovablePane';
 import { SidebarFilesTree } from './SidebarFilesTree';
 import { closeZoneOnEscape } from './zoneEscape';
-import { startZoneDragGesture } from './zoneDrag';
-import { ZoneSurfaceDragContext } from './zoneSurfaceDragContext';
-import { useZoneHostsStore } from './zoneHosts';
-import { useRightSlotStore } from './rightSlot';
-import { useOpenUntilSettled } from './useOpenUntilSettled';
+import { usePaneHostsStore } from './regionHosts';
 
 // Heavy views stay on-demand (same as MainLayout): importing DiffView/FilesView
 // or the walkthrough statically pulls the CodeMirror and @pierre/diffs stacks
@@ -221,21 +215,22 @@ const EditorTreeColumn: React.FC<{ visible: boolean; active: boolean; fill?: boo
  * Its React events do not pass through the zone frame, so it closes the zone
  * itself.
  */
-const ZonePane: React.FC<{
-  zone: ContextZone;
-  isOpen: boolean;
+const RegionPane: React.FC<{
+  hostKey: string | null;
+  /** Whether the pane's tab is the one its region shows. */
+  visible: boolean;
   directoryKey: string;
   className?: string;
   children: React.ReactNode;
-}> = ({ zone, isOpen, directoryKey, className, children }) => {
-  const closeContextZone = useUIStore((state) => state.closeContextZone);
+}> = ({ hostKey, visible, directoryKey, className, children }) => {
+  const closeLayoutRegion = useUIStore((state) => state.closeLayoutRegion);
   const handleKeyDownCapture = React.useCallback((event: React.KeyboardEvent<HTMLElement>) => {
-    closeZoneOnEscape(event, isOpen, () => {
-      if (directoryKey) closeContextZone(directoryKey, zone);
-    }, event.currentTarget.closest('[data-context-zone]'));
-  }, [closeContextZone, directoryKey, isOpen, zone]);
+    closeZoneOnEscape(event, visible, () => {
+      if (directoryKey && hostKey) closeLayoutRegion(directoryKey, hostKey);
+    }, event.currentTarget.closest('[data-context-panel]'));
+  }, [closeLayoutRegion, directoryKey, hostKey, visible]);
   return (
-    <MovablePane zone={zone}>
+    <MovablePane hostKey={hostKey}>
       <div className={className} onKeyDownCapture={handleKeyDownCapture}>
         {children}
       </div>
@@ -261,7 +256,6 @@ export const ContextSurfacePanes: React.FC = () => {
     [effectiveDirectory],
   );
   const panelState = useUIStore((state) => (directoryKey ? state.contextPanelByDirectory[directoryKey] : undefined));
-  const placement = useUIStore((state) => state.contextSurfaceZones);
   const contextPanelByDirectory = useUIStore((state) => state.contextPanelByDirectory);
   const closeContextPanelTab = useUIStore((state) => state.closeContextPanelTab);
   const closeContextFile = useUIStore((state) => state.closeContextFile);
@@ -272,46 +266,22 @@ export const ContextSurfacePanes: React.FC = () => {
   const contextEditorVisible = useUIStore((state) => state.contextEditorVisible);
   const fileTreeSide = useUIStore((state) => state.fileTreeSide);
   const setSelectedFilePath = useFilesViewTabsStore((state) => state.setSelectedPath);
-  const headerSlots = useZoneHostsStore((state) => state.headerSlot);
+  const regionHosts = usePaneHostsStore((state) => state.byKey);
 
   const tabs = React.useMemo(() => panelState?.tabs ?? [], [panelState?.tabs]);
+  const layout = panelState?.layout ?? CHAT_NODE;
 
-  // A page covering the chat (Archive, Usage, ...) covers the bottom zone
-  // under it too; its frame closes then (ContextPanel), and so must its panes.
-  const chatCovered = useRightSlotStore((state) => state.chatCovered);
-
-  // What each zone shows. A zone is open only with a tab of its own.
-  const zones = React.useMemo(() => {
-    const viewOf = (zone: ContextZone) => {
-      const activeTab = panelState ? resolveZoneActiveTab(panelState, placement, zone) : null;
-      const covered = zone === 'bottom' && chatCovered;
-      return { activeTab, isOpen: Boolean(panelState && getZoneView(panelState, zone).isOpen && activeTab) && !covered };
-    };
-    return { left: viewOf('left'), right: viewOf('right'), bottom: viewOf('bottom') };
-  }, [chatCovered, panelState, placement]);
-
-  // A closing zone's content leaves the document (the editor's `detached`)
-  // only once its animation has settled. The zone frame runs the same hook
-  // for its `inert`; both settle in one task, so they change in one commit.
-  // Rendered after the frames, so their animation has begun by now.
-  const settledShown = {
-    left: useOpenUntilSettled(zones.left.isOpen),
-    right: useOpenUntilSettled(zones.right.isOpen),
-    bottom: useOpenUntilSettled(zones.bottom.isOpen),
-  };
-  const contentHidden = (zone: ContextZone): boolean => !settledShown[zone];
-
-  // The zone each keep-alive surface lives in, and what that zone shows.
-  const zoneFor = (mode: Parameters<typeof zoneOfMode>[1]) => {
-    const zone = zoneOfMode(placement, mode);
-    return { zone, ...zones[zone] };
-  };
-  const fileZone = zoneFor('file');
-  const chatZone = zoneFor('chat');
-  const browserZone = zoneFor('browser');
-  const diffZone = zoneFor('diff');
-  const terminalZone = zoneFor('terminal');
-  const walkthroughZone = zoneFor('walkthrough');
+  // Where each keep-alive tab lives: the region leaf that holds it, and
+  // whether its region shows it. The strip is the truth; a tab whose leaf
+  // was cut keeps its pane mounted nowhere until it opens again.
+  const leafOfTab = React.useCallback(
+    (tabId: string) => leavesOf(layout).find((leaf) => leaf.tabs.includes(tabId)) ?? null,
+    [layout],
+  );
+  const shownInRegion = React.useCallback(
+    (tabId: string) => leafOfTab(tabId)?.activeTabId === tabId,
+    [leafOfTab],
+  );
 
   // A browser tab loads its page only once it is needed: shown in an open
   // zone, opened by the agent, or woken by an agent action. Tabs restored
@@ -350,12 +320,18 @@ export const ContextSurfacePanes: React.FC = () => {
   // Tells agent browser control which project is on screen and which browser
   // tab the user last had in front of them there; a session without a tab of
   // its own may use that tab only when it is the user's and in its project.
-  const shownBrowserTabId = browserZone.activeTab?.mode === 'browser' ? browserZone.activeTab.id : null;
+  const shownBrowserTabId = React.useMemo(
+    () => tabs.find((tab) => tab.mode === 'browser' && shownInRegion(tab.id))?.id ?? null,
+    [shownInRegion, tabs],
+  );
   React.useEffect(() => {
     setShownBrowserTab(directoryKey, shownBrowserTabId);
   }, [directoryKey, shownBrowserTabId]);
 
-  const fileActiveTab = fileZone.activeTab;
+  const fileActiveTab = React.useMemo(
+    () => tabs.find((tab) => tab.mode === 'file' && shownInRegion(tab.id)) ?? null,
+    [shownInRegion, tabs],
+  );
   React.useEffect(() => {
     if (!directoryKey || fileActiveTab?.mode !== 'file' || !fileActiveTab.targetPath) {
       return;
@@ -371,7 +347,7 @@ export const ContextSurfacePanes: React.FC = () => {
   // The editor column is shown for an open file unless the user hid it; the
   // tree never hides alongside it, so a hidden tree forces the editor back.
   const showsEditor = hasOpenEditorFile && (contextEditorVisible || !contextEditorTreeVisible);
-  const isFileTabActive = fileZone.activeTab?.mode === 'file';
+  const isFileTabActive = fileActiveTab !== null;
 
   // The editor's Cmd/Ctrl+W and its unsaved-changes prompt close the file's
   // tab here, so the strip and the next file follow as with the close button.
@@ -379,7 +355,13 @@ export const ContextSurfacePanes: React.FC = () => {
     if (directoryKey) closeContextFile(directoryKey, filePath);
   }, [closeContextFile, directoryKey]);
 
-  const chatActiveTab = chatZone.isOpen && chatZone.activeTab?.mode === 'chat' ? chatZone.activeTab : null;
+  // The chat tab its region shows. There is one chat pane, so one region can
+  // hold the visible split chat at a time; repeated `find` keeps this stable
+  // whichever leaf it is.
+  const chatActiveTab = React.useMemo(
+    () => tabs.find((tab) => tab.mode === 'chat' && shownInRegion(tab.id)) ?? null,
+    [shownInRegion, tabs],
+  );
   const activeChatSessionID = chatActiveTab ? getSessionIDFromDedupeKey(chatActiveTab.dedupeKey) : null;
   // A chat opened from another project (or Chat) carries its own directory;
   // tabs opened without one (subtasks, reviews) belong to this panel's.
@@ -422,7 +404,11 @@ export const ContextSurfacePanes: React.FC = () => {
     };
   }, [activeChatDirectory, activeChatSessionID]);
 
-  const diffActiveTab = diffZone.activeTab;
+  // The diff tab its region shows; the header slot follows the visible one.
+  const diffActiveTab = React.useMemo(
+    () => tabs.find((tab) => tab.mode === 'diff' && shownInRegion(tab.id)) ?? null,
+    [shownInRegion, tabs],
+  );
   const handleDiffScopeChange = React.useCallback((nextScope: PendingDiffScope) => {
     if (!directoryKey || diffActiveTab?.mode !== 'diff') {
       return;
@@ -436,7 +422,7 @@ export const ContextSurfacePanes: React.FC = () => {
     });
   }, [diffActiveTab, directoryKey, openContextPanelTab]);
 
-  const visibleBrowserTabId = browserZone.isOpen && browserZone.activeTab?.mode === 'browser' ? browserZone.activeTab.id : null;
+  const visibleBrowserTabId = shownBrowserTabId;
   React.useEffect(() => {
     if (visibleBrowserTabId) wakeBrowserTab(visibleBrowserTabId);
   }, [visibleBrowserTabId, wakeBrowserTab]);
@@ -484,6 +470,10 @@ export const ContextSurfacePanes: React.FC = () => {
   // Keep-alive: the walkthrough holds reading progress and scroll position that
   // a remount would silently throw away.
   const hasWalkthroughTab = React.useMemo(() => tabs.some((tab) => tab.mode === 'walkthrough'), [tabs]);
+  const walkthroughActiveTab = React.useMemo(
+    () => tabs.find((tab) => tab.mode === 'walkthrough' && shownInRegion(tab.id)) ?? null,
+    [shownInRegion, tabs],
+  );
   const pluginTabs = React.useMemo(() => tabs.filter((tab) => isPluginContextPanelMode(tab.mode)), [tabs]);
   const guests = useGuestsStore((state) => state.guests);
   const surfaceGuestIds = React.useMemo(
@@ -501,21 +491,20 @@ export const ContextSurfacePanes: React.FC = () => {
   }, [guests]);
 
   // A terminal tab dragged out of the terminal's own strip moves the terminal.
-  const terminalZoneOfPlacement = terminalZone.zone;
-  const terminalDragOut = React.useCallback((isOutside: (point: { x: number; y: number }) => boolean) => {
-    const gesture = startZoneDragGesture({ mode: 'terminal', label: t('layout.mainTab.terminal'), from: terminalZoneOfPlacement }, isOutside);
-    return { finish: () => gesture.finish(directoryKey), cancel: gesture.cancel };
-  }, [directoryKey, t, terminalZoneOfPlacement]);
-
-  // The header slot goes to the pane on screen in its zone only.
-  const headerSlotFor = (zone: ContextZone, active: boolean): HTMLElement | null => (active ? headerSlots[zone] : null);
+  // The header slot goes to the pane whose region shows it, and only while
+  // shown: a hidden surface's toolbar must not answer for the region.
+  const headerSlotFor = (leafId: string | null, active: boolean): HTMLElement | null =>
+    (active && leafId ? regionHosts[leafId]?.headerSlot ?? null : null);
 
   return (
     <>
       {hasFileTabs ? (
-        <ZonePane
-          zone={fileZone.zone}
-          isOpen={fileZone.isOpen}
+        // One editor instance for all file tabs: it lives in the region that
+        // shows the active file tab, and a second region showing another file
+        // shows the strip's state only until that file becomes the active one.
+        <RegionPane
+          hostKey={fileActiveTab ? leafOfTab(fileActiveTab.id)?.id ?? null : null}
+          visible={isFileTabActive}
           directoryKey={directoryKey}
           className={cn('absolute inset-0 flex', fileTreeSide === 'left' && 'flex-row-reverse', isFileTabActive ? 'flex' : 'hidden')}
         >
@@ -523,7 +512,7 @@ export const ContextSurfacePanes: React.FC = () => {
             // Hidden rather than unmounted so a hidden editor keeps its state.
             <div className={cn('h-full min-w-0 flex-1', hasOpenEditorFile && !showsEditor && 'hidden')}>
               {hasOpenEditorFile ? (
-                <React.Suspense fallback={null}><FilesView mode="editor-only" visible={!contentHidden(fileZone.zone) && isFileTabActive && showsEditor} onCloseFile={handleCloseEditorFile} /></React.Suspense>
+                <React.Suspense fallback={null}><FilesView mode="editor-only" visible={isFileTabActive && showsEditor} onCloseFile={handleCloseEditorFile} /></React.Suspense>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
                   <Icon name="file-code" className="h-12 w-12 text-muted-foreground/50" />
@@ -533,14 +522,20 @@ export const ContextSurfacePanes: React.FC = () => {
               )}
             </div>
           ) : null}
-          <EditorTreeColumn visible={contextEditorTreeVisible} active={fileZone.isOpen && isFileTabActive} fill={!showsEditor} side={fileTreeSide} />
-        </ZonePane>
+          <EditorTreeColumn visible={contextEditorTreeVisible} active={isFileTabActive} fill={!showsEditor} side={fileTreeSide} />
+        </RegionPane>
       ) : null}
       {chatActiveTab && activeChatSessionID && activeChatPinnedSession ? (
         // The chat renders in this app, pinned to its session: it shares
         // the app's connection, stores and theme, and opens like a session
         // switch instead of booting a second app.
-        <ZonePane key={chatActiveTab.id} zone={chatZone.zone} isOpen={chatZone.isOpen} directoryKey={directoryKey} className="absolute inset-0 bg-background">
+        <RegionPane
+          key={chatActiveTab.id}
+          hostKey={leafOfTab(chatActiveTab.id)?.id ?? null}
+          visible
+          directoryKey={directoryKey}
+          className="absolute inset-0 bg-background"
+        >
           <section
             aria-label={t('contextPanel.iframe.sessionChatTitle', { sessionID: activeChatSessionID })}
             className="h-full"
@@ -550,20 +545,20 @@ export const ContextSurfacePanes: React.FC = () => {
               readOnly={chatActiveTab.readOnly}
             />
           </section>
-        </ZonePane>
+        </RegionPane>
       ) : null}
       {loadedBrowserTabs.map((tab) => {
-        const shown = tab.directory === directoryKey && browserZone.activeTab?.id === tab.id;
+        const shown = tab.directory === directoryKey && shownInRegion(tab.id);
         return (
-          <ZonePane
+          <RegionPane
             // Keyed by the directory as well: a tab of the next directory with the
             // same id is another tab, with its own view and its own session. Kept
             // on the same instance, the view went on showing the previous
             // directory's page, and a space's page would run in the host's
             // session instead of the space's own.
             key={`${tab.directory}\u0000${tab.id}`}
-            zone={browserZone.zone}
-            isOpen={browserZone.isOpen}
+            hostKey={tab.directory === directoryKey ? leafOfTab(tab.id)?.id ?? null : null}
+            visible={shown}
             directoryKey={directoryKey}
             // Invisible rather than display:none, so a background tab the agent
             // is working keeps its layout and its snapshots read a real page.
@@ -575,26 +570,26 @@ export const ContextSurfacePanes: React.FC = () => {
                 directory={tab.directory}
                 tabID={tab.id}
                 ownerSessionId={tab.ownerSessionId}
-                visible={shown && browserZone.isOpen}
+                visible={shown}
               />
             </div>
-          </ZonePane>
+          </RegionPane>
         );
       })}
       {diffTabs.map((tab) => {
-        const active = diffZone.activeTab?.id === tab.id;
+        const active = shownInRegion(tab.id);
         return (
-          <ZonePane
+          <RegionPane
             key={tab.id}
-            zone={diffZone.zone}
-            isOpen={diffZone.isOpen}
+            hostKey={leafOfTab(tab.id)?.id ?? null}
+            visible={active}
             directoryKey={directoryKey}
             className={cn('absolute inset-0', !active && 'hidden')}
           >
             <React.Suspense fallback={null}>
-              <ContextPanelHeaderSlotProvider value={headerSlotFor(diffZone.zone, active)}>
+              <ContextPanelHeaderSlotProvider value={headerSlotFor(leafOfTab(tab.id)?.id ?? null, active)}>
                 <DiffView
-                  visible={diffZone.isOpen && active}
+                  visible={active}
                   hideStackedFileSidebar
                   stackedDefaultCollapsedAll
                   pinSelectedFileHeaderToTopOnNavigate
@@ -606,44 +601,41 @@ export const ContextSurfacePanes: React.FC = () => {
                 />
               </ContextPanelHeaderSlotProvider>
             </React.Suspense>
-          </ZonePane>
+          </RegionPane>
         );
       })}
       {terminalTab ? (
-        <ZonePane
-          zone={terminalZone.zone}
-          isOpen={terminalZone.isOpen}
+        <RegionPane
+          hostKey={leafOfTab(terminalTab.id)?.id ?? null}
+          visible={shownInRegion(terminalTab.id)}
           directoryKey={directoryKey}
-          className={cn('absolute inset-0', terminalZone.activeTab?.mode === 'terminal' ? 'block' : 'hidden')}
+          className={cn('absolute inset-0', shownInRegion(terminalTab.id) ? 'block' : 'hidden')}
         >
-          <ContextPanelHeaderSlotProvider value={headerSlotFor(terminalZone.zone, terminalZone.activeTab?.mode === 'terminal')}>
-            <ZoneSurfaceDragContext.Provider value={terminalDragOut}>
-              <TerminalView
-                visible={terminalZone.isOpen && terminalZone.activeTab?.mode === 'terminal'}
-                directory={terminalTab.targetDirectory}
-                onLastTabClosed={() => { if (directoryKey) closeContextPanelTab(directoryKey, terminalTab.id); }}
-              />
-            </ZoneSurfaceDragContext.Provider>
+          <ContextPanelHeaderSlotProvider value={headerSlotFor(leafOfTab(terminalTab.id)?.id ?? null, shownInRegion(terminalTab.id))}>
+            <TerminalView
+              visible={shownInRegion(terminalTab.id)}
+              directory={terminalTab.targetDirectory}
+              onLastTabClosed={() => { if (directoryKey) closeContextPanelTab(directoryKey, terminalTab.id); }}
+            />
           </ContextPanelHeaderSlotProvider>
-        </ZonePane>
+        </RegionPane>
       ) : null}
       {hasWalkthroughTab ? (
-        <ZonePane
-          zone={walkthroughZone.zone}
-          isOpen={walkthroughZone.isOpen}
+        <RegionPane
+          hostKey={leafOfTab(walkthroughActiveTab?.id ?? '')?.id ?? null}
+          visible={walkthroughActiveTab !== null}
           directoryKey={directoryKey}
-          className={cn('absolute inset-0', walkthroughZone.activeTab?.mode === 'walkthrough' ? 'block' : 'hidden')}
+          className={cn('absolute inset-0', walkthroughActiveTab ? 'block' : 'hidden')}
         >
           <React.Suspense fallback={null}>
-            <ContextPanelHeaderSlotProvider value={headerSlotFor(walkthroughZone.zone, walkthroughZone.activeTab?.mode === 'walkthrough')}>
-              <WalkthroughView directory={effectiveDirectory} visible={walkthroughZone.isOpen && walkthroughZone.activeTab?.mode === 'walkthrough'} />
+            <ContextPanelHeaderSlotProvider value={headerSlotFor(walkthroughActiveTab ? leafOfTab(walkthroughActiveTab.id)?.id ?? null : null, walkthroughActiveTab !== null)}>
+              <WalkthroughView directory={effectiveDirectory} visible={walkthroughActiveTab !== null} />
             </ContextPanelHeaderSlotProvider>
           </React.Suspense>
-        </ZonePane>
+        </RegionPane>
       ) : null}
       {pluginTabs.map((tab) => {
         if (!isPluginContextPanelMode(tab.mode)) return null;
-        const pluginZone = zoneFor(tab.mode);
         // A shared-surface extension's picture is drawn by the host and
         // mounted only while shown, so an unwatched surface holds no socket
         // and its service can idle out. Its own page, when it has one, is
@@ -652,14 +644,14 @@ export const ContextSurfacePanes: React.FC = () => {
         const guestId = pluginIdFromMode(tab.mode);
         const sharedSurface = surfaceGuestIds.has(guestId);
         const docking = surfaceDockings.get(guestId);
-        const shown = pluginZone.activeTab?.id === tab.id;
-        const surfaceMounted = shown && pluginZone.isOpen;
+        const shown = shownInRegion(tab.id);
+        const surfaceMounted = shown;
         if (sharedSurface && !docking && !surfaceMounted) return null;
         return (
-          <ZonePane
+          <RegionPane
             key={tab.id}
-            zone={pluginZone.zone}
-            isOpen={pluginZone.isOpen}
+            hostKey={leafOfTab(tab.id)?.id ?? null}
+            visible={shown}
             directoryKey={directoryKey}
             className={cn('absolute inset-0', shown ? 'block' : 'hidden')}
           >
@@ -677,7 +669,7 @@ export const ContextSurfacePanes: React.FC = () => {
                 </div>
               )}
             </React.Suspense>
-          </ZonePane>
+          </RegionPane>
         );
       })}
     </>

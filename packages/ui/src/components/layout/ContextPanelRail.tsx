@@ -7,7 +7,6 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragStartEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -40,16 +39,13 @@ import { useGitStatus } from '@/stores/useGitStore';
 import { useSourceControlAuthEntry, useSourceControlAuthStore } from '@/stores/useSourceControlAuthStore';
 import { GITHUB_SOURCE_CONTROL_IDENTITY } from '@/lib/source-control/identity';
 import { useRepositoryReferenceProvider } from '@/components/references/referenceSources';
-import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
+import { normalizeContextPanelDirectoryKey, useUIStore, type ContextPanelMode } from '@/stores/useUIStore';
 import { useGuestSurfaces } from '@/hooks/useGuestSurfaces';
 import { useGuestBadgeStore } from '@/lib/guests/badge-store';
 import { isPluginContextPanelMode, pluginIdFromMode } from '@/lib/surfaces/modes';
-import { shownContextModes, zoneOfMode } from '@/lib/workspace/zones';
 import { ContextRailSurfacesDialog } from './ContextRailSurfacesDialog';
 import { ContextRailTooltipDetails, ContextUsageRingIcon } from './ContextRailUsage';
-import { ZoneMoveMenuItems } from './ZoneMoveMenuItems';
-import { startZoneDragGesture, type ZoneDragGesture } from './zoneDrag';
-import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { CHAT_NODE, leavesOf } from '@/lib/workspace/layoutTree';
 import { changeRequestCopy } from '@/lib/source-control/changeRequestCopy';
 
 const RAIL_TOOLTIP_DELAY_MS = 150;
@@ -104,9 +100,6 @@ const ContextPanelRailItem: React.FC<RailItemProps> = ({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn('relative', isDragging && 'z-10 opacity-70')}
     >
-    {/* Right-click moves the surface to another zone around the chat. */}
-    <ContextMenu>
-    <ContextMenuTrigger render={<div />}>
       <Tooltip delayDuration={RAIL_TOOLTIP_DELAY_MS}>
         <TooltipTrigger asChild>
           <button
@@ -175,11 +168,6 @@ const ContextPanelRailItem: React.FC<RailItemProps> = ({
           </div>
         </TooltipContent>
       </Tooltip>
-    </ContextMenuTrigger>
-    <ContextMenuContent>
-      <ZoneMoveMenuItems mode={surface.mode} />
-    </ContextMenuContent>
-    </ContextMenu>
     </div>
   );
 };
@@ -195,8 +183,7 @@ export const ContextPanelRail: React.FC = () => {
   const contextRailHiddenSurfaces = useUIStore((state) => state.contextRailHiddenSurfaces);
   const setContextRailOrder = useUIStore((state) => state.setContextRailOrder);
   const openContextSurface = useUIStore((state) => state.openContextSurface);
-  const closeContextZone = useUIStore((state) => state.closeContextZone);
-  const contextSurfaceZones = useUIStore((state) => state.contextSurfaceZones);
+  const closeContextSurfaceTabs = useUIStore((state) => state.closeContextSurfaceTabs);
   const shortcutOverrides = useUIStore((state) => state.shortcutOverrides);
   const planModeEnabled = useFeatureFlagsStore((state) => state.planModeEnabled);
   const githubAuthChecked = (useSourceControlAuthEntry(GITHUB_SOURCE_CONTROL_IDENTITY)?.hasChecked ?? false);
@@ -292,11 +279,17 @@ export const ContextPanelRail: React.FC = () => {
   const guestBadges = useGuestBadgeStore((state) => state.countByGuest);
   const clearGuestBadge = useGuestBadgeStore((state) => state.clearBadge);
   const tabs = panelState?.tabs ?? EMPTY_TABS;
-  // One surface per open zone is on screen; each lights its rail icon.
-  const shownModes = React.useMemo(
-    () => shownContextModes(panelState, contextSurfaceZones),
-    [contextSurfaceZones, panelState],
-  );
+  // One surface per region is on screen; each lights its rail icon. The
+  // surface a region shows is its active tab's, so only a shown tab counts —
+  // an open file no region shows keeps its icon dark.
+  const shownModes = React.useMemo(() => {
+    const modes = new Set<ContextPanelMode>();
+    for (const leaf of leavesOf(panelState?.layout ?? CHAT_NODE)) {
+      const mode = tabs.find((tab) => tab.id === leaf.activeTabId)?.mode;
+      if (mode) modes.add(mode);
+    }
+    return modes;
+  }, [panelState?.layout, tabs]);
   const changedFilesCount = gitStatus?.files.length ?? 0;
 
   const surfaces = React.useMemo(() => {
@@ -318,39 +311,14 @@ export const ContextPanelRail: React.FC = () => {
     if (!directoryKey || !githubAuthChecked || sourceControlConnected || !shownModes.has('pr')) {
       return;
     }
-    closeContextZone(directoryKey, zoneOfMode(contextSurfaceZones, 'pr'));
-  }, [closeContextZone, contextSurfaceZones, directoryKey, githubAuthChecked, shownModes, sourceControlConnected]);
+    closeContextSurfaceTabs(directoryKey, 'pr');
+  }, [closeContextSurfaceTabs, directoryKey, githubAuthChecked, shownModes, sourceControlConnected]);
 
   const [isSurfacesDialogOpen, setIsSurfacesDialogOpen] = React.useState(false);
 
-  // An icon dragged out of the rail toward the workspace moves its surface
-  // to a zone instead of reordering the rail (zoneDrag.ts).
-  const railRef = React.useRef<HTMLElement | null>(null);
-  const zoneGestureRef = React.useRef<ZoneDragGesture | null>(null);
-  const handleDragStart = React.useCallback((event: DragStartEvent) => {
-    const surface = surfaces.find((entry) => entry.id === event.active.id);
-    const railLeft = railRef.current?.getBoundingClientRect().left;
-    if (!surface || railLeft === undefined) return;
-    zoneGestureRef.current?.cancel();
-    zoneGestureRef.current = startZoneDragGesture({
-      mode: surface.mode,
-      label: surface.label ?? t(changeRequestCopy(surface.labelKey, repositoryProvider)),
-      from: zoneOfMode(useUIStore.getState().contextSurfaceZones, surface.mode),
-    }, (point) => point.x < railLeft - 16);
-  }, [repositoryProvider, surfaces, t]);
-  const handleDragCancel = React.useCallback(() => {
-    zoneGestureRef.current?.cancel();
-    zoneGestureRef.current = null;
-  }, []);
-  React.useEffect(() => () => zoneGestureRef.current?.cancel(), []);
-
+  // An icon dragged over another rail icon reorders the rail; dragging out of
+  // it does nothing now (surface moves between regions arrive with tab drag).
   const handleDragEnd = React.useCallback((event: DragEndEvent) => {
-    const gesture = zoneGestureRef.current;
-    zoneGestureRef.current = null;
-    if (gesture?.finish(directoryKey)) {
-      return;
-    }
-
     const { active, over } = event;
     if (!over || active.id === over.id) {
       return;
@@ -364,7 +332,7 @@ export const ContextPanelRail: React.FC = () => {
     }
 
     setContextRailOrder(arrayMove(orderedIds, fromIndex, toIndex));
-  }, [directoryKey, guestSurfaces, setContextRailOrder]);
+  }, [guestSurfaces, setContextRailOrder]);
 
   if (!directoryKey) {
     return null;
@@ -372,11 +340,10 @@ export const ContextPanelRail: React.FC = () => {
 
   return (
     <nav
-      ref={railRef}
       aria-label={t('contextRail.aria.rail')}
       className="flex h-full w-11 flex-shrink-0 flex-col items-center gap-2 bg-background py-2"
     >
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragCancel={handleDragCancel} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={surfaces.map((surface) => surface.id)} strategy={verticalListSortingStrategy}>
           {surfaces.map((surface, index) => {
             const label = surface.label ?? t(changeRequestCopy(surface.labelKey, repositoryProvider));

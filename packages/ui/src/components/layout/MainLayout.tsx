@@ -3,11 +3,8 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { SidebarTopBar } from './SidebarTopBar';
 import { TitlebarLeftControls } from './TitlebarLeftControls';
-import { ContextPanel } from './ContextPanel';
 import { ContextSurfacePanes } from './ContextSurfacePanes';
-import { ZoneDropOverlay } from './ZoneDropOverlay';
-import { ZoneFitArbiter } from './ZoneFitArbiter';
-import { followZonePlacementOfOtherWindows } from './zoneSync';
+import { WorkspaceLayout } from './WorkspaceLayout';
 import { ContextPanelRail } from './ContextPanelRail';
 import { GuestHosts } from './GuestHosts';
 import { PluginPane } from './PluginPane';
@@ -129,7 +126,6 @@ export const MainLayout: React.FC = () => {
         if (openGuestPageId && !guestPage) useUIStore.getState().setOpenGuestPage(null);
     }, [openGuestPageId, guestPage]);
     React.useEffect(() => subscribeRuntimeEndpointChanged(() => useUIStore.getState().setOpenGuestPage(null)), []);
-    React.useEffect(() => followZonePlacementOfOtherWindows(), []);
     // Any full-page surface replacing the chat area. While open, the chat is
     // fully hidden (not just covered) so none of its floating chrome bleeds
     // through, and selecting a session or draft anywhere closes the surface.
@@ -197,17 +193,14 @@ export const MainLayout: React.FC = () => {
                         <Header />
                         <div className="relative flex flex-1 min-h-0 overflow-hidden bg-background" data-page-scroll-lock="true">
                             <div className="relative flex flex-1 min-w-0 flex-col overflow-hidden bg-background" data-page-scroll-lock="true">
-                                <div className="relative flex flex-1 min-h-0 overflow-hidden" data-page-scroll-lock="true" data-workspace-row="true">
-                                    {/* The left zone: surfaces the user moved beside the
-                                        sidebar. Empty and closed, it takes no width. */}
-                                    <ContextPanel zone="left" />
-                                    {/* Holds the chat and the right zone together, so its
-                                        width does not move when the right zone opens. The
-                                        work-status panel measures this rather than the chat,
-                                        which the right zone animates. */}
-                                    <div className="relative flex flex-1 min-h-0 min-w-0 overflow-hidden" data-page-scroll-lock="true" data-chat-area="true">
-                                        {/* The chat column, with the bottom zone under the chat. */}
-                                        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-workspace-chat="true">
+                                <div className="relative flex flex-1 min-h-0 overflow-hidden" data-page-scroll-lock="true">
+                                    <WorkspaceLayout>
+                                        {/* The chat region: what the layout tree places wherever
+                                            the chat node sits. The work-status panel measures
+                                            this column, not the chat in it. */}
+                                        <div className="relative flex flex-1 min-h-0 min-w-0 overflow-hidden" data-page-scroll-lock="true" data-chat-area="true">
+                                            {/* The chat column. */}
+                                            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-workspace-chat="true">
                                         <main className="min-h-0 flex-1 overflow-hidden bg-background relative" data-page-scroll-lock="true">
                                             <div className={cn('absolute inset-0', isSurfacePageOpen && 'invisible')}>
                                                 <ErrorBoundary><ChatView active={!isSettingsDialogOpen && !isSurfacePageOpen} /></ErrorBoundary>
@@ -230,15 +223,12 @@ export const MainLayout: React.FC = () => {
                                                     onDismiss={() => useUIStore.getState().setOpenGuestPage(null)} /></ErrorBoundary>
                                             </div>}
                                         </main>
-                                        <ContextPanel zone="bottom" />
+                                            </div>
                                         </div>
-                                        <ContextPanel zone="right" />
-                                        {/* After every zone: the panes attach to the bodies the
-                                            zones register, behind their layout animation. */}
-                                        <ContextSurfacePanes />
-                                        <ZoneDropOverlay />
-                                        <ZoneFitArbiter />
-                                    </div>
+                                    </WorkspaceLayout>
+                                    {/* After every region: the panes attach to the bodies the
+                                        regions register. */}
+                                    <ContextSurfacePanes />
                                 </div>
                             </div>
                             <div data-page-scroll-lock="true">
