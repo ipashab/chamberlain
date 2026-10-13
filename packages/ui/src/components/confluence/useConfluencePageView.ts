@@ -2,7 +2,7 @@ import React from 'react';
 
 import { fetchConfluencePageView, type ConfluencePageView, type PageErrorKind } from '@/lib/confluence/page-api';
 
-export type PageViewState =
+type PageViewState =
     | { state: 'idle' }
     | { state: 'loading' }
     | { state: 'error'; kind: PageErrorKind }

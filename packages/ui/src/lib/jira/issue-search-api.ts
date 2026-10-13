@@ -28,7 +28,7 @@ const searchBodySchema = z.object({
     issues: z.array(issueHitSchema),
 });
 
-export type IssueSearchResult =
+type IssueSearchResult =
     | { ok: true; issues: JiraIssueHit[] }
     | { ok: false; kind: ViewErrorKind };
 

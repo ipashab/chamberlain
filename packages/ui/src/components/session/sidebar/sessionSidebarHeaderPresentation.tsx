@@ -19,10 +19,7 @@ export const SessionSidebarActivityHeader: React.FC<{
   onNewChat: () => void;
   /** The chats zone grows a second action: create a team, not just a chat. */
   onNewTeam?: () => void;
-  /** Timeline zones drop the leading icon and take a taller band; the
-      collapse chevron still appears on hover in the icon slot. */
-  timelineView?: boolean;
-}> = ({ activityKey, collapsed, forceExpanded, alwaysShowActions, onToggle, onNewChat, onNewTeam, timelineView = false }) => {
+}> = ({ activityKey, collapsed, forceExpanded, alwaysShowActions, onToggle, onNewChat, onNewTeam }) => {
   const { t } = useI18n();
   const chats = activityKey === 'chats';
   // One header in both views, so zones line up with the project headers.
@@ -56,7 +53,7 @@ export const SessionSidebarActivityHeader: React.FC<{
     {chats && onNewTeam ? <button
       type="button"
       onClick={(event) => { event.stopPropagation(); onNewTeam(); }}
-      className={cn('absolute right-7 top-1/2 z-10 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50', alwaysShowActions ? 'opacity-100' : 'opacity-0 pointer-events-none group-hover/chats:opacity-100 group-hover/chats:pointer-events-auto group-focus-within/chats:opacity-100 group-focus-within/chats:pointer-events-auto')}
+      className={cn('absolute inset-e-7 top-1/2 z-10 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50', alwaysShowActions ? 'opacity-100' : 'opacity-0 pointer-events-none group-hover/chats:opacity-100 group-hover/chats:pointer-events-auto group-focus-within/chats:opacity-100 group-focus-within/chats:pointer-events-auto')}
       aria-label={t('sessions.sidebar.header.actions.newTeam')}
     >
       <Icon name="team" className="h-4 w-4" />

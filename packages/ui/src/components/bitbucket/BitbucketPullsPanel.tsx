@@ -153,7 +153,7 @@ export const BitbucketPullsPanel: React.FC = () => {
                 </Button>
             </form>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pe-0.5">
                 {openPullsState.state === 'loading' ? (
                     <p className="text-[13px] text-muted-foreground">{t('pullsPanel.listLoading')}</p>
                 ) : null}
@@ -194,7 +194,7 @@ export const BitbucketPullsPanel: React.FC = () => {
                         </div>
                         <button
                             type="button"
-                            className="flex w-full items-center justify-between text-left"
+                            className="flex w-full items-center justify-between text-start"
                             onClick={() => setListsOpen((open) => !open)}
                         >
                             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -219,7 +219,7 @@ export const BitbucketPullsPanel: React.FC = () => {
                                     <button
                                         key={pull.url}
                                         type="button"
-                                        className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-left"
+                                        className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-start"
                                         onClick={() => openPull(pull.url)}
                                     >
                                         <BitbucketAvatar name={pull.author} slug={pull.authorSlug} className="mt-0.5" />
@@ -261,7 +261,7 @@ export const BitbucketPullsPanel: React.FC = () => {
                     <section className="space-y-1.5">
                         <button
                             type="button"
-                            className="flex w-full items-center justify-between text-left"
+                            className="flex w-full items-center justify-between text-start"
                             onClick={() => setListsOpen((open) => !open)}
                         >
                             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -281,7 +281,7 @@ export const BitbucketPullsPanel: React.FC = () => {
                                     >
                                         <button
                                             type="button"
-                                            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                            className="flex min-w-0 flex-1 items-center gap-2 text-start"
                                             onClick={() => openPull(entry.url)}
                                         >
                                             <span

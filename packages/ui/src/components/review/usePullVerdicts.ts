@@ -19,7 +19,7 @@ import { parseAnalysisResult } from '@/components/bitbucket/pullAnalysis';
 import type { PullAnalysisEntry } from '@/components/bitbucket/pullAnalysisSession';
 import type { PullVerdict } from './reviewBoard';
 
-export type PullVerdictsWatch = {
+type PullVerdictsWatch = {
     /** The verdict of every watched reading whose last answer fit the contract. */
     verdictBySessionId: Record<string, PullVerdict>;
     /** The watched readings whose sessions are mid-turn right now. */

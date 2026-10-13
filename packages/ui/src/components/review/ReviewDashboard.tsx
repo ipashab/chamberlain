@@ -138,7 +138,7 @@ export const ReviewDashboard: React.FC = () => {
     };
 
     return (
-        <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pr-0.5">
+        <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pe-0.5">
             <section className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -181,7 +181,7 @@ export const ReviewDashboard: React.FC = () => {
                                 <button
                                     key={row.pull.url}
                                     type="button"
-                                    className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-left"
+                                    className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-start"
                                     onClick={() => navigateToPull(row.pull.url)}
                                 >
                                     <span className="min-w-0 flex-1">
@@ -271,7 +271,7 @@ export const ReviewDashboard: React.FC = () => {
                                 <button
                                     key={hit.key}
                                     type="button"
-                                    className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-left"
+                                    className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-start"
                                     onClick={() => navigateToIssue(hit.key)}
                                 >
                                     <span className="min-w-0 flex-1">

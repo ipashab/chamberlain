@@ -103,7 +103,7 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
     if (trailingDigest) {
         return (
             <div
-                className={`group/assistant-text relative break-words ${chatRenderMode === 'live' ? 'my-1' : ''}`}
+                className="group/assistant-text relative my-1 break-words"
                 key={part.id || `${messageId}-text`}
             >
                 <MarkdownRenderer
@@ -112,9 +112,8 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
                     messageId={messageId}
                     isAnimated={false}
                     isStreaming={false}
-                    disableStreamAnimation={chatRenderMode === 'sorted'}
-                    variant="assistant"
-                    enableFileReferences
+                    variant={part.type === 'reasoning' ? 'reasoning' : 'assistant'}
+                    enableFileReferences={isFinalized}
                     onShowPopup={onShowPopup}
                 />
                 <details className="mt-1 rounded-md border border-[var(--interactive-border)] bg-[var(--surface-elevated)] px-2 py-1.5 text-xs">

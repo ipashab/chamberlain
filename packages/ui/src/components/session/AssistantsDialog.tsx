@@ -258,7 +258,7 @@ function AssistantsView({ onLeave }: { onLeave: () => void }) {
         <div className="space-y-1.5">
           <label className="typography-micro font-medium" htmlFor="assistant-directory">{t('sessions.assistants.form.project.label')}</label>
           <Select value={directory} onValueChange={setDirectory}>
-            <SelectTrigger id="assistant-directory" size="sm">
+            <SelectTrigger id="assistant-directory">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

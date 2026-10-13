@@ -137,7 +137,7 @@ export const anchorRowIndex = (
  * in one worker call, and still knows which colored line belongs to
  * which row. -1 marks a row the text leaves out.
  */
-export interface DiffCodeMap {
+interface DiffCodeMap {
     code: string;
     lineOf: number[];
 }

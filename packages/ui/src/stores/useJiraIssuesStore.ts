@@ -14,7 +14,7 @@ const recentEntrySchema = z.object({
     at: z.number(),
 });
 
-export type JiraIssueRecent = z.infer<typeof recentEntrySchema>;
+type JiraIssueRecent = z.infer<typeof recentEntrySchema>;
 
 const recentsSchema = z.array(recentEntrySchema);
 

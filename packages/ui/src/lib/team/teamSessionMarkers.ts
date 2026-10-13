@@ -21,7 +21,7 @@ const markerSchema = z.object({
   }),
 });
 
-export type TeamSessionMarker = z.infer<typeof teamMarkerSchema>;
+type TeamSessionMarker = z.infer<typeof teamMarkerSchema>;
 
 /**
  * The team membership a session was spawned with, or null when the session is

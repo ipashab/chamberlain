@@ -2,7 +2,7 @@ import React from 'react';
 
 import { fetchBitbucketPullView, type BitbucketPullView, type ViewErrorKind } from '@/lib/bitbucket/pull-view-api';
 
-export type PullViewState =
+type PullViewState =
     | { state: 'idle' }
     | { state: 'loading' }
     | { state: 'error'; kind: ViewErrorKind }

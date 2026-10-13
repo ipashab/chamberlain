@@ -14,7 +14,7 @@ const recentEntrySchema = z.object({
     at: z.number(),
 });
 
-export type ConfluencePageRecent = z.infer<typeof recentEntrySchema>;
+type ConfluencePageRecent = z.infer<typeof recentEntrySchema>;
 
 const recentsSchema = z.array(recentEntrySchema);
 

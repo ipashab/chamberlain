@@ -98,7 +98,7 @@ export const ConfluencePagePicker: React.FC<{
                             <button
                                 key={row.id}
                                 type="button"
-                                className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1 text-left"
+                                className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1 text-start"
                                 onClick={() => onSelection({ id: row.id, title: row.title })}
                             >
                                 <span className="min-w-0 flex-1">

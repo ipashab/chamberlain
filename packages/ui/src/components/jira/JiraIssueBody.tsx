@@ -233,7 +233,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                         <Icon name="list-check-2" className="size-3 shrink-0" />
                         {t('jiraView.specPlan')}
                     </div>
-                    <ul className="list-disc space-y-0.5 pl-5">
+                    <ul className="list-disc space-y-0.5 ps-5">
                         {card.plan.map((item) => (
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
                         ))}
@@ -246,7 +246,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                         <Icon name="checkbox-circle" className="size-3 shrink-0" />
                         {t('jiraView.specAcceptance')}
                     </div>
-                    <ul className="list-disc space-y-0.5 pl-5">
+                    <ul className="list-disc space-y-0.5 ps-5">
                         {card.acceptance.map((item) => (
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
                         ))}
@@ -259,7 +259,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                         <Icon name="question" className="size-3 shrink-0" />
                         {t('jiraView.specQuestions')}
                     </div>
-                    <ul className="list-disc space-y-0.5 pl-5">
+                    <ul className="list-disc space-y-0.5 ps-5">
                         {card.openQuestions.map((item) => (
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
                         ))}
@@ -278,7 +278,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                         <Icon name="close-circle" className="size-3 shrink-0" />
                         {t('jiraView.specOutOfScope')}
                     </div>
-                    <ul className="list-disc space-y-0.5 pl-5">
+                    <ul className="list-disc space-y-0.5 ps-5">
                         {card.outOfScope.map((item) => (
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
                         ))}
@@ -357,7 +357,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                     {issue.status.name ? (
                         <Chip color={statusColorOf(issue.status.category)}>
                             <span
-                                className="mr-1 inline-block size-1.5 rounded-full"
+                                className="me-1 inline-block size-1.5 rounded-full"
                                 style={{ backgroundColor: statusColorOf(issue.status.category) }}
                             />
                             {issue.status.name}
@@ -455,7 +455,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                     {issue.labels.length > 0 ? (
                         <Row label={t('jiraView.fieldLabels')}>
                             {issue.labels.map((label) => (
-                                <Chip key={label} color="var(--muted-foreground)" className="mr-1">
+                                <Chip key={label} color="var(--muted-foreground)" className="me-1">
                                     {label}
                                 </Chip>
                             ))}
@@ -474,7 +474,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                     {sprintsShown.length > 0 ? (
                         <Row label={t('jiraView.fieldSprint')}>
                             {sprintsShown.map((sprint) => (
-                                <Chip key={sprint} color="var(--status-info)" className="mr-1">
+                                <Chip key={sprint} color="var(--status-info)" className="me-1">
                                     {sprint}
                                 </Chip>
                             ))}
@@ -499,7 +499,7 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                     <SectionHeading icon="file-text">{t('jiraView.sectionDescription')}</SectionHeading>
                     {descriptionHtml !== null ? (
                         <div
-                            className="jira-rendered break-words text-[13px] leading-relaxed [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-2 [&_code]:font-mono [&_code]:text-[12px] [&_h1]:mt-3 [&_h1]:text-[13px] [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-[13px] [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-[var(--surface-muted)] [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[12px] [&_table]:my-2 [&_td]:border [&_td]:border-border [&_td]:px-1.5 [&_th]:border [&_th]:border-border [&_th]:px-1.5 [&_ul]:list-disc [&_ul]:pl-5"
+                            className="jira-rendered break-words text-[13px] leading-relaxed [&_a]:underline [&_blockquote]:border-s-2 [&_blockquote]:border-border [&_blockquote]:ps-2 [&_code]:font-mono [&_code]:text-[12px] [&_h1]:mt-3 [&_h1]:text-[13px] [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-[13px] [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:ps-5 [&_p]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-[var(--surface-muted)] [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-[12px] [&_table]:my-2 [&_td]:border [&_td]:border-border [&_td]:px-1.5 [&_th]:border [&_th]:border-border [&_th]:px-1.5 [&_ul]:list-disc [&_ul]:ps-5"
                             // The HTML here is DOMPurify's output of the
                             // instance's own render, narrowed to prose tags
                             // and hrefs — the one place rendered HTML mounts.
@@ -550,12 +550,12 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                                 </div>
                                 {comment.html ? (
                                     <SanitizedHtml
-                                        className="jira-rendered break-words pl-6 text-[13px] leading-relaxed [&_a]:underline [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
+                                        className="jira-rendered break-words ps-6 text-[13px] leading-relaxed [&_a]:underline [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:ps-5 [&_p]:my-1 [&_ul]:list-disc [&_ul]:ps-5"
                                         html={comment.html}
                                     />
                                 ) : comment.text ? (
                                     <SimpleMarkdownRenderer
-                                        className="break-words pl-6 text-[13px] leading-relaxed"
+                                        className="break-words ps-6 text-[13px] leading-relaxed"
                                         // Where the instance answered the body as wiki words —
                                         // no rendered HTML of its own — the words pass through
                                         // the wiki reader before Markdown reads them.

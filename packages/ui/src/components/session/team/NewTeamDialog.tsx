@@ -145,7 +145,7 @@ export const NewTeamDialog: React.FC<Props> = ({ open, onOpenChange }) => {
           key={preset.id}
           type="button"
           onClick={() => openPreset(preset)}
-          className="w-full rounded-lg border border-border p-3 text-left transition-colors hover:bg-[var(--interactive-hover)]"
+          className="w-full rounded-lg border border-border p-3 text-start transition-colors hover:bg-[var(--interactive-hover)]"
         >
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-foreground">{preset.name}</span>
@@ -154,7 +154,7 @@ export const NewTeamDialog: React.FC<Props> = ({ open, onOpenChange }) => {
                 {t('team.create.presets.builtIn')}
               </span>
             ) : null}
-            <Icon name="arrow-right-s" className="ml-auto size-4 text-muted-foreground" />
+            <Icon name="arrow-right-s" className="me-auto size-4 text-muted-foreground" />
           </div>
           {preset.description ? (
             <div className="mt-1 text-xs text-muted-foreground">{preset.description}</div>

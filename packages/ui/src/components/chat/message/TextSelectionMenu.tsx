@@ -872,7 +872,7 @@ const TextSelectionMenuImpl: React.FC<TextSelectionMenuProps> = ({ containerRef,
                 onClick={handleAddToTeamBoard}
                 disabled={isAddingTask}
                 className={cn(
-                  'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left',
+                  'flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-start',
                   'text-sm font-medium leading-tight',
                   'bg-[var(--surface-muted)] text-[var(--surface-foreground)]',
                   'active:opacity-80 disabled:opacity-60 disabled:cursor-not-allowed',

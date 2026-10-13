@@ -2,7 +2,7 @@ import React from 'react';
 
 import { fetchJiraIssueView, type JiraIssueView, type ViewErrorKind } from '@/lib/jira/issue-view-api';
 
-export type IssueViewState =
+type IssueViewState =
     | { state: 'idle' }
     | { state: 'loading' }
     | { state: 'error'; kind: ViewErrorKind }

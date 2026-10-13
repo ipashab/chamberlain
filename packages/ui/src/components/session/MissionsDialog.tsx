@@ -280,7 +280,7 @@ function MissionsView({ onLeave }: { onLeave: () => void }) {
                   onClick={() => setMode(candidate)}
                   aria-pressed={selected}
                   className={cn(
-                    'flex flex-col items-start gap-1 rounded-md border p-3 text-left transition-colors',
+                    'flex flex-col items-start gap-1 rounded-md border p-3 text-start transition-colors',
                     selected ? 'border-primary/70 bg-primary/5' : 'border-border/70 hover:bg-muted/50',
                   )}
                 >
@@ -297,7 +297,7 @@ function MissionsView({ onLeave }: { onLeave: () => void }) {
         <div className="space-y-1.5">
           <label className="typography-micro font-medium" htmlFor="mission-directory">{t('sessions.missions.form.project.label')}</label>
           <Select value={directory} onValueChange={setDirectory}>
-            <SelectTrigger id="mission-directory" size="sm">
+            <SelectTrigger id="mission-directory">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

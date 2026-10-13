@@ -10,8 +10,7 @@ import { runtimeFetch } from '@/lib/runtime-fetch';
 
 const TEAM_BOARD_ROUTE = '/api/openchamber/teams';
 
-export const teamMemberStatusSchema = z.enum(['starting', 'busy', 'idle', 'failed', 'shut_down']);
-export type TeamMemberStatus = z.infer<typeof teamMemberStatusSchema>;
+const teamMemberStatusSchema = z.enum(['starting', 'busy', 'idle', 'failed', 'shut_down']);
 
 // One list with the server: sub-team areas a member can belong to. One lead
 // per domain; a domain member reports to its lead instead of the Team Lead.
@@ -29,10 +28,10 @@ export const TEAM_DOMAIN_LABEL_KEYS = {
 
 export const teamDomainSchema = z.enum(TEAM_DOMAIN_IDS);
 
-export const teamTaskStatusSchema = z.enum(['pending', 'in_progress', 'completed']);
+const teamTaskStatusSchema = z.enum(['pending', 'in_progress', 'completed']);
 export type TeamTaskStatus = z.infer<typeof teamTaskStatusSchema>;
 
-export const teamMemberSchema = z.object({
+const teamMemberSchema = z.object({
   slotId: z.string(),
   name: z.string(),
   role: z.enum(['lead', 'teammate']),
@@ -131,7 +130,7 @@ const teamActivityPageSchema = z.object({
   teamId: z.string(),
   events: z.array(teamActivityEventSchema),
   nextCursor: z.string().nullable(),
-});export const teamBoardSchema = z.object({
+});const teamBoardSchema = z.object({
   id: z.string(),
   name: z.string(),
   directory: z.string(),
@@ -143,10 +142,9 @@ const teamActivityPageSchema = z.object({
 
 export type TeamMember = z.infer<typeof teamMemberSchema>;
 export type TeamTask = z.infer<typeof teamTaskSchema>;
-export type TeamMessage = z.infer<typeof teamMessageSchema>;
 export type TeamBoard = z.infer<typeof teamBoardSchema>;
 export type TeamActivityEvent = z.infer<typeof teamActivityEventSchema>;
-export type TeamActivityPage = z.infer<typeof teamActivityPageSchema>;
+type TeamActivityPage = z.infer<typeof teamActivityPageSchema>;
 
 // The live state of one task's pull request, as the server's summary layer
 // reads it. `checks.state` names the whole rollup; counts break it down.

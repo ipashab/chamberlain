@@ -130,7 +130,7 @@ export const TeamAddTaskDialog: React.FC<Props> = ({ open, onOpenChange, board }
                   ...teammates.map((member) => ({ value: member.slotId, label: member.name })),
                 ]}
               >
-                <SelectTrigger size="sm" className="h-8 w-full" aria-label={t('chat.workStatus.teamBoard.addTask.owner')}>
+                <SelectTrigger className="w-full" aria-label={t('chat.workStatus.teamBoard.addTask.owner')}>
                   <SelectValue>
                     {owner === UNASSIGNED_VALUE
                       ? t('chat.workStatus.teamBoard.unassigned')

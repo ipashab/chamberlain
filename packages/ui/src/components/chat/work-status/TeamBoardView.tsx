@@ -264,7 +264,7 @@ export const TeamBoardView: React.FC<Props> = ({ sessionId, directory, chatColum
         key={task.taskId}
         title={describeTask(task)}
         onClick={() => setDetailTaskId(task.taskId)}
-        className="rounded-lg border border-border bg-[var(--surface-muted)]/40 p-2 text-left shadow-sm transition-colors hover:bg-[var(--surface-muted)]/70 focus-visible:outline-2 focus-visible:outline-offset-1"
+        className="rounded-lg border border-border bg-[var(--surface-muted)]/40 p-2 text-start shadow-sm transition-colors hover:bg-[var(--surface-muted)]/70 focus-visible:outline-2 focus-visible:outline-offset-1"
       >
         <div className="flex items-start gap-1.5">
           {showStatusIcon ? (
@@ -434,7 +434,7 @@ export const TeamBoardView: React.FC<Props> = ({ sessionId, directory, chatColum
                   <button
                     type="button"
                     onClick={() => openMemberSession(member)}
-                    className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-[var(--surface-elevated)] px-2 py-1 text-left text-[11px] font-medium leading-4 transition-colors hover:bg-[var(--interactive-hover)]"
+                    className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-[var(--surface-elevated)] px-2 py-1 text-start text-[11px] font-medium leading-4 transition-colors hover:bg-[var(--interactive-hover)]"
                     title={[
                       t('chat.workStatus.team.openMember', { name: member.name }),
                       domainLabel,

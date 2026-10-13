@@ -162,7 +162,7 @@ export const ConfluencePagesPanel: React.FC = () => {
                 {t('confluencePanel.searchHint')}
             </p>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pe-0.5">
                 {searchState.state === 'loading' ? (
                     <p className="text-[13px] text-muted-foreground">{t('confluencePanel.searchLoading')}</p>
                 ) : null}
@@ -200,7 +200,7 @@ export const ConfluencePagesPanel: React.FC = () => {
                                 <button
                                     key={row.id}
                                     type="button"
-                                    className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-left"
+                                    className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-start"
                                     onClick={() => openPage(row.id)}
                                 >
                                     <span className="min-w-0 flex-1">
@@ -235,7 +235,7 @@ export const ConfluencePagesPanel: React.FC = () => {
                                 >
                                     <button
                                         type="button"
-                                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                        className="flex min-w-0 flex-1 items-center gap-2 text-start"
                                         onClick={() => openPage(entry.id)}
                                     >
                                         <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
@@ -337,7 +337,7 @@ const ConfluencePageBody: React.FC<{
                 <p className="text-[11px] leading-relaxed text-muted-foreground">{t('confluencePanel.truncated')}</p>
             ) : null}
 
-            <div className="confluence-page-body space-y-2 text-[13px] leading-relaxed [&_a]:break-words [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-2 [&_code]:rounded [&_code]:bg-[var(--surface-muted)] [&_code]:px-1 [&_h1]:mt-2 [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:mt-2 [&_h2]:text-[13px] [&_h2]:font-semibold [&_h3]:mt-1.5 [&_h3]:font-semibold [&_li]:ml-4 [&_ol]:list-decimal [&_p]:break-words [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-[var(--surface-muted)] [&_pre]:p-2 [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:px-1.5 [&_td]:py-1 [&_th]:border [&_th]:border-border [&_th]:bg-[var(--surface-muted)] [&_th]:px-1.5 [&_th]:py-1 [&_ul]:list-disc">
+            <div className="confluence-page-body space-y-2 text-[13px] leading-relaxed [&_a]:break-words [&_a]:underline [&_blockquote]:border-s-2 [&_blockquote]:border-border [&_blockquote]:ps-2 [&_code]:rounded [&_code]:bg-[var(--surface-muted)] [&_code]:px-1 [&_h1]:mt-2 [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:mt-2 [&_h2]:text-[13px] [&_h2]:font-semibold [&_h3]:mt-1.5 [&_h3]:font-semibold [&_li]:ms-4 [&_ol]:list-decimal [&_p]:break-words [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-[var(--surface-muted)] [&_pre]:p-2 [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:px-1.5 [&_td]:py-1 [&_th]:border [&_th]:border-border [&_th]:bg-[var(--surface-muted)] [&_th]:px-1.5 [&_th]:py-1 [&_ul]:list-disc">
                 <SanitizedHtml html={view.html} className="min-w-0" />
             </div>
         </section>

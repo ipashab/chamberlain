@@ -15,7 +15,7 @@ const recentEntrySchema = z.object({
     at: z.number(),
 });
 
-export type BitbucketPullRecent = z.infer<typeof recentEntrySchema>;
+type BitbucketPullRecent = z.infer<typeof recentEntrySchema>;
 
 const recentsSchema = z.array(recentEntrySchema);
 

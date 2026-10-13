@@ -12,7 +12,7 @@ import type { TeamDomain } from './team-board-api';
 const PRESETS_ROUTE = '/api/openchamber/team-presets';
 const TEAMS_ROUTE = '/api/openchamber/teams';
 
-export const teamPresetMemberSchema = z.object({
+const teamPresetMemberSchema = z.object({
   name: z.string(),
   // Null means "the agent's default": the server resolves the catalog.
   agent: z.string().nullable().optional(),
@@ -40,7 +40,7 @@ export const teamPresetSchema = z.object({
 export type TeamPresetMember = z.infer<typeof teamPresetMemberSchema>;
 export type TeamPreset = z.infer<typeof teamPresetSchema>;
 
-export const teamCreateResultSchema = z.object({
+const teamCreateResultSchema = z.object({
   team: z.object({ id: z.string(), name: z.string(), directory: z.string() }),
   leadSessionId: z.string(),
   members: z.array(z.object({
@@ -53,7 +53,7 @@ export const teamCreateResultSchema = z.object({
   })),
 });
 
-export type TeamCreateResult = z.infer<typeof teamCreateResultSchema>;
+type TeamCreateResult = z.infer<typeof teamCreateResultSchema>;
 
 /**
  * A member as the create route accepts it: the tool and lead fields may be
@@ -75,7 +75,7 @@ export type TeamCreateMember = {
 };
 
 /** A team as the create route wants it: a preset plus where it works. */
-export type TeamCreateRequest = {
+type TeamCreateRequest = {
   name: string;
   description?: string | null;
   directory: string;

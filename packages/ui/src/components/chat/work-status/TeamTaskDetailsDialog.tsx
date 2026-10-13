@@ -218,7 +218,7 @@ export const TeamTaskDetailsDialog: React.FC<Props> = ({
               </span>
             </div>
             {pullEditing ? (
-              <div className="space-y-1.5 pl-28">
+              <div className="space-y-1.5 ps-28">
                 <Input
                   value={pullDraft}
                   onChange={(event) => setPullDraft(event.target.value)}

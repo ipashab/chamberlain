@@ -27,7 +27,7 @@ import {
     type IssueSpecStartResult,
 } from './issueSpecSession';
 
-export type IssueSpecState = {
+type IssueSpecState = {
     /** The remembered reading of this issue, if one was started. */
     entry: IssueSpecEntry | null;
     /** The last answer that fit the contract; null while unreadable. */

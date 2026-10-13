@@ -98,7 +98,7 @@ export const TEAM_ACTION_DEFINITIONS = Object.freeze([
   },
 ]);
 
-export const TEAM_ACTIONS = Object.freeze(TEAM_ACTION_DEFINITIONS.map(({ action }) => action));
+const TEAM_ACTIONS = Object.freeze(TEAM_ACTION_DEFINITIONS.map(({ action }) => action));
 
 /**
  * Sub-team areas a member can belong to. One list for the checker in the

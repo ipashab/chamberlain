@@ -160,7 +160,7 @@ export const TeamActivityView: React.FC<Props> = ({ board, colorOf, nameOf, fetc
               <span className="truncate">{memberName(event.from)}</span>
               <span className="shrink-0 text-muted-foreground">→</span>
               <span className="truncate">{memberName(event.to)}</span>
-              <span className="ml-auto shrink-0 pl-2 text-muted-foreground">{formatStamp(event.at)}</span>
+              <span className="me-auto shrink-0 ps-2 text-muted-foreground">{formatStamp(event.at)}</span>
             </div>
             <div
               className="mt-1 line-clamp-3 text-[13px] text-foreground"
@@ -188,7 +188,7 @@ export const TeamActivityView: React.FC<Props> = ({ board, colorOf, nameOf, fetc
                 <span className="mt-0.5 block truncate text-[11px] font-medium">{memberName(event.owner)}</span>
               ) : null}
             </span>
-            <span className="mt-px shrink-0 pl-2 text-[11px] text-muted-foreground">{formatStamp(event.at)}</span>
+            <span className="mt-px shrink-0 ps-2 text-[11px] text-muted-foreground">{formatStamp(event.at)}</span>
           </div>
         ))}
         {loading ? (

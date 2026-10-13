@@ -37,7 +37,7 @@ const openPullsBodySchema = z.object({
     truncated: z.boolean(),
 });
 
-export type PullListResult =
+type PullListResult =
     | { ok: true; pulls: BitbucketDashboardPull[]; truncated: boolean }
     | { ok: false; kind: ViewErrorKind };
 

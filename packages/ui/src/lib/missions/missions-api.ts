@@ -52,12 +52,12 @@ export const MISSION_CONFIG_BOUNDS = {
   windowMinutes: { min: Math.round((60 * 1000) / 60_000), max: Math.round((24 * 60 * 60 * 1000) / 60_000) },
 } as const;
 
-export type MissionConfigInput = {
+type MissionConfigInput = {
   maxConcurrent?: number;
   maxRunMs?: number;
 };
 
-export type MissionCreateInput = {
+type MissionCreateInput = {
   title: string;
   prompt: string;
   mode: MissionMode;

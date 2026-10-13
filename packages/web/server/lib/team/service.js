@@ -135,7 +135,7 @@ const parseTaskResultInput = (value) => {
   return parsed.data === '' ? null : parsed.data;
 };
 
-export class TeamError extends Error {
+class TeamError extends Error {
   constructor(message, statusCode = 500, details = null) {
     super(message);
     this.statusCode = statusCode;

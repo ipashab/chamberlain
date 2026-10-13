@@ -53,7 +53,7 @@ const issueLinkTargetSchema = z.object({
     typeName: z.string().nullish(),
 });
 
-export const jiraIssueViewSchema = z.object({
+const jiraIssueViewSchema = z.object({
     issue: z.object({
         key: z.string(),
         url: z.string(),
@@ -121,7 +121,7 @@ export const jiraIssueViewSchema = z.object({
 
 export type JiraIssueView = z.infer<typeof jiraIssueViewSchema>;
 
-export type IssueViewResult =
+type IssueViewResult =
     | { ok: true; view: JiraIssueView }
     | { ok: false; kind: ViewErrorKind };
 

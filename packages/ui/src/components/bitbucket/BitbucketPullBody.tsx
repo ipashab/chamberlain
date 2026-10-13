@@ -368,7 +368,7 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                                     <button
                                         key={past.sessionId}
                                         type="button"
-                                        className="flex w-full items-center gap-2 rounded-lg border border-border px-2 py-1 text-left"
+                                        className="flex w-full items-center gap-2 rounded-lg border border-border px-2 py-1 text-start"
                                         onClick={() => reading.openSession(past)}
                                     >
                                         <Icon name="sparkling" className="size-3 shrink-0 text-muted-foreground" />
@@ -546,7 +546,7 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                                         <div className="flex items-center gap-1.5 px-2 py-1.5 text-[12px]">
                                             <button
                                                 type="button"
-                                                className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                                                className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
                                                 onClick={() => toggleFile(file.path)}
                                                 aria-expanded={expanded.has(file.path)}
                                             >
@@ -629,7 +629,7 @@ const PullCommentCard: React.FC<{
     const askButton = (label: string, aria: string, onClick: () => void) => (
         <button
             type="button"
-            className="ml-auto inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+            className="me-auto inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
             aria-label={aria}
             title={label}
             onClick={onClick}
@@ -668,7 +668,7 @@ const PullCommentCard: React.FC<{
             ) : null}
             <SimpleMarkdownRenderer content={comment.text} disableLinkSafety variant="tool" enableFileReferences={false} />
             {comment.replies.map((reply, index) => (
-                <div key={`${comment.id}-${index}`} className="ml-3 mt-1 border-l border-border pl-2">
+                <div key={`${comment.id}-${index}`} className="ms-3 mt-1 border-s border-border ps-2">
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
                         <span className="font-medium text-foreground">{reply.author ?? '—'}</span>
                         <span className="text-muted-foreground">{reply.createdAt ? formatStamp(reply.createdAt) : ''}</span>
@@ -735,7 +735,7 @@ const CommentAnnotation: React.FC<{ annotation: CommentAnalysis }> = ({ annotati
                 ) : null}
             </div>
             {open && annotation.variants.length > 0 ? (
-                <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                <ul className="mt-1 list-disc space-y-0.5 ps-4">
                     {annotation.variants.map((variant, index) => (
                         <li key={index}>{variant}</li>
                     ))}
@@ -888,7 +888,10 @@ const PullDiffText: React.FC<{
     return (
         // SAFETY: these are the `--md-syntax-*` custom properties the colored
         // code spans read; React types only standard style keys.
-        <div className="overflow-x-auto border-t border-border" style={syntaxVars as React.CSSProperties}>
+        // The diff body is code: it keeps left-to-right reading even in Arabic
+        // and Hebrew, so the logical classes inside it land where they always
+        // did.
+        <div dir="ltr" className="overflow-x-auto border-t border-border" style={syntaxVars as React.CSSProperties}>
             {rows.map((row, index) => {
                 const color = rowColorOf(row.kind);
                 const selectable = row.oldLine !== null || row.newLine !== null;
@@ -931,7 +934,7 @@ const PullDiffText: React.FC<{
                                             ? t('chat.workStatus.teamBoard.pullView.pickEnd')
                                             : t('chat.workStatus.teamBoard.pullView.askAboutLine')
                                 }
-                                className={`absolute left-0 top-0 z-10 inline-flex size-4 items-center justify-center rounded-sm text-muted-foreground transition-opacity hover:text-foreground focus:opacity-100 ${
+                                className={`absolute inset-s-0 top-0 z-10 inline-flex size-4 items-center justify-center rounded-sm text-muted-foreground transition-opacity hover:text-foreground focus:opacity-100 ${
                                     headMark ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                                 }`}
                                 onClick={(event) => {
@@ -946,7 +949,7 @@ const PullDiffText: React.FC<{
                                 <Icon name="question" className="size-3.5" />
                             </button>
                         ) : null}
-                        <span className="w-7 shrink-0 select-none text-right text-[9px] text-muted-foreground/60">
+                        <span className="w-7 shrink-0 select-none text-end text-[9px] text-muted-foreground/60">
                             {row.oldLine ?? row.newLine ?? ''}
                         </span>
                         {row.kind === 'meta' ? (
@@ -1022,7 +1025,7 @@ const PullDiffExcerpt: React.FC<{
                             color: row.kind === 'meta' ? color ?? undefined : undefined,
                         }}
                     >
-                        <span className="w-7 shrink-0 select-none text-right text-[9px] text-muted-foreground/60">
+                        <span className="w-7 shrink-0 select-none text-end text-[9px] text-muted-foreground/60">
                             {row.oldLine ?? row.newLine ?? ''}
                         </span>
                         {row.kind === 'meta' ? (

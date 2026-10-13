@@ -18,7 +18,7 @@ import { runtimeFetch } from '@/lib/runtime-fetch';
 const PAGE_SEARCH_ROUTE = '/api/openchamber/confluence/pages/search';
 const PAGE_VIEW_ROUTE = '/api/openchamber/confluence/pages/view';
 
-export const PAGE_ERROR_KINDS = [
+const PAGE_ERROR_KINDS = [
     'bad-ref',
     'unconfigured',
     'not-found',
@@ -37,7 +37,7 @@ const pageErrorBodySchema = z.object({
 });
 
 /** One search row: enough to pick a page, nothing the reader cannot draw. */
-export const confluenceSearchRowSchema = z.object({
+const confluenceSearchRowSchema = z.object({
     id: z.string(),
     title: z.string(),
     space: z.object({
@@ -50,7 +50,7 @@ export const confluenceSearchRowSchema = z.object({
 
 export type ConfluenceSearchRow = z.infer<typeof confluenceSearchRowSchema>;
 
-export const confluencePageViewSchema = z.object({
+const confluencePageViewSchema = z.object({
     id: z.string(),
     title: z.string(),
     space: z.object({
@@ -67,11 +67,11 @@ export const confluencePageViewSchema = z.object({
 
 export type ConfluencePageView = z.infer<typeof confluencePageViewSchema>;
 
-export type SearchResult =
+type SearchResult =
     | { ok: true; rows: ConfluenceSearchRow[] }
     | { ok: false; kind: PageErrorKind };
 
-export type PageViewResult =
+type PageViewResult =
     | { ok: true; view: ConfluencePageView }
     | { ok: false; kind: PageErrorKind };
 

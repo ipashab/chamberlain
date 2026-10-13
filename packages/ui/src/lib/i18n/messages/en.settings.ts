@@ -2630,12 +2630,8 @@ export const settingsDict = {
   'settings.mcp.page.advanced.oauthMetadataUrlHint': 'The OAuth or OpenID Connect authorization server metadata document. Set this when the MCP server does not publish protected resource metadata naming its authorization server.',
   'settings.mcp.page.advanced.oauthMetadataUrlPlaceholder': 'https://example.com/.well-known/oauth-authorization-server',
   'settings.mcp.page.advanced.oauthMetadataUrlInvalid': 'Enter a full http:// or https:// address.',
-<<<<<<< HEAD
-  'settings.magicPrompts.page.block.codeFusionInstructions': 'Code Fusion Instructions',
-  'settings.magicPrompts.page.block.methodology': 'Methodology',
-=======
   'settings.magicPrompts.page.block.codeFusionInstructions': 'Code Fusion instructions',
->>>>>>> v2.3.1
+  'settings.magicPrompts.page.block.methodology': 'Methodology',
   'settings.openchamber.desktopNetwork.field.linuxNativeFrame': 'Use the system title bar',
   'settings.openchamber.desktopNetwork.field.linuxNativeFrameDescription': 'Requires an app restart. The window gets your desktop environment\'s own title bar and buttons, above OpenChamber\'s header.',
   'settings.openchamber.visual.field.customFont': 'Custom…',

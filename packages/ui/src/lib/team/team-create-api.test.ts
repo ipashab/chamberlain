@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
+import type { JsonValue } from '@openchamber/sdk';
+
 import {
   addTeamMember,
   createTeam,
@@ -17,7 +19,7 @@ import {
 type FetchLike = typeof fetch;
 
 /** Records one request and answers with the given status and body. */
-const fakeFetch = (status: number, body: unknown, capture: {url?: string; init?: RequestInit} = {}): FetchLike =>
+const fakeFetch = (status: number, body: Record<string, JsonValue>, capture: {url?: string; init?: RequestInit} = {}): FetchLike =>
   async (input, init) => {
     capture.url = String(input);
     capture.init = init;

@@ -90,11 +90,11 @@ const ToolPicker: React.FC<{
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-[var(--interactive-hover)]"
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-start text-xs text-muted-foreground hover:bg-[var(--interactive-hover)]"
       >
         <Icon name={open ? 'arrow-down-s' : 'arrow-right-s'} className="size-3.5 shrink-0" />
         <span className="truncate">{label}</span>
-        <span className="ml-auto shrink-0 tabular-nums">{selected.length}</span>
+        <span className="me-auto shrink-0 tabular-nums">{selected.length}</span>
       </button>
       {open ? (
         <div className="max-h-32 space-y-0.5 overflow-y-auto border-t border-border px-2 py-1.5">
@@ -241,7 +241,7 @@ export const TeamMemberEditor: React.FC<Props> = ({
                   ...agentOptions.map((option) => ({ value: option.value, label: option.label })),
                 ]}
               >
-                <SelectTrigger size="sm" className="h-8 w-full">
+                <SelectTrigger className="w-full">
                   <SelectValue>
                     {(value) => selectedLabel(value, t('team.create.member.agentDefault'), agentOptions)}
                   </SelectValue>
@@ -261,7 +261,7 @@ export const TeamMemberEditor: React.FC<Props> = ({
                   ...modelOptions.map((option) => ({ value: option.value, label: option.label })),
                 ]}
               >
-                <SelectTrigger size="sm" className="h-8 w-full">
+                <SelectTrigger className="w-full">
                   <SelectValue>
                     {(value) => selectedLabel(value, t('team.create.member.modelDefault'), modelOptions)}
                   </SelectValue>
@@ -291,7 +291,7 @@ export const TeamMemberEditor: React.FC<Props> = ({
                     ...domainOptions,
                   ]}
                 >
-                  <SelectTrigger size="sm" className="h-8 w-full">
+                  <SelectTrigger className="w-full">
                     <SelectValue>
                       {(value) => selectedLabel(value, t('team.create.member.domainNone'), domainOptions)}
                     </SelectValue>

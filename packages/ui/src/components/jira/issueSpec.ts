@@ -161,7 +161,7 @@ export const buildIssueSpecAnswersPrompt = (view: JiraIssueView, answers: SpecAn
  * spec at all, and the panel keeps its "open the session" fallback rather
  * than guessing a spec out of prose.
  */
-export type IssueSpecParseResult =
+type IssueSpecParseResult =
     | { ok: true; spec: IssueSpec }
     | { ok: false; error: 'no-block' | 'bad-shape' };
 

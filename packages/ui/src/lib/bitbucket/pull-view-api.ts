@@ -94,7 +94,7 @@ export const bitbucketPullViewSchema = z.object({    pull: z.object({
     }),
 });
 
-export type PullViewResult =
+type PullViewResult =
     | { ok: true; view: BitbucketPullView }
     | { ok: false; kind: ViewErrorKind };
 

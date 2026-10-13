@@ -138,7 +138,7 @@ export const JiraIssuesPanel: React.FC = () => {
                 {t('jiraPanel.searchHint')}
             </p>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pe-0.5">
                 {searchState.state === 'loading' ? (
                     <p className="text-[13px] text-muted-foreground">{t('jiraPanel.searchLoading')}</p>
                 ) : null}
@@ -176,7 +176,7 @@ export const JiraIssuesPanel: React.FC = () => {
                                 <button
                                     key={hit.key}
                                     type="button"
-                                    className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-left"
+                                    className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-start"
                                     onClick={() => openIssue(hit.url)}
                                 >
                                     <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{hit.key}</span>
@@ -212,7 +212,7 @@ export const JiraIssuesPanel: React.FC = () => {
                                 >
                                     <button
                                         type="button"
-                                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                        className="flex min-w-0 flex-1 items-center gap-2 text-start"
                                         onClick={() => openIssue(entry.ref)}
                                     >
                                         <span className="shrink-0 font-mono text-[11px] text-muted-foreground">

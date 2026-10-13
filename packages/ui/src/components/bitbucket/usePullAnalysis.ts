@@ -18,9 +18,9 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 
 import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
 import { parseAnalysisResult, previousReadingDigest, type AnalysisScope, type PullAnalysis } from './pullAnalysis';
-import { recallPullAnalysis, recallPullAnalysisHistory, startPullAnalysis, type PullAnalysisEntry, type PullAnalysisStartResult } from './pullAnalysisSession';
+import { recallPullAnalysisHistory, startPullAnalysis, type PullAnalysisEntry, type PullAnalysisStartResult } from './pullAnalysisSession';
 
-export type PullAnalysisState = {
+type PullAnalysisState = {
     /** The remembered reading of this pull, if one was started. */
     entry: PullAnalysisEntry | null;
     /** Every reading this pull went through, newest first. */
