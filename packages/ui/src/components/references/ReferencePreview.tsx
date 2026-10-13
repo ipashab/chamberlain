@@ -4,6 +4,7 @@ import { SimpleMarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { Icon } from '@/components/icon/Icon';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import type { GitHubChecksSummary, GitHubPullStatus, GitHubReference, GitHubReferenceComment, GitHubReferenceDetail, LinearIssue, LinearIssueSummary } from '@/lib/api/types';
 import { useI18n } from '@/lib/i18n';
@@ -123,7 +124,8 @@ const CommentsSection: React.FC<{
     /** A PR's thread carries its commits too. */
     activity?: boolean;
     now: number;
-}> = ({ state, total, activity = false, now }) => {
+    attachments?: CommentAttachments;
+}> = ({ state, total, activity = false, now, attachments }) => {
     const { t } = useI18n();
     const shown = state.status === 'ready' ? state.value.filter((entry) => entry.kind === 'comment').length : 0;
     return (
@@ -135,6 +137,16 @@ const CommentsSection: React.FC<{
                         {t('references.picker.preview.commentsLatest', { shown, total })}
                     </span>
                 ) : null}
+                {attachments && shown > 0 && state.status === 'ready' ? (
+                    <button
+                        type="button"
+                        onClick={() => attachments.onAttachAll(state.value.flatMap((entry) => (entry.kind === 'comment' ? [entry] : [])))}
+                        className={cn('ms-auto inline-flex items-center gap-1 typography-meta font-normal hover:text-foreground', REFERENCE_META_TEXT)}
+                    >
+                        <Icon name="attachment-2" className="size-3.5" />
+                        {t('gitView.pr.comments.addAll')}
+                    </button>
+                ) : null}
             </h4>
             {state.status === 'error' ? (
                 <p className="typography-meta text-[var(--status-error-text)]">{t('references.picker.error.load', { error: state.error })}</p>
@@ -143,10 +155,16 @@ const CommentsSection: React.FC<{
             ) : state.value.length === 0 ? (
                 <p className="typography-meta text-muted-foreground">{t('references.picker.preview.commentsEmpty')}</p>
             ) : (
-                <ReferenceComments entries={state.value} now={now} />
+                <ReferenceComments entries={state.value} now={now} onAttachComment={attachments?.onAttach} />
             )}
         </section>
     );
+};
+
+/** Pins a comment, or all of them, above the composer. */
+type CommentAttachments = {
+    onAttach: (comment: ReferenceCommentItem) => void;
+    onAttachAll: (comments: ReferenceCommentItem[]) => void;
 };
 
 const REVIEW_VERDICT_KEYS = {
@@ -202,7 +220,7 @@ const PullDetailRows: React.FC<{
                                 variant="ghost"
                                 size="xs"
                                 onClick={onOpenChecks}
-                                className="-ml-1.5 gap-1.5 px-1.5 typography-meta font-normal normal-case text-muted-foreground"
+                                className="-ms-1.5 gap-1.5 px-1.5 typography-meta font-normal normal-case text-muted-foreground"
                             >
                                 <ChecksSummaryLine checks={checks.value} />
                                 <Icon name="arrow-right-s" className="size-3.5 opacity-60" />
@@ -256,20 +274,31 @@ const GitHubPreview: React.FC<{
     labelsControl?: React.ReactNode;
     reviewersControl?: React.ReactNode;
     onOpenChecks?: () => void;
-}> = ({ reference, pullStatus, detail, purpose, pinned, includeDiff, onIncludeDiffChange, now, footer: footerOverride, pullLinks, reply, labelsControl, reviewersControl, onOpenChecks }) => {
+    commentAttachments?: CommentAttachments;
+    stateMenu?: React.ReactNode;
+}> = ({ reference, pullStatus, detail, purpose, pinned, includeDiff, onIncludeDiffChange, now, footer: footerOverride, pullLinks, reply, labelsControl, reviewersControl, onOpenChecks, commentAttachments, stateMenu }) => {
     const { t } = useI18n();
     const comments = React.useMemo(
-        () => mapDetail(detail, (value) => buildReferenceTimeline(value.comments.map((comment: GitHubReferenceComment, index): ReferenceCommentItem => ({
-            kind: 'comment',
-            key: `${comment.url}#${index}`,
-            author: comment.author?.login ?? null,
-            avatarUrl: comment.author?.avatarUrl ?? null,
-            body: comment.body,
-            createdAt: comment.createdAt,
-            context: comment.path
-                ? `${comment.path}${comment.line ? `:${comment.line}` : ''}`
-                : comment.review && comment.review !== 'commented' ? t(REVIEW_VERDICT_KEYS[comment.review]) : null,
-        })), value.pull?.commits ?? [])),
+        () => mapDetail(detail, (value) => buildReferenceTimeline(value.comments.map((comment: GitHubReferenceComment, index): ReferenceCommentItem => {
+            const location = comment.path ? `${comment.path}${comment.line ? `:${comment.line}` : ''}` : null;
+            return {
+                kind: 'comment',
+                key: `${comment.url}#${index}`,
+                author: comment.author?.login ?? null,
+                avatarUrl: comment.author?.avatarUrl ?? null,
+                body: comment.body,
+                createdAt: comment.createdAt,
+                context: location ?? (comment.review && comment.review !== 'commented' ? t(REVIEW_VERDICT_KEYS[comment.review]) : null),
+                location,
+            };
+        }), (value.pull?.commits ?? []).map((commit) => ({
+            sha: commit.sha,
+            headline: commit.headline,
+            author: commit.author?.login ?? commit.authorName,
+            avatarUrl: commit.author?.avatarUrl ?? null,
+            committedAt: commit.committedAt,
+            url: commit.url,
+        })))),
         [detail, t],
     );
     const relative = useRelative(now);
@@ -298,7 +327,27 @@ const GitHubPreview: React.FC<{
         <PreviewFrame pinned={pinned} footer={footer}>
             <header className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                    <StatePill icon={look.icon} color={look.color} label={t(look.labelKey)} />
+                    {stateMenu ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    type="button"
+                                    aria-label={t('references.picker.preview.stateMenuAria', { state: t(look.labelKey) })}
+                                    className="shrink-0 rounded-full outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    <StatePill
+                                        icon={look.icon}
+                                        color={look.color}
+                                        label={t(look.labelKey)}
+                                        trailing={<Icon name="arrow-down-s" className="size-3.5 opacity-70" />}
+                                    />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56">{stateMenu}</DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : (
+                        <StatePill icon={look.icon} color={look.color} label={t(look.labelKey)} />
+                    )}
                     <span className={cn('truncate typography-meta', REFERENCE_META_TEXT)}>
                         {reference.sourceRepo.owner}/{reference.sourceRepo.repo} {referenceNumberLabel(reference)}
                     </span>
@@ -306,7 +355,7 @@ const GitHubPreview: React.FC<{
                         href={reference.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn('ml-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
+                        className={cn('ms-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
                     >
                         {getSourceControlProviderLabel(reference.provider ?? 'github')}
                         <Icon name="external-link" className="size-3.5" />
@@ -361,9 +410,82 @@ const GitHubPreview: React.FC<{
                 ) : null}
             </div>
 
-            <CommentsSection state={comments} total={detail.status === 'ready' ? detail.value.commentTotal : null} activity={reference.kind === 'pull'} now={now} />
+            <CommentsSection state={comments} total={detail.status === 'ready' ? detail.value.commentTotal : null} activity={reference.kind === 'pull'} now={now} attachments={commentAttachments} />
             {reply}
         </PreviewFrame>
+    );
+};
+
+/**
+ * A parent or sub-issue as one line: its state, identifier and title. A button
+ * that previews it when the surface can, plain text otherwise.
+ */
+const RelatedLinearIssue: React.FC<{
+    issue: LinearIssueSummary;
+    onOpen?: (issue: LinearIssueSummary) => void;
+    /** A sub-issue row also names its assignee. */
+    showAssignee?: boolean;
+}> = ({ issue, onOpen, showAssignee = false }) => {
+    const look = linearStateLook(issue);
+    const assignee = issue.assignee?.displayName || issue.assignee?.name;
+    const content = (
+        <>
+            <Icon name={look.icon} className="size-3.5 shrink-0" style={{ color: look.color }} />
+            <span className={cn('shrink-0 font-mono', REFERENCE_META_TEXT)}>{issue.identifier}</span>
+            <span className="min-w-0 truncate">{issue.title}</span>
+            {showAssignee && assignee ? (
+                <span className={cn('ms-auto shrink-0 ps-2', REFERENCE_META_TEXT)}>{assignee}</span>
+            ) : null}
+        </>
+    );
+    const className = 'flex w-full min-w-0 items-center gap-1.5 text-start typography-meta';
+    if (!onOpen) return <span className={cn(className, 'text-muted-foreground')}>{content}</span>;
+    return (
+        <button
+            type="button"
+            onClick={() => onOpen(issue)}
+            title={issue.title}
+            className={cn(className, 'rounded-sm text-muted-foreground/80 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring')}
+        >
+            {content}
+        </button>
+    );
+};
+
+/** A Linear issue's sub-issues, finished of all, in Linear's order. */
+const SubIssuesSection: React.FC<{
+    issue: LinearIssue;
+    onOpen?: (issue: LinearIssueSummary) => void;
+}> = ({ issue, onOpen }) => {
+    const { t } = useI18n();
+    const subIssues = issue.subIssues ?? [];
+    if (subIssues.length === 0) return null;
+    const done = subIssues.filter((sub) => sub.state?.type === 'completed' || sub.state?.type === 'canceled' || sub.state?.type === 'duplicate').length;
+    return (
+        <section className="flex flex-col gap-2 border-t border-border/60 pt-4">
+            <h4 className="flex items-center gap-2 typography-ui-label font-semibold text-foreground">
+                {t('references.picker.preview.subIssues')}
+                {issue.subIssuesMore ? null : (
+                    <span className={cn('typography-meta font-normal tabular-nums', REFERENCE_META_TEXT)}>{done}/{subIssues.length}</span>
+                )}
+            </h4>
+            <ul className="flex flex-col gap-1.5">
+                {subIssues.map((sub) => (
+                    <li key={sub.id}><RelatedLinearIssue issue={sub} onOpen={onOpen} showAssignee /></li>
+                ))}
+            </ul>
+            {issue.subIssuesMore ? (
+                <a
+                    href={issue.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn('inline-flex items-center gap-1 self-start typography-meta hover:text-foreground', REFERENCE_META_TEXT)}
+                >
+                    {t('references.picker.preview.subIssuesMore', { count: subIssues.length })}
+                    <Icon name="external-link" className="size-3.5" />
+                </a>
+            ) : null}
+        </section>
     );
 };
 
@@ -375,14 +497,18 @@ const LinearPreview: React.FC<{
     now: number;
     footer?: React.ReactNode;
     stateControl?: React.ReactNode;
-}> = ({ issue, detail, purpose, pinned, now, footer: footerOverride, stateControl }) => {
+    onOpenIssue?: (issue: LinearIssueSummary) => void;
+}> = ({ issue, detail, purpose, pinned, now, footer: footerOverride, stateControl, onOpenIssue }) => {
     const { t } = useI18n();
     const relative = useRelative(now);
     const look = linearStateLook(issue);
-    const labels = (issue.labels ?? []).map((label) => ({ name: label.name, color: labelColor(label.color) }));
+    const full = detail.status === 'ready' ? detail.value : null;
+    // A parent or sub-issue opened from another preview comes without its
+    // labels and parent; its own detail brings them.
+    const labels = (full?.labels ?? issue.labels ?? []).map((label) => ({ name: label.name, color: labelColor(label.color) }));
+    const parent = full?.parent ?? issue.parent ?? null;
     const updated = relative(issue.updatedAt);
     const assignee = issue.assignee?.displayName || issue.assignee?.name;
-    const full = detail.status === 'ready' ? detail.value : null;
     const comments = React.useMemo(
         () => mapDetail(detail, (value) => (value.comments ?? []).map((comment): ReferenceTimelineEntry => ({
             kind: 'comment',
@@ -392,6 +518,7 @@ const LinearPreview: React.FC<{
             body: comment.body,
             createdAt: comment.createdAt,
             context: null,
+            location: null,
         }))),
         [detail],
     );
@@ -412,7 +539,7 @@ const LinearPreview: React.FC<{
                         href={issue.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn('ml-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
+                        className={cn('ms-auto inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 typography-meta hover:bg-interactive-hover hover:text-foreground', REFERENCE_META_TEXT)}
                     >
                         Linear
                         <Icon name="external-link" className="size-3.5" />
@@ -422,6 +549,11 @@ const LinearPreview: React.FC<{
             </header>
 
             <dl className="grid grid-cols-[max-content_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5">
+                {parent ? (
+                    <MetaRow label={t('references.picker.preview.parent')}>
+                        <RelatedLinearIssue issue={parent} onOpen={onOpenIssue} />
+                    </MetaRow>
+                ) : null}
                 {assignee ? <MetaRow label={t('references.picker.preview.assignee')}>{assignee}</MetaRow> : null}
                 {issue.team ? <MetaRow label={t('references.picker.preview.team')}>{issue.team.name}</MetaRow> : null}
                 {issue.priority && issue.priority > 0 ? (
@@ -448,6 +580,7 @@ const LinearPreview: React.FC<{
                 )}
             </div>
 
+            {full ? <SubIssuesSection issue={full} onOpen={onOpenIssue} /> : null}
             {detail.status === 'ready' ? <CommentsSection state={comments} total={null} now={now} /> : null}
         </PreviewFrame>
     );
@@ -478,7 +611,13 @@ export const ReferencePreview: React.FC<{
     reviewersControl?: React.ReactNode;
     /** Opens the previewed PR's check runs from its checks totals. */
     onOpenChecks?: () => void;
-}> = ({ item, pullStatus, linearDetail, githubDetail, purpose, pinned, includeDiff, onIncludeDiffChange, now, footer, pullLinks, linearStateControl, reply, labelsControl, reviewersControl, onOpenChecks }) => {
+    /** An issue's or PR's comments, pinned above the composer one by one or together. */
+    commentAttachments?: CommentAttachments;
+    /** Menu items on an issue's or PR's state pill, such as close or reopen. */
+    stateMenu?: React.ReactNode;
+    /** Previews a Linear issue's parent or sub-issue; without it they are plain text. */
+    onOpenLinearIssue?: (issue: LinearIssueSummary) => void;
+}> = ({ item, pullStatus, linearDetail, githubDetail, purpose, pinned, includeDiff, onIncludeDiffChange, now, footer, pullLinks, linearStateControl, reply, labelsControl, reviewersControl, onOpenChecks, commentAttachments, stateMenu, onOpenLinearIssue }) => {
     const { t } = useI18n();
     if (!item) {
         return (
@@ -488,7 +627,7 @@ export const ReferencePreview: React.FC<{
         );
     }
     if (item.source === 'linear') {
-        return <LinearPreview issue={item.issue} detail={linearDetail} purpose={purpose} pinned={pinned} now={now} footer={footer} stateControl={linearStateControl} />;
+        return <LinearPreview issue={item.issue} detail={linearDetail} purpose={purpose} pinned={pinned} now={now} footer={footer} stateControl={linearStateControl} onOpenIssue={onOpenLinearIssue} />;
     }
     return (
         <GitHubPreview
@@ -506,6 +645,8 @@ export const ReferencePreview: React.FC<{
             labelsControl={labelsControl}
             reviewersControl={reviewersControl}
             onOpenChecks={onOpenChecks}
+            commentAttachments={commentAttachments}
+            stateMenu={stateMenu}
         />
     );
 };

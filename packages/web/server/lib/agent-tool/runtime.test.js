@@ -97,6 +97,17 @@ describe('agent tool action allowlist', () => {
 });
 
 describe('managed agent tool runtime', () => {
+  it('tells the agent to move into a worktree unasked only when the user chose that', async () => {
+    const { runtime, dataDir } = await createRuntime();
+
+    await runtime.materializePlugin({ worktreeMoveWithoutAsking: true });
+    const tool = await loadTools(dataDir, 'unasked');
+
+    expect(tool.openchamber.description).toContain('first move this session into a new worktree with session.moveToWorktree, without asking, and tell the user in one line');
+    expect(tool.openchamber.description).not.toContain("wait for the user's yes");
+    expect(tool.openchamber.input.properties.action.oneOf.map((entry) => entry.const)).toContain('session.moveToWorktree');
+  });
+
   it('materializes the plugin and mints a per-child callback token', async () => {
     const { runtime, dataDir } = await createRuntime();
 
@@ -119,6 +130,9 @@ describe('managed agent tool runtime', () => {
     expect(tool.openchamber.description).toContain('final answer then arrives in this session as a message');
     // Agents also have OpenCode's own subagent tool; the line between the two is drawn up front.
     expect(tool.openchamber.description).toContain('use the subagent tool');
+    // The worktree rule is read before the tool is chosen, and asks by default.
+    expect(tool.openchamber.description).toContain('offer to move this session into a new worktree with session.moveToWorktree and wait for the user\'s yes');
+    expect(tool.openchamber.description).not.toContain('without asking');
     expect(tool.openchamber.input.properties.action.oneOf).toContainEqual({
       const: 'session.messages',
       description: 'Read text-only messages and current sessionStatus for sessionId; directory and limit 10 are defaults',
@@ -234,7 +248,7 @@ describe('managed agent tool runtime', () => {
     expect(tool.openchamber_team.input.properties.action.oneOf.map((entry) => entry.const))
       .toEqual(expect.arrayContaining(['team.start', 'team.spawn_agent', 'team.task_create']));
     expect(Object.keys(tool.openchamber_team.input.properties.parameters.properties).sort())
-      .toEqual(['agent', 'blockedBy', 'description', 'message', 'model', 'name', 'newName', 'owner', 'reason', 'sinceMessageId', 'slotId', 'status', 'subject', 'taskId', 'to']);
+      .toEqual(['agent', 'blockedBy', 'description', 'domain', 'isDomainLead', 'message', 'model', 'name', 'newName', 'owner', 'prUrl', 'reason', 'result', 'sinceMessageId', 'slotId', 'status', 'subject', 'taskId', 'to']);
 
     // Team inputs must not leak into the control tool's schema.
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('slotId');

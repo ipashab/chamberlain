@@ -17,8 +17,12 @@ export type UpdateInfo = {
   // Web-specific fields
   packageManager?: string;
   updateCommand?: string;
-  /** The server cannot install this update itself; `updateCommand` must be run by hand. */
-  installBlocked?: 'service-manager';
+  /**
+   * The server cannot install this update itself. `service-manager`: run
+   * `updateCommand` by hand. `manual-install`: no package manager installed
+   * this copy, so the new version is installed the way this one was.
+   */
+  installBlocked?: 'service-manager' | 'manual-install';
 };
 
 export type UpdateProgress = {
@@ -288,6 +292,51 @@ export const setDesktopMiniChatGlobalShortcut = async (combo: string | null): Pr
   }
 };
 
+const quakeModeStatusSchema = z.object({
+  supported: z.boolean(),
+  enabled: z.boolean(),
+  /** Effective combo: the stored one, or the default while Quake is enabled. */
+  combo: z.string().nullable(),
+  /** The stored value before the enabled-default applies: a combo, the unassigned sentinel, or null when nothing is stored. */
+  storedCombo: z.string().nullable(),
+  active: z.boolean(),
+  heightFraction: z.number(),
+  // Set when a shortcut save was refused; the stored combo is unchanged.
+  error: z.literal('unsupported-combo').optional(),
+});
+
+export type QuakeModeStatus = z.infer<typeof quakeModeStatusSchema>;
+
+const invokeQuakeMode = async (
+  command: string,
+  args: Record<string, string | number | boolean | null>,
+  failureMessage: string,
+): Promise<QuakeModeStatus | null> => {
+  if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
+    return null;
+  }
+
+  try {
+    const result = quakeModeStatusSchema.safeParse(await invokeDesktop(command, args));
+    return result.success ? result.data : null;
+  } catch (error) {
+    console.warn(failureMessage, error);
+    return null;
+  }
+};
+
+export const getDesktopQuakeMode = (): Promise<QuakeModeStatus | null> =>
+  invokeQuakeMode('desktop_get_quake_mode', {}, 'Failed to get Quake Mode status');
+
+export const setDesktopQuakeModeEnabled = (enabled: boolean): Promise<QuakeModeStatus | null> =>
+  invokeQuakeMode('desktop_set_quake_mode_enabled', { enabled }, 'Failed to set Quake Mode');
+
+export const setDesktopQuakeModeShortcut = (combo: string | null): Promise<QuakeModeStatus | null> =>
+  invokeQuakeMode('desktop_set_quake_mode_shortcut', { combo }, 'Failed to set Quake Mode shortcut');
+
+export const setDesktopQuakeModeHeight = (heightFraction: number): Promise<QuakeModeStatus | null> =>
+  invokeQuakeMode('desktop_set_quake_mode_height', { heightFraction }, 'Failed to set Quake Mode height');
+
 export const getDesktopKeepAwake = async (): Promise<KeepAwakeStatus | null> => {
   if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
     return null;
@@ -438,6 +487,22 @@ export const focusDesktopWindow = async (): Promise<boolean> => {
   }
 };
 
+/**
+ * Opens a session owned by another instance ('local' or 'host:<id>') in a
+ * window for that instance. Valid from any app window, including one that
+ * currently shows a remote instance — the main process gates the command
+ * by sender. Returns false when the desktop bridge is not available, so the
+ * caller can fall back to opening it on the current one.
+ */
+export const openHostSession = (runtimeKey: string, sessionId: string): boolean => {
+  if (!canUseElectronDesktopIPC()) return false;
+  void invokeDesktop<{ opened: boolean }>('desktop_open_host_session', { runtimeKey, sessionId })
+    .catch((error) => {
+      console.warn('[desktop] failed to open host session', error);
+    });
+  return true;
+};
+
 export const canRequestNativeDirectoryAccess = (): boolean => (
   isDesktopShell() && hasDesktopInvoke() && isDesktopLocalOriginActive()
 );
@@ -464,6 +529,31 @@ export const takePendingDesktopSessionLinks = async (): Promise<PendingDesktopSe
       : [];
   } catch (error) {
     console.warn('Failed to read pending session links', error);
+    return [];
+  }
+};
+
+const pendingHostActionsSchema = z.array(z.discriminatedUnion('type', [
+  z.object({ type: z.literal('pairing'), link: z.string().min(1) }),
+  z.object({ type: z.literal('host'), hostId: z.string().min(1) }),
+]));
+
+type PendingDesktopHostAction = z.infer<typeof pendingHostActionsSchema>[number];
+
+/**
+ * Host work the desktop shell hands to the main window: a pairing link the user
+ * confirmed (`openchamber://connect`), or a relay-capable host to activate
+ * (`openchamber://host/<id>`). Taking them removes them.
+ */
+export const takePendingDesktopHostActions = async (): Promise<PendingDesktopHostAction[]> => {
+  // The shell answers only the main window's local page, whichever instance
+  // that page is connected to; no runtime check here.
+  if (!isDesktopShell()) return [];
+  try {
+    const parsed = pendingHostActionsSchema.safeParse(await invokeDesktop('desktop_take_pending_host_actions'));
+    return parsed.success ? parsed.data : [];
+  } catch (error) {
+    console.warn('Failed to read pending host actions', error);
     return [];
   }
 };

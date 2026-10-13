@@ -1,12 +1,32 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `733fa61` (2026-10-07), which is
-upstream `2.2.0`. The fork pins that base and numbers its own patches with
-the `forkN` marker. Each release's notes below carry only that release's
-changes; `fork1` was the fork's first release, so its section is the whole
-set that shipped then.
+**Base:** upstream `openchamber/openchamber` @ `0f57a76` (v2.3.1, 2026-10-13).
+The fork pins that base and numbers its own patches with the `forkN` marker.
+Each release's notes below carry only that release's changes; `fork1` was the
+fork's first release, so its section is the whole set that shipped then.
 
 ---
+
+## Base move to upstream `2.3.1`
+
+The whole of upstream `2.3.0` and `2.3.1` is merged in, with every fork
+feature kept. What the merge brought and where the fork met it:
+
+- **Zones and movable panels** — surfaces now live in `left` / `right` /
+  `bottom` zones around the chat, drag-and-drop and resizable from the edge.
+  The fork's Bitbucket / Jira / Confluence / review / team surfaces ride the
+  new keep-alive panes as remount surfaces and register with the unified
+  default-width scheme.
+- **Sorted mode is gone; live replies land a block at a time** — the fork's
+  machine digest folding adapts to the new renderer contract.
+- **RTL layout** — Arabic and Hebrew ship as full locales; the fork's panels
+  are rewritten on logical sides, and the diff body keeps `dir="ltr"` so code
+  reads as code under any locale.
+- **Team tool naming** — upstream grew its own session tool; the fork's
+  `openchamber_team` keeps its own schema (sub-teams, task PR links and
+  results), documented in the fork's Team Mode section.
+- Dead exports the fork had accumulated are cleaned up; the sidebar pages
+  (Missions, Assistants) moved onto upstream's header-driven builtin pages.
 
 ## `2.2.0-fork5` — repeated readings, refined specs, Confluence, the board
 

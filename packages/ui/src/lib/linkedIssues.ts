@@ -70,7 +70,7 @@ const isGuestPull = (entry: { thread?: 'issue' | 'pull' }): boolean => (
 
 /**
  * A thread on any other service, linked by an agent through `session.link`
- * (`packages/web/server/lib/github/session-link.js`): a GitLab merge request,
+ * (`packages/web/server/lib/openchamber-sessions/session-link.js`): a GitLab merge request,
  * a Jira ticket. Shown by identifier and opened by URL; a GitLab one gets live
  * state from its instance (`getGitLabThreadRef`), others have none.
  */
@@ -275,14 +275,6 @@ export const buildLinkedLinearIssue = (input: {
   linkedAt: input.linkedAt,
 });
 
-/** Whether a linked Linear issue opens on the issues and PRs board, or falls back to Linear in the browser. */
-export const canOpenLinearIssueOnBoard = (options: {
-  linearAvailable: boolean;
-  linearConnected: boolean;
-  /** The phone shell and VS Code have no board. */
-  boardAvailable: boolean;
-}): boolean => options.linearAvailable && options.linearConnected && options.boardAvailable;
-
 export const getLinkedIssues = (session: Session | null | undefined): LinkedIssue[] => {
   const openchamber = getSessionMetadata(session).openchamber;
   if (!isRecord(openchamber) || !Array.isArray(openchamber.linked_issues)) return [];
@@ -373,13 +365,13 @@ const uniqueGitHubThreads = (session: Session | null | undefined, thread: GitHub
 };
 
 /**
- * The session's links as a list shows them: each GitHub thread once, at its
- * first link, however many times and by whom it was linked.
+ * The session's links as a list shows them: each GitHub or GitLab thread once,
+ * at its first link, however many times and by whom it was linked.
  */
 export const getDistinctLinkedIssues = (session: Session | null | undefined): LinkedIssue[] => {
   const seen = new Set<string>();
   return getLinkedIssues(session).filter((entry) => {
-    const key = getGitHubThreadRef(entry)?.key.toLowerCase();
+    const key = getGitHubThreadRef(entry)?.key.toLowerCase() ?? getGitLabThreadRef(entry)?.key;
     if (!key) return true;
     if (seen.has(key)) return false;
     seen.add(key);

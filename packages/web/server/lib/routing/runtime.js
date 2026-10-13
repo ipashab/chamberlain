@@ -26,6 +26,7 @@ import {
   resolveClassifier,
 } from './classifier.js';
 import { loadRoutingHistory } from './history.js';
+import { PROMPT_CACHE_TTL_MS, cacheHoldCategory, warmWindowMs } from './cache.js';
 import { readOpenCodeCredentials } from '../opencode/auth.js';
 import { ENTERPRISE_MODE_ERROR, isEnterpriseMode } from '../enterprise-mode.js';
 
@@ -52,6 +53,39 @@ export const requestTextOf = (body) => {
   const prompt = promptBodySchema.safeParse(body);
   return (prompt.success ? prompt.data.text ?? '' : '').trim();
 };
+
+// The prompt body carries the attachments as `{ uri, name }` (`toPromptFile`
+// drops the mime), so an image is recognized from its data URL or its name.
+const attachmentFileSchema = z.object({ uri: z.string().nullish(), name: z.string().nullish() });
+const attachmentListSchema = z.array(attachmentFileSchema);
+const IMAGE_EXTENSIONS = new Set(['avif', 'bmp', 'gif', 'heic', 'heif', 'ico', 'jpeg', 'jpg', 'png', 'svg', 'webp']);
+
+const isImageFile = (file) => {
+  const uri = file.uri ?? '';
+  if (uri.startsWith('data:')) return uri.startsWith('data:image/');
+  const name = (file.name ?? '').toLowerCase();
+  const dot = name.lastIndexOf('.');
+  return dot > 0 && IMAGE_EXTENSIONS.has(name.slice(dot + 1));
+};
+
+/**
+ * The attachment fact for the classifier. Jev reads text only, so a pasted
+ * image has to be stated in the request it judges; without this the router
+ * discards the one cue that distinguishes "look at this screenshot" from
+ * "fix the image-upload endpoint". Kept beside `requestTextOf` rather than
+ * inside it, whose tests pin that the raw words stay untouched.
+ */
+export const attachmentHint = (body) => {
+  const files = attachmentListSchema.safeParse(body?.files).data ?? [];
+  const images = files.filter((file) => isImageFile(file));
+  if (images.length === 0) return '';
+  const names = images.map((file) => file.name).filter(Boolean).slice(0, 3);
+  const count = images.length === 1 ? 'an image' : `${images.length} images`;
+  return `\n\n[The user attached ${count}${names.length > 0 ? `: ${names.join(', ')}` : ''}]`;
+};
+
+/** What the classifier sees for this send: the user's words plus the attachment fact. */
+export const routingRequestTextOf = (body) => `${requestTextOf(body)}${attachmentHint(body)}`.trim();
 
 const agentBodySchema = z.object({ agent: z.string().trim().min(1) });
 
@@ -122,6 +156,8 @@ export function createRoutingRuntime({
   enterpriseMode = isEnterpriseMode,
   readPinnedEndpoint = readPinnedCustomEndpoint,
   listCatalogModels = null,
+  readSessionHistory = null,
+  readConfigEntries = null,
   now = Date.now,
 }) {
   const permissionDecisions = new Map();
@@ -220,7 +256,7 @@ export function createRoutingRuntime({
     return OpenCode.make({ baseUrl: buildOpenCodeUrl('/', '').replace(/\/$/, ''), headers });
   };
 
-  const readHistory = async ({ sessionId, directory }) => {
+  const readHistory = readSessionHistory ?? (async ({ sessionId, directory }) => {
     const client = openCodeClient(directory);
     const signal = AbortSignal.timeout(HISTORY_TIMEOUT_MS);
     return loadRoutingHistory({
@@ -231,6 +267,31 @@ export function createRoutingRuntime({
         { signal },
       ),
     });
+  });
+
+  // v2 answers the effective config as its documents, lowest priority first.
+  const readConfig = readConfigEntries ?? ((directory) => openCodeClient(directory).config.get());
+
+  /**
+   * "Try to preserve cache usage": the category to stay on instead of a lower
+   * one while the model that wrote the last answer likely still holds a warm
+   * prompt cache, or null to switch as Jev said (`cache.js`). OpenCode's
+   * warming config is read only once the plain cache lifetime has passed.
+   */
+  const cacheHold = async ({ config, chosen, composerAgent, lastAnswer, directory }) => {
+    if (!config.preserveCache || !lastAnswer) return null;
+    const held = cacheHoldCategory({
+      categories: enabledCategories(config), fallback: config.fallback, composerAgent, chosen, current: lastAnswer,
+    });
+    if (!held) return null;
+    const idle = now() - lastAnswer.completed;
+    if (idle < PROMPT_CACHE_TTL_MS) return held;
+    try {
+      return idle < warmWindowMs(await readConfig(directory)) ? held : null;
+    } catch (error) {
+      console.warn('[routing] OpenCode config unavailable, treating the prompt cache as cold:', errorMessage(error));
+      return null;
+    }
   };
 
   // A category without a model of its own means "the fallback pair"; a variant
@@ -300,8 +361,9 @@ export function createRoutingRuntime({
     let selection;
     if (state.autoReady) {
       let history = [];
+      let lastAnswer = null;
       try {
-        history = await readHistory({ sessionId, directory });
+        ({ history, lastAnswer } = await readHistory({ sessionId, directory }));
       } catch (error) {
         console.warn('[routing] history unavailable, routing on the request alone:', errorMessage(error));
       }
@@ -315,7 +377,14 @@ export function createRoutingRuntime({
         decision.confidence = result.confidence;
         decision.reason = result.reason;
         decision.ms = ms;
-        selection = chooseSelection(config, result.category, agent);
+        const held = await cacheHold({ config, chosen: result.category, composerAgent: agent, lastAnswer, directory });
+        if (held) {
+          // The send runs as the category the session is already on;
+          // `cacheHold.requested` keeps what Jev asked for.
+          decision.category = held.id;
+          decision.cacheHold = { requested: result.category.id };
+        }
+        selection = chooseSelection(config, held ?? result.category, agent);
       } catch (error) {
         decision.reason = 'error';
         decision.error = errorMessage(error);
@@ -365,7 +434,7 @@ export function createRoutingRuntime({
       directory,
       model: AUTO_MODEL_REF,
       agent: agentBodySchema.safeParse(body).data?.agent ?? null,
-      requestText: requestTextOf(body),
+      requestText: routingRequestTextOf(body),
     });
     if (!resolved) return null;
     // v2 prompt and command bodies carry neither model nor agent: switching

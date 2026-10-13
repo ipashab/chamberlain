@@ -40,7 +40,7 @@ const startInside = async ({ password = TOKEN } = {}) => {
   const { createUiAuth } = await import('../ui-auth/ui-auth.js');
   const auth = createUiAuth({ password, readSettingsFromDiskMigrated: async () => ({}) });
   const seen = [];
-  const state = { logins: 0, refuseNext: 0, sseClosed: 0, sseRequests: [] };
+  const state = { logins: 0, refuseNext: 0, sseClosed: 0, sseRequests: [], sseResponses: [] };
   const app = express();
   app.post('/auth/session', express.json(), (req, res) => {
     state.logins += 1;
@@ -71,6 +71,7 @@ const startInside = async ({ password = TOKEN } = {}) => {
   });
   app.get('/api/event', (req, res) => {
     state.sseRequests.push(req);
+    state.sseResponses.push(res);
     res.setHeader('content-type', 'text/event-stream');
     res.setHeader('cache-control', 'private, max-age=0');
     res.flushHeaders();
@@ -85,6 +86,9 @@ const startInside = async ({ password = TOKEN } = {}) => {
   app.get('/api/fs/raw', (req, res) => {
     res.setHeader('content-type', String(req.query.type));
     res.end('file');
+  });
+  app.get('/api/slow', (_req, res) => {
+    setTimeout(() => res.json({ late: true }), 300);
   });
   app.get('/api/page', (_req, res) => {
     res.setHeader('content-type', 'text/html; charset=utf-8');
@@ -187,6 +191,7 @@ describe('space routes and directories', () => {
     expect(classifySpacePath('/api/fs/preview/grant/index.html')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/preview/proxy/3000/')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/git/worktrees')).toBe('refused_across_boundary');
+    expect(classifySpacePath('/api/git/project-worktrees')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/git/integrate/merge')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/session/ses_1/move')).toBe('refused_across_boundary');
     // Express inside routes without regard to case.
@@ -196,6 +201,8 @@ describe('space routes and directories', () => {
     expect(classifySpacePath('/api/Session/ses_1/Move')).toBe('refused_across_boundary');
     expect(classifySpacePath('/api/session')).toBeNull();
     expect(classifySpacePath('/api/git/status')).toBeNull();
+    expect(classifySpacePath('/api/git/projects')).toBeNull();
+    expect(classifySpacePath('/api/fs/directory-stats')).toBeNull();
     expect(classifySpacePath('/api/fs/raw')).toBeNull();
     expect(classifySpacePath('/api/config/agents')).toBeNull();
   });
@@ -210,7 +217,7 @@ describe('space dispatcher', () => {
   const start = async (options = {}) => {
     inside = await startInside(options.inside);
     transport = transportTo(() => inside, options.transport);
-    dispatcher = createSpaceDispatcher({ transport, logger, now: options.now });
+    dispatcher = createSpaceDispatcher({ transport, logger, now: options.now, freeSocketTimeoutMs: options.freeSocketTimeoutMs });
     host = await startHost(dispatcher, options.host);
   };
 
@@ -319,6 +326,23 @@ describe('space dispatcher', () => {
   });
 
   // Guard one.
+  it('keeps an event stream open through a silence longer than the pool\'s idle timeout', async () => {
+    // The pool drops a free stream after this long idle; a live stream with no timeout of its own
+    // must not go with it: the host's event reader held one through an OpenCode restart inside,
+    // where the stream is silent for longer than that.
+    await start({ freeSocketTimeoutMs: 150 });
+    const response = await dispatcher.requestInside(ID, { path: '/api/event', headers: { accept: 'text/event-stream' } });
+    expect(response.statusCode).toBe(200);
+    const received = [];
+    response.on('data', (chunk) => received.push(chunk.toString('utf8')));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(response.destroyed).toBe(false);
+    inside.state.sseResponses[0].write('data: later\n\n');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(received.join('')).toContain('data: later');
+    response.destroy();
+  });
+
   it('refuses a prefixed request that names a directory outside the space', async () => {
     await start();
     for (const suffix of [
@@ -420,6 +444,20 @@ describe('space dispatcher', () => {
     const page = await fetch(host.url(`/api/spaces/${ID}/page`));
     expect(page.headers.get('content-type')).toBe('text/plain; charset=utf-8');
     expect(await page.text()).toBe('<script>alert(1)</script>');
+  });
+
+  it('survives a client that leaves between the request and the answer', async () => {
+    // The browser panel polls a space's dev servers and aborts the poll when it closes; the
+    // answer inside still arrives, and piping it into a response that is gone must not throw.
+    await start();
+    const controller = new AbortController();
+    const aborted = fetch(host.url(`/api/spaces/${ID}/slow`), { signal: controller.signal }).catch((error) => error);
+    await new Promise((resolve) => { setTimeout(resolve, 80); });
+    controller.abort();
+    expect((await aborted).name).toBe('AbortError');
+    await new Promise((resolve) => { setTimeout(resolve, 500); });
+    const next = await fetch(host.url(`/api/spaces/${ID}/echo`));
+    expect(next.status).toBe(200);
   });
 
   it('passes a 304 through: a browser revalidating its own copy is not a redirect', async () => {

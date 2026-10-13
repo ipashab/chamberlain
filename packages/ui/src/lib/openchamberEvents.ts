@@ -49,7 +49,19 @@ type BrowserControlRequestEvent = {
   requestId: string;
   action: string;
   parameters: Record<string, unknown>;
+  context: BrowserControlRequestContext;
 };
+
+/**
+ * The session that called the browser tool and the project it works in, each
+ * null when unknown (an older server, or a caller with no session).
+ */
+const browserControlRequestContextSchema = z.object({
+  directory: z.string().min(1).nullable().catch(null),
+  sessionId: z.string().min(1).nullable().catch(null),
+});
+export type BrowserControlRequestContext = z.infer<typeof browserControlRequestContextSchema>;
+const UNKNOWN_BROWSER_CONTROL_CONTEXT: BrowserControlRequestContext = { directory: null, sessionId: null };
 
 /**
  * The agent asked for a file to be shown in the user's file panel. Every
@@ -72,6 +84,9 @@ type AgentMemoryChangedEvent = {
   scope: 'global' | 'project';
   projectId?: string;
 };
+
+const projectContextChangedSchema = z.object({ projectId: z.string().min(1) });
+type ProjectContextChangedEvent = { type: 'project-context-changed' } & z.infer<typeof projectContextChangedSchema>;
 
 /**
  * One team's roster, mailbox or board moved. Like the memory event it carries
@@ -191,6 +206,7 @@ type OpenChamberEvent =
   | BrowserControlRequestEvent
   | FileOpenRequestEvent
   | BrowserProviderResetEvent
+  | ProjectContextChangedEvent
   | AgentMemoryChangedEvent
   | TeamChangedEvent
   | MissionChangedEvent
@@ -433,6 +449,12 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
     return;
   }
 
+  if (envelope.type === 'openchamber:project-context-changed') {
+    const parsed = projectContextChangedSchema.safeParse(envelope.properties);
+    if (parsed.success) for (const listener of listeners) listener({ type: 'project-context-changed', ...parsed.data });
+    return;
+  }
+
   if (envelope.type === 'openchamber:agent-memory-changed') {
     const properties = getEventProperties(envelope.properties);
     const scope = properties?.scope === 'project' ? 'project' : 'global';
@@ -540,6 +562,7 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
       parameters: rawParameters && typeof rawParameters === 'object' && !Array.isArray(rawParameters)
         ? rawParameters as Record<string, unknown>
         : {},
+      context: browserControlRequestContextSchema.safeParse(properties?.context).data ?? UNKNOWN_BROWSER_CONTROL_CONTEXT,
     };
     for (const listener of listeners) {
       listener(nextEvent);

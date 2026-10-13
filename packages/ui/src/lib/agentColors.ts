@@ -1,6 +1,7 @@
 import type { Agent } from '@/lib/opencode/model';
 import type { Theme } from '@/types/theme';
 import { chromaticDistance, contrastRatio } from './theme/color';
+import { isHexColor } from './colorPresets';
 
 /** `color` is a CSS color: a theme variable, or the hex the agent's config sets. */
 export type AgentColor = { color: string };
@@ -17,15 +18,14 @@ const SYNTAX_COLORS = [
 ] as const;
 const MIN_SEPARATION = 0.055;
 
-const CONFIGURED_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 // OpenCode's v1 migration writes #aaaaaa for theme names it cannot keep
 // ("primary", "accent"), so it stands for "no colour chosen", not grey.
 const MIGRATED_COLOR_PLACEHOLDER = '#aaaaaa';
 
-/** The colour set in the agent's config, when it is one OpenCode v2 accepts. */
-const configuredColor = (color: string | undefined): string | null => {
+/** The colour set in the agent's config, when it is one OpenCode v2 accepts (six-digit hex only). */
+export const configuredAgentColor = (color: string | null | undefined): string | null => {
   const value = color?.trim();
-  if (!value || !CONFIGURED_COLOR_PATTERN.test(value) || value.toLowerCase() === MIGRATED_COLOR_PLACEHOLDER) return null;
+  if (!value || !isHexColor(value) || value.toLowerCase() === MIGRATED_COLOR_PLACEHOLDER) return null;
   return value;
 };
 
@@ -83,7 +83,7 @@ export function createAgentColorResolver(theme: Theme, agents: readonly (Pick<Ag
   }
   const configured = new Map<string, AgentColor>();
   for (const agent of agents) {
-    const color = configuredColor(agent.color);
+    const color = configuredAgentColor(agent.color);
     if (color) configured.set(agent.name, { color });
   }
   return (name: string | undefined): AgentColor => {

@@ -37,7 +37,7 @@ const projectName = (project: ProjectEntry): string => project.label?.trim() || 
 type PickerSize = 'toolbar' | 'inline';
 
 const TRIGGER_CLASS = {
-    toolbar: 'h-8 max-w-[16rem] px-2 typography-ui-label font-medium',
+    toolbar: 'h-7 max-w-[16rem] px-2 typography-ui-label font-medium',
     inline: 'h-7 max-w-[14rem] px-1.5 typography-meta',
 } as const satisfies Record<PickerSize, string>;
 
@@ -182,7 +182,7 @@ export const SourceBoardTeamPicker: React.FC<{
 }> = ({ teams, selectedTeamId, onSelectTeam, onWorkspaceSwitched }) => {
     const { t } = useI18n();
     const { linear } = useRuntimeAPIs();
-    const workspaces = useLinearAuthStore((state) => state.status?.workspaces ?? []);
+    const workspaces = useLinearAuthStore((state) => state.status?.workspaces) ?? [];
     const current = workspaces.find((workspace) => workspace.current) ?? null;
     const [switching, setSwitching] = React.useState(false);
     const workspaceName = (workspace: (typeof workspaces)[number]) => workspace.name?.trim() || workspace.urlKey?.trim() || workspace.id;

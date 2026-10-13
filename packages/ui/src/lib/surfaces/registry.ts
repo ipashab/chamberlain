@@ -45,17 +45,18 @@ export type ContextSurfaceDescriptor = {
   /** Short tooltip explanation shown on the rail. */
   descriptionKey: I18nKey;
   /**
-   * Default panel width as a fraction of the available content area, used
-   * until the user manually resizes this surface.
+   * Default panel width in px, used until the user resizes this surface. The
+   * panel never takes more than the chat area leaves after a minimum chat
+   * column, so a small window shows it narrower.
    */
-  defaultWidthFraction: number;
+  defaultWidth: number;
 };
 
 export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'context',
     descriptionKey: 'contextRail.surface.context.description',
-    defaultWidthFraction: 0.45,
+    defaultWidth: 540,
     mode: 'context',
     icon: 'donut-chart-fill',
     labelKey: 'contextPanel.mode.context',
@@ -64,7 +65,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'git',
     descriptionKey: 'contextRail.surface.git.description',
-    defaultWidthFraction: 2 / 5,
+    defaultWidth: 480,
     mode: 'git',
     icon: 'git-branch',
     labelKey: 'layout.rightSidebar.git',
@@ -73,7 +74,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'pr',
     descriptionKey: 'contextRail.surface.pr.description',
-    defaultWidthFraction: 0.45,
+    defaultWidth: 540,
     mode: 'pr',
     icon: 'github',
     labelKey: 'contextPanel.mode.pr',
@@ -82,7 +83,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'diff',
     descriptionKey: 'contextRail.surface.diff.description',
-    defaultWidthFraction: 3 / 5,
+    defaultWidth: 640,
     mode: 'diff',
     icon: 'arrow-left-right',
     labelKey: 'contextPanel.mode.diff',
@@ -91,7 +92,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'walkthrough',
     descriptionKey: 'contextRail.surface.walkthrough.description',
-    defaultWidthFraction: 3 / 5,
+    defaultWidth: 640,
     mode: 'walkthrough',
     icon: 'route',
     labelKey: 'contextPanel.mode.walkthrough',
@@ -100,7 +101,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'editor',
     descriptionKey: 'contextRail.surface.editor.description',
-    defaultWidthFraction: 3 / 5,
+    defaultWidth: 640,
     mode: 'file',
     icon: 'file-edit',
     labelKey: 'contextPanel.mode.files',
@@ -109,7 +110,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'terminal',
     descriptionKey: 'contextRail.surface.terminal.description',
-    defaultWidthFraction: 3 / 5,
+    defaultWidth: 640,
     mode: 'terminal',
     icon: 'terminal-box',
     labelKey: 'layout.mainTab.terminal',
@@ -118,10 +119,10 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'notes',
     descriptionKey: 'contextRail.surface.notes.description',
-    // As wide as the files surface: this panel now carries a sidebar and a
-    // content column, and a third of the window leaves the content column too
+    // As wide as the files surface: this panel carries a sidebar and a
+    // content column, and a narrower panel leaves the content column too
     // narrow to read a note in.
-    defaultWidthFraction: 3 / 5,
+    defaultWidth: 640,
     mode: 'notes',
     icon: 'book-marked',
     labelKey: 'contextRail.surface.notes',
@@ -130,7 +131,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'plan',
     descriptionKey: 'contextRail.surface.plan.description',
-    defaultWidthFraction: 0.45,
+    defaultWidth: 540,
     mode: 'plan',
     icon: 'file-text',
     labelKey: 'contextPanel.mode.plan',
@@ -139,7 +140,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'browser',
     descriptionKey: 'contextRail.surface.browser.description',
-    defaultWidthFraction: 0.45,
+    defaultWidth: 540,
     mode: 'browser',
     icon: 'global',
     labelKey: 'contextPanel.mode.browser',
@@ -148,7 +149,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'chat',
     descriptionKey: 'contextRail.surface.chat.description',
-    defaultWidthFraction: 0.45,
+    defaultWidth: 540,
     mode: 'chat',
     icon: 'chat-4',
     labelKey: 'contextPanel.mode.chat',
@@ -159,7 +160,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     // needs its session: the rail shows it only while a board tab is open.
     id: 'team',
     descriptionKey: 'contextRail.surface.team.description',
-    defaultWidthFraction: 3 / 5,
+    defaultWidth: 640,
     mode: 'team',
     icon: 'layout-column',
     labelKey: 'contextPanel.mode.team',
@@ -172,7 +173,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     // address input and the recently read pulls.
     id: 'pulls',
     descriptionKey: 'contextRail.surface.pulls.description',
-    defaultWidthFraction: 1 / 2,
+    defaultWidth: 640,
     mode: 'pulls',
     icon: 'git-pull-request',
     labelKey: 'contextPanel.mode.pulls',
@@ -185,7 +186,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     // address input and the recently viewed issues.
     id: 'jira',
     descriptionKey: 'contextRail.surface.jira.description',
-    defaultWidthFraction: 1 / 2,
+    defaultWidth: 640,
     mode: 'jira',
     icon: 'task',
     labelKey: 'contextPanel.mode.jira',
@@ -194,7 +195,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'confluence',
     descriptionKey: 'contextRail.surface.confluence.description',
-    defaultWidthFraction: 1 / 2,
+    defaultWidth: 640,
     mode: 'confluence',
     icon: 'booklet',
     labelKey: 'contextPanel.mode.confluence',
@@ -203,7 +204,7 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'review',
     descriptionKey: 'contextRail.surface.review.description',
-    defaultWidthFraction: 1 / 2,
+    defaultWidth: 640,
     mode: 'review',
     icon: 'list-check-2',
     labelKey: 'contextPanel.mode.review',
@@ -211,15 +212,18 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   },
 ];
 
-const FRACTION_BY_MODE = new Map(CONTEXT_SURFACES.map((surface) => [surface.mode, surface.defaultWidthFraction]));
+const DEFAULT_WIDTH_BY_MODE = new Map(CONTEXT_SURFACES.map((surface) => [surface.mode, surface.defaultWidth]));
+
+/** A guest panel's default width, and the fallback for any unlisted mode. */
+export const GUEST_SURFACE_DEFAULT_WIDTH = 540;
 
 // Tablet width and up: below this the walkthrough cannot show a stop and its
 // code side by side, which is the whole point of the surface.
 export const WALKTHROUGH_MIN_WIDTH = 768;
 
-export const getContextSurfaceWidthFraction = (mode: ContextPanelMode): number => {
-  if (isPluginContextPanelMode(mode)) return 0.45;
-  return FRACTION_BY_MODE.get(mode) ?? 1 / 2;
+export const getContextSurfaceDefaultWidth = (mode: ContextPanelMode): number => {
+  if (isPluginContextPanelMode(mode)) return GUEST_SURFACE_DEFAULT_WIDTH;
+  return DEFAULT_WIDTH_BY_MODE.get(mode) ?? GUEST_SURFACE_DEFAULT_WIDTH;
 };
 
 const isKnownSurfaceId = (value: string, byId: ReadonlyMap<string, ContextSurfaceDescriptor>): boolean => {

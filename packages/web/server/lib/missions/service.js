@@ -534,5 +534,3 @@ export const createMissionsService = (dependencies) => {
     deleteMission,
   };
 };
-
-export { MissionError };

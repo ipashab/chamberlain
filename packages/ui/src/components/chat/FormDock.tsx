@@ -13,6 +13,7 @@ import type { FormRequest } from '@/lib/opencode/model';
 import { readWebSearchConsent } from '@/lib/opencode/websearch';
 import { useUIStore } from '@/stores/useUIStore';
 import { useScopedBlockingForms, useSessions } from '@/sync/sync-context';
+import { useRequestReveal } from '@/sync/request-reveal';
 import { useChatSessionSelection } from './chatColumnSession';
 import * as sessionActions from '@/sync/session-actions';
 import { useMobileAutocompleteMaxHeight } from './useMobileAutocompleteMaxHeight';
@@ -56,7 +57,7 @@ interface FormDockProps {
     hidden: boolean;
 }
 
-export const FormDock: React.FC<FormDockProps> = ({ sessionId, directory, hidden }) => {
+const FormDockView: React.FC<FormDockProps> = ({ sessionId, directory, hidden }) => {
     const forms = useScopedBlockingForms(sessionId, directory);
     // The session's own forms come first; a location-scoped form (an MCP
     // elicitation, owned by no session) follows and shows in every session
@@ -69,7 +70,7 @@ export const FormDock: React.FC<FormDockProps> = ({ sessionId, directory, hidden
         <AnimatePresence>
             {hidden || !form ? null : webSearchConsent
                 ? <WebSearchConsentDock key={form.id} form={form} consent={webSearchConsent} />
-                : <FormDockPanel key={form.id} form={form} waiting={forms.length - 1} />}
+                : <FormDockPanel key={form.id} form={form} forms={forms} />}
         </AnimatePresence>
     );
 };
@@ -98,7 +99,7 @@ const isStepAnswered = (field: FormField, values: FormValues): boolean => {
     return !(Array.isArray(answer) && answer.length === 0);
 };
 
-const FormDockPanel: React.FC<{ form: FormRequest; waiting: number }> = ({ form, waiting }) => {
+const FormDockPanel: React.FC<{ form: FormRequest; forms: FormRequest[] }> = ({ form, forms }) => {
     const { t } = useI18n();
     const isMobile = useUIStore((state) => state.isMobile);
     // The sessions of the chat this dock belongs to, which may be a chat of
@@ -119,6 +120,11 @@ const FormDockPanel: React.FC<{ form: FormRequest; waiting: number }> = ({ form,
     const [collapsed, setCollapsed] = React.useState(false);
     const [isResponding, setIsResponding] = React.useState(false);
     const [showErrors, setShowErrors] = React.useState(false);
+    const waiting = forms.length - 1;
+    // "Open session" on a question's toast expands the dock, including for a
+    // question queued behind the one shown.
+    const formIds = React.useMemo(() => forms.map((item) => item.id), [forms]);
+    useRequestReveal(formIds, React.useCallback(() => setCollapsed(false), []));
 
     const appliedSignatureRef = React.useRef(fieldsSignature);
     React.useEffect(() => {
@@ -257,7 +263,7 @@ const FormDockPanel: React.FC<{ form: FormRequest; waiting: number }> = ({ form,
                     onClick={() => setCollapsed((value) => !value)}
                     aria-expanded={!collapsed}
                     aria-label={collapsed ? t('chat.formDock.expandAria') : t('chat.formDock.collapseAria')}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-muted-foreground transition-colors hover:text-foreground"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-start text-muted-foreground transition-colors hover:text-foreground"
                 >
                     <Icon name="question" className="size-3.5 shrink-0 text-primary" />
                     <Icon name={collapsed ? 'arrow-up-s' : 'arrow-down-s'} className="size-4 shrink-0" />
@@ -381,3 +387,6 @@ const FormDockPanel: React.FC<{ form: FormRequest; waiting: number }> = ({ form,
         </ComposerFloatingPanel>
     );
 };
+
+/** Memoized: the composer re-renders on every keystroke, and nothing here depends on the draft text. */
+export const FormDock = React.memo(FormDockView);

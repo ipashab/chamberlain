@@ -57,6 +57,8 @@ export type ReferenceBrowserOptions = {
     linearTeamId?: string | null;
     /** Items kept outside the list (the picker's checked ones) that can still be previewed. */
     retainedItems?: ReadonlyMap<string, ReferencePickerItem>;
+    /** One item another surface asked to show, read on its own: it can be highlighted while the list does not hold it. */
+    pinnedItem?: ReferencePickerItem | null;
 };
 
 export function useReferenceBrowser({
@@ -66,6 +68,7 @@ export function useReferenceBrowser({
     initialGitHubKind,
     linearTeamId,
     retainedItems = NO_ITEMS,
+    pinnedItem = null,
 }: ReferenceBrowserOptions) {
     const [githubKind, setGitHubKind] = React.useState<GitHubReferenceKind>(initialGitHubKind ?? lastGitHubKind);
     const [githubFilter, setGitHubFilter] = React.useState<RepositoryReferenceFilter>(lastGitHubFilter.get(initialGitHubKind ?? lastGitHubKind) ?? DEFAULT_REPOSITORY_FILTER);
@@ -115,13 +118,22 @@ export function useReferenceBrowser({
             : linearList.items.map((issue) => ({ source: 'linear', issue }))
     ), [githubList.items, linearList.items, source]);
 
+    // An item opened from the preview (a Linear parent or sub-issue): it can be
+    // highlighted while the list does not hold it, like a pinned one.
+    const [openedItem, setOpenedItem] = React.useState<ReferencePickerItem | null>(null);
+
     // The highlight follows the list: the first row until the user moves it,
     // and the first row again when the highlighted one leaves the list.
-    const effectiveHighlightKey = highlightedKey && items.some((item) => referencePickerItemKey(item) === highlightedKey)
+    const pinnedKey = pinnedItem ? referencePickerItemKey(pinnedItem) : null;
+    const openedKey = openedItem ? referencePickerItemKey(openedItem) : null;
+    const effectiveHighlightKey = highlightedKey && (highlightedKey === pinnedKey || highlightedKey === openedKey || items.some((item) => referencePickerItemKey(item) === highlightedKey))
         ? highlightedKey
         : (items[0] ? referencePickerItemKey(items[0]) : null);
     const findItem = (key: string | null) => (key
-        ? items.find((item) => referencePickerItemKey(item) === key) ?? retainedItems.get(key) ?? null
+        ? items.find((item) => referencePickerItemKey(item) === key)
+            ?? retainedItems.get(key)
+            ?? (key === pinnedKey ? pinnedItem : null)
+            ?? (key === openedKey ? openedItem : null)
         : null);
     const highlightedItem = findItem(effectiveHighlightKey);
     const previewKey = isMobile ? mobilePreviewKey : effectiveHighlightKey;
@@ -188,6 +200,12 @@ export function useReferenceBrowser({
         searchRef.current?.focus();
     };
 
+    /** Previews an item the list may not hold, such as a Linear issue's parent or sub-issue. */
+    const openItem = (item: ReferencePickerItem) => {
+        setOpenedItem(item);
+        showItem(referencePickerItemKey(item));
+    };
+
     return {
         source,
         directory,
@@ -219,6 +237,7 @@ export function useReferenceBrowser({
         searchRef,
         handleNavigationKey,
         showItem,
+        openItem,
     };
 }
 

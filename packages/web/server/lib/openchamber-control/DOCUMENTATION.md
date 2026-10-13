@@ -13,11 +13,18 @@ other.
   scheduled-task action allowlist. `actions.js` marks CLI-only actions with
   `agentExposed: false` (currently `schedule.status`); the agent tool consumes
   the filtered `OPENCHAMBER_AGENT_TOOL_*` exports. `schedule.toggle` requires
-  the `disabled` boolean and replaces separate enable/disable actions;
+  the `disabled` boolean and replaces separate enable/disable actions; its
+  `enabled` is the saved state, never the requested one. Loop tasks and the
+  refusal to enable a repository loop are the scheduled-task service's rules
+  (`../scheduled-tasks/DOCUMENTATION.md`, *Local approval*).
   `schedule.list` also returns scheduler status as `scheduler`.
   `schedule.update` patches a task in place: only the fields the call names
   change, the id and run state stay, and a task driven by a loop file is
   refused (the file is its source).
+  `schedule.create` and `schedule.update` accept `targetSessionId`, validated
+  by the scheduled-task service. An empty update clears the target. Create
+  without a model inherits the target selection; an explicit agent overrides
+  it. A task without a target still requires a model.
 - `routes.js` is the authenticated CLI HTTP adapter. It forwards one action,
   preserves service status and partial-result details, and propagates request
   cancellation.
@@ -56,6 +63,26 @@ other.
 - Send and fork dispatches without an explicit model/agent/variant reuse the
   target session's last user-message selection before falling back to the
   configured defaults; only session creation resolves defaults directly.
+- `session.create` with `pullRequest` passes the number, and `worktree` and
+  `branch` as folder and local-branch names, to the session service, which
+  creates the worktree through the injected `createChangeRequestWorktree`
+  (the Git routes' contributor pipeline) before any session exists. A
+  malformed number, or `startRef`/`setUpstream` beside it, is a 400; a
+  server without that pipeline answers 501 and never makes a plain branch
+  worktree instead; a provider or transfer refusal keeps its status and
+  message, and no session is created.
+- `session.moveToWorktree` moves a session into a new worktree of its
+  repository and is the session service's `moveToWorktree`
+  (`../openchamber-sessions/worktree-move.js`). The session defaults to the
+  caller, the source directory to where that session lives (the global
+  session list, else the call's directory), `worktree` names the folder and
+  is required, `branch` and `startRef` are optional. The worktree is made by
+  the same `createWorktree` pipeline as `session.create`, waits for the same
+  bootstrap, then the checkout's uncommitted changes travel in one git stash
+  applied by hash, and the session is moved last through OpenCode's
+  `session.move`. A failure after the worktree exists removes it again and
+  puts the changes back; when restoring fails too, the error names the stash
+  so nothing is lost. A 409 means the changes did not apply on the start ref.
 - Default agents resolve from the owning project before global settings and
   OpenCode defaults. Directory-based requests identify the project before
   creating a worktree; existing linked worktrees resolve through Git's primary
@@ -86,7 +113,9 @@ other.
   tracker works. The URL decides what is stored: a GitHub pull or issue
   address becomes the GitHub entry (kind from the path, live state as for any
   link), a Linear issue address the Linear entry, anything else an `external`
-  entry shown by identifier. It only adds or refreshes links, never removes
+  entry shown by identifier. A GitLab merge request or issue address (the
+  `/-/merge_requests/N` shape on any host) is keyed by the thread, so linking
+  it again from a tab like `/diffs` or with a query refreshes the one entry. It only adds or refreshes links, never removes
   one: the user owns removal. A missing field or a non-http(s) URL is a 400 and
   nothing is written.
 - `file.open` shows a file in the user's viewer. `file-open.js` resolves a

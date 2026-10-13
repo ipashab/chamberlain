@@ -118,6 +118,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
   let walkthroughBindingService = null;
   let gitRepositoryCredentialRuntime = null;
   let networkOperations = null;
+  let gitWorktreeCreation = null;
   const getWalkthroughService = async () => {
     if (!walkthroughService) {
       const [service, pullRequest] = await Promise.all([
@@ -176,6 +177,30 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       directory,
       parentRemoteName,
       repositoryAuthority,
+    });
+  };
+
+  /**
+   * A worktree from a pull or merge request given by number, the same kind
+   * the New worktree dialog makes: the server reads the change request with
+   * the project's own account and creates the worktree through the Git
+   * routes' contributor pipeline. `name` and `branchName` default to the
+   * change request's head branch.
+   */
+  const createChangeRequestWorktree = async ({ directory, number, name, branchName }) => {
+    if (!(gitWorktreeCreation?.createWorktree instanceof Function)
+      || !(walkthroughBindingService?.resolveChangeRequestWorktreeSource instanceof Function)) {
+      throw Object.assign(new Error('Worktrees from pull requests are unavailable'), {
+        code: 'RUNTIME_UNSUPPORTED', status: 501,
+      });
+    }
+    const { headBranch, sourceRequest } = await walkthroughBindingService.resolveChangeRequestWorktreeSource({ directory, number });
+    const branch = branchName || headBranch;
+    return gitWorktreeCreation.createWorktree(directory, {
+      mode: 'existing',
+      branchName: branch,
+      worktreeName: name || branch,
+      changeRequestSource: sourceRequest,
     });
   };
 
@@ -403,44 +428,6 @@ export const createFeatureRoutesRuntime = (dependencies) => {
 
     const { getProfiles, getProfile, getGlobalIdentity, resolveRepositoryGitPaths } = await import('../git/index.js');
 
-    registerSkillRoutes(app, {
-      fs,
-      path,
-      os,
-      resolveProjectDirectory,
-      resolveOptionalProjectDirectory,
-      readSettingsFromDisk,
-      sanitizeSkillCatalogs,
-      isUnsafeSkillRelativePath,
-      refreshOpenCodeAfterConfigChange,
-      clientReloadDelayMs,
-      buildOpenCodeUrl,
-      getOpenCodeAuthHeaders,
-      getOpenCodePort,
-      getSkillSources,
-      discoverSkills,
-      mergeDiscoveredSkills,
-      createSkill,
-      updateSkill,
-      deleteSkill,
-      renameSkill,
-      isManagedSkillPath,
-      readSkillSupportingFile,
-      writeSkillSupportingFile,
-      deleteSkillSupportingFile,
-      SKILL_SCOPE,
-      SKILL_DIR,
-      getCuratedSkillsSources,
-      getCacheKey,
-      scanWithCache,
-      parseSkillRepoSource,
-      scanSkillsRepository,
-      installSkillsFromRepository,
-      fetchGitHubRepoMetas,
-      getProfiles,
-      getProfile,
-    });
-
     registerQuotaRoutes(app, { getQuotaProviders });
     registerSmallModelRoutes(app, { getSmallModelService });
     registerSessionGoalRoutes(app);
@@ -622,6 +609,46 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       fsImpl: fsPromises,
       snapshotRoot: path.join(openchamberDataDir, 'git-ssh-operation-keys'),
     });
+    registerSkillRoutes(app, {
+      fs,
+      path,
+      os,
+      resolveProjectDirectory,
+      resolveOptionalProjectDirectory,
+      readSettingsFromDisk,
+      sanitizeSkillCatalogs,
+      isUnsafeSkillRelativePath,
+      refreshOpenCodeAfterConfigChange,
+      clientReloadDelayMs,
+      buildOpenCodeUrl,
+      getOpenCodeAuthHeaders,
+      getOpenCodePort,
+      getSkillSources,
+      discoverSkills,
+      mergeDiscoveredSkills,
+      createSkill,
+      updateSkill,
+      deleteSkill,
+      renameSkill,
+      isManagedSkillPath,
+      readSkillSupportingFile,
+      writeSkillSupportingFile,
+      deleteSkillSupportingFile,
+      SKILL_SCOPE,
+      SKILL_DIR,
+      getCuratedSkillsSources,
+      getCacheKey,
+      scanWithCache,
+      parseSkillRepoSource,
+      scanSkillsRepository,
+      installSkillsFromRepository,
+      fetchGitHubRepoMetas,
+      getProfiles,
+      getProfile,
+      createHttpsCredentialReference,
+      resolveSourceControlAccount,
+      credentialResolver: gitCredentialResolver,
+    });
     gitRepositoryCredentialRuntime = createGitRepositoryCredentialRuntime({
       readBinding: (directory) => walkthroughBindingService.get(directory),
       credentialResolver: gitCredentialResolver,
@@ -655,7 +682,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     });
     await registerBuiltInGuests({ persistPath: extensionsPersistPath(openchamberDataDir), root: routeDependencies.builtInExtensionsDir });
     registerGuestRoutes(app, { openchamberDataDir, openchamberVersion, resolveGitBinaryForSpawn, resolveOptionalProjectDirectory, getSmallModelService, onGuestDeactivated, surfaceViewerHeaders });
-    registerGitRoutes(app, {
+    gitWorktreeCreation = registerGitRoutes(app, {
       // Identities for accounts connected before identities carried one are
       // made the first time identities are listed: a moment someone asked for,
       // not startup, where a development restart can kill a process holding a
@@ -732,6 +759,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
   return {
     registerRoutes,
     hydrateBoundCheckout,
+    createChangeRequestWorktree,
     /** Writes the Git credential helper's endpoint file; a no-op until the Git routes are registered. */
     publishRepositoryCredentialEndpoint: async () => { await gitRepositoryCredentialRuntime?.publish(); },
   };

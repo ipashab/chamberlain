@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Session } from '@/lib/opencode/model';
 import type { SessionMetadataRecord } from './sessionReviewMetadata';
-import { buildLinkedGuestIssue, buildLinkedIssue, buildLinkedIssueId, buildLinkedLinearIssue, canOpenLinearIssueOnBoard, getDistinctLinkedIssues, getGitLabThreadRef, getLinkedGitHubPullRequests, getLinkedGitLabThreads, getLinkedIssues, getLinkedSidebarChanges, getLinkedSidebarIssues, withLinkedIssue, type LinkedIssue } from './linkedIssues';
+import { buildLinkedGuestIssue, buildLinkedIssue, buildLinkedIssueId, buildLinkedLinearIssue, getDistinctLinkedIssues, getGitLabThreadRef, getLinkedGitHubPullRequests, getLinkedGitLabThreads, getLinkedIssues, getLinkedSidebarChanges, getLinkedSidebarIssues, withLinkedIssue, type LinkedIssue } from './linkedIssues';
 
 type LinkedRepositoryIssue = Extract<LinkedIssue, { kind: 'issue' | 'pull' }>;
 
@@ -295,18 +295,6 @@ describe('withLinkedIssue', () => {
   });
 });
 
-describe('canOpenLinearIssueOnBoard', () => {
-  test('opens the board when Linear is connected and the shell has one', () => {
-    expect(canOpenLinearIssueOnBoard({ linearAvailable: true, linearConnected: true, boardAvailable: true })).toBe(true);
-  });
-
-  test('falls back when Linear is missing or disconnected, or there is no board', () => {
-    expect(canOpenLinearIssueOnBoard({ linearAvailable: false, linearConnected: true, boardAvailable: true })).toBe(false);
-    expect(canOpenLinearIssueOnBoard({ linearAvailable: true, linearConnected: false, boardAvailable: true })).toBe(false);
-    expect(canOpenLinearIssueOnBoard({ linearAvailable: true, linearConnected: true, boardAvailable: false })).toBe(false);
-  });
-});
-
 describe('getLinkedGitHubPullRequests', () => {
   test('reads the repository of each linked GitHub PR from its id', () => {
     const session = sessionWith([
@@ -376,6 +364,17 @@ describe('links to github.com from extensions and agents', () => {
     expect(getLinkedSidebarIssues(session)).toEqual([
       { source: 'github', key: 'acme/app#9', owner: 'acme', repo: 'app', number: 9, url: 'https://github.com/acme/app/issues/9', title: 'Bug' },
     ]);
+  });
+});
+
+describe('links to a GitLab thread', () => {
+  test('are listed once, at the first link, whatever address each was written with', () => {
+    const session = sessionWith([
+      { id: 'link:https://gitlab.com/a/b/-/merge_requests/600', kind: 'external', thread: 'change', identifier: '!600', title: 'MR', url: 'https://gitlab.com/a/b/-/merge_requests/600', linkedAt: 1 },
+      { id: 'link:https://gitlab.com/a/b/-/merge_requests/600/diffs', kind: 'external', thread: 'change', identifier: '!600', title: 'MR review', url: 'https://gitlab.com/a/b/-/merge_requests/600/diffs', linkedAt: 2 },
+      { id: 'link:https://gitlab.com/a/b/-/merge_requests/601', kind: 'external', thread: 'change', identifier: '!601', title: 'Other', url: 'https://gitlab.com/a/b/-/merge_requests/601', linkedAt: 3 },
+    ]);
+    expect(getDistinctLinkedIssues(session).map((entry) => entry.title)).toEqual(['MR', 'Other']);
   });
 });
 
