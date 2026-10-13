@@ -196,8 +196,9 @@ export const MainLayout: React.FC = () => {
                                 <div className="relative flex flex-1 min-h-0 overflow-hidden" data-page-scroll-lock="true">
                                     <WorkspaceLayout>
                                         {/* The chat region: what the layout tree places wherever
-                                            the chat node sits. The work-status panel measures
-                                            this column, not the chat in it. */}
+                                            the chat node sits. The work-status panel measures the
+                                            workspace row above it, never this column: every region
+                                            share moves it, and so does the card's own column. */}
                                         <div className="relative flex flex-1 min-h-0 min-w-0 overflow-hidden" data-page-scroll-lock="true" data-chat-area="true">
                                             {/* The chat column. */}
                                             <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-workspace-chat="true">

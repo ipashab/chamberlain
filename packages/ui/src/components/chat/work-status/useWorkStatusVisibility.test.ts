@@ -157,6 +157,18 @@ const renderVisibility = (args: Args, rowWidth: number) => {
   };
 };
 
+/**
+ * A stand-in row node whose `closest` answers through the given lookup, the
+ * way the real DOM walks from the row up to the workspace row and the chat
+ * area it wraps. Both new-placement tests share one stub so the suite's
+ * chained-assertion count stays put.
+ */
+// SAFETY: the stub carries only the two members the hook reads on the row
+// node (getBoundingClientRect and closest).
+type StubBox = { getBoundingClientRect: () => { width: number } };
+const stubRowNode = (resolve: (selector: string) => StubBox | null): HTMLDivElement =>
+  ({ getBoundingClientRect: () => ({ width: 0 }), closest: resolve }) as unknown as HTMLDivElement;
+
 beforeEach(() => {
   panelByDirectory = {};
   panelEnabled = true;
@@ -189,17 +201,17 @@ describe('useWorkStatusVisibility', () => {
     teardown();
   });
 
-  test('prefers the marked chat area over the row it was handed', () => {
-    // The row is what the context panel squeezes, over an animation. Measuring
-    // it made the panel reappear only once that number caught up, so the chat
-    // widened first and narrowed again afterwards.
+  test('prefers the workspace row over both the chat area and the handed row', () => {
+    // The measurement must not move when the card's own column opens: the
+    // chat node it can squeeze sits inside the workspace row, whose width
+    // comes from its parent. Measuring the chat re-decided the card's own
+    // input on every open: column opens, chat narrows past the threshold,
+    // column closes, chat widens back — forever.
     const dom = installMinimalDom();
     const root: Root = createRoot(dom.container);
-    const chatArea = { getBoundingClientRect: () => ({ width: REQUIRED }) };
-    const rowNode = {
-      getBoundingClientRect: () => ({ width: 0 }),
-      closest: () => chatArea,
-    } as unknown as HTMLDivElement;
+    const workspaceRow = { getBoundingClientRect: () => ({ width: REQUIRED }) };
+    const chatArea = { getBoundingClientRect: () => ({ width: 0 }) };
+    const rowNode = stubRowNode((selector) => (selector === '[data-workspace-row]' ? workspaceRow : chatArea));
     const result = { visible: false };
 
     const Probe: React.FC = () => {
@@ -216,7 +228,43 @@ describe('useWorkStatusVisibility', () => {
     };
 
     act(() => { root.render(React.createElement(Probe)); });
-    expect(observed).toEqual([chatArea]);
+    expect(observed).toEqual([workspaceRow]);
+    expect(result.visible).toBe(true);
+
+    act(() => { root.unmount(); });
+    dom.restore();
+  });
+
+  test('keeps the card when the squeezed chat is narrow but the row is wide', () => {
+    // Three regions beside the chat leave it under the threshold while the
+    // row still affords the card's column. The row decides; a chat-based
+    // reading re-decided the card's own input on every open — column opens,
+    // chat narrows past the threshold, column closes, chat widens back,
+    // forever — which showed as the column flickering against the panels.
+    const dom = installMinimalDom();
+    const root: Root = createRoot(dom.container);
+    const workspaceRow = { getBoundingClientRect: () => ({ width: REQUIRED }) };
+    const chatArea = { getBoundingClientRect: () => ({ width: REQUIRED - 400 }) };
+    const rowNode = stubRowNode((selector) => (selector === '[data-workspace-row]' ? workspaceRow : chatArea));
+    const result = { visible: false };
+
+    const Probe: React.FC = () => {
+      const { rowRef, visible } = useWorkStatusVisibility({
+        isMobile: false,
+        isVSCode: false,
+      });
+      result.visible = visible;
+      React.useLayoutEffect(() => {
+        rowRef(rowNode);
+        return () => rowRef(null);
+      }, [rowRef]);
+      return null;
+    };
+
+    act(() => { root.render(React.createElement(Probe)); });
+    // Only the row is ever observed, and the narrow chat area never vetoes
+    // the card: the column opens against the panels and stays open.
+    expect(observed).toEqual([workspaceRow]);
     expect(result.visible).toBe(true);
 
     act(() => { root.unmount(); });
@@ -226,8 +274,8 @@ describe('useWorkStatusVisibility', () => {
   test('measures a container the panel cannot resize, never the chat column', () => {
     // The measured element must not depend on whether the panel is showing:
     // otherwise hiding the panel widens it and re-shows the panel, forever.
-    // In the app this is the chat area (chat + context panel); here `closest`
-    // finds nothing, so the hook falls back to the row it was given.
+    // In the app this is the workspace row; here `closest` finds nothing,
+    // so the hook falls back to the row it was given.
     const { rowNode, teardown } = renderVisibility(
       { isMobile: false, isVSCode: false },
       REQUIRED,

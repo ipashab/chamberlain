@@ -100,22 +100,25 @@ export const useWorkStatusVisibility = ({ isMobile, isVSCode }: Options): Result
   // it to offer the panel as an overlay instead of pretending it is off.
   const layoutAllows = !isMobile && !isVSCode && !contextPanelOpen;
 
-  // Measures the chat AREA — the container holding the chat and the context
-  // panel together — not the chat row inside it.
+  // Measures the workspace ROW — the outermost flex row that holds the
+  // layout tree (chat and every region) and the card's own column.
   //
-  // The row is what the context panel squeezes, and it squeezes it over its
-  // width animation. Measuring the row therefore reported a width that was
-  // still catching up while the context panel collapsed, so this panel only
-  // reappeared once that number crossed the threshold: the chat widened first
-  // and narrowed again afterwards. The chat area's width does not move when
-  // the context panel opens, so the reading is correct the instant it closes.
+  // The row's width comes from its parent: nothing inside it can move it.
+  // The chat itself cannot be the input — every region's share moves it, and
+  // so does this card's own column, which opens at the row's end edge
+  // whenever no region shows tabs there. Measuring anything the card can
+  // resize makes the two states each re-decide the other's input forever:
+  // the column opens, the narrower chat crosses the threshold, the column
+  // closes, the chat crosses back, and the whole row thrashes on every
+  // ResizeObserver tick. The row is the one container whose width is the
+  // same whether the card is showing.
   //
-  // It is also the stable input the oscillation argument needs: this panel's
-  // own visibility cannot change the width being measured.
+  // Runtimes without a workspace row (VS Code, mini chat) fall back to the
+  // chat area and then to the handed row; none of them shows the card.
   React.useEffect(() => {
     if (!rowNode || typeof ResizeObserver === 'undefined') return undefined;
 
-    const measured = rowNode.closest<HTMLElement>('[data-chat-area]') ?? rowNode;
+    const measured = rowNode.closest<HTMLElement>('[data-workspace-row]') ?? rowNode.closest<HTMLElement>('[data-chat-area]') ?? rowNode;
     setWideEnough(measured.getBoundingClientRect().width >= WORK_STATUS_REQUIRED_ROW_WIDTH);
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
