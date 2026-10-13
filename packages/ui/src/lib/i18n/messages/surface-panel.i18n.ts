@@ -21,6 +21,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Empty region',
     'contextPanel.region.gutterAria': 'Resize regions',
     'contextPanel.region.splitHint': 'Open a panel here, or close this region.',
+    'contextPanel.region.openHere': 'Open a panel here',
   },
   nl: {
     'contextPanel.surface.unavailable': 'Het oppervlak van deze extensie is niet beschikbaar. Controleer in Instellingen → Extensies of het is ingeschakeld en goedgekeurd.',
@@ -43,6 +44,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Leeg deelvenster',
     'contextPanel.region.gutterAria': 'Grootte van deelvensters aanpassen',
     'contextPanel.region.splitHint': 'Open hier een paneel of sluit dit deelvenster.',
+    'contextPanel.region.openHere': 'Open hier een paneel',
   },
   de: {
     'contextPanel.surface.unavailable': 'Die Oberfläche dieser Erweiterung ist nicht verfügbar. Prüfe unter Einstellungen → Erweiterungen, ob sie aktiviert und freigegeben ist.',
@@ -65,6 +67,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Leerer Bereich',
     'contextPanel.region.gutterAria': 'Größe der Bereiche ändern',
     'contextPanel.region.splitHint': 'Öffne hier ein Panel oder schließe diesen Bereich.',
+    'contextPanel.region.openHere': 'Panel hier öffnen',
   },
   fr: {
     'contextPanel.surface.unavailable': 'La surface de cette extension est indisponible. Vérifiez qu\'elle est activée et approuvée dans Réglages → Extensions.',
@@ -87,6 +90,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Zone vide',
     'contextPanel.region.gutterAria': 'Redimensionner les zones',
     'contextPanel.region.splitHint': 'Ouvrez un panneau ici ou fermez cette zone.',
+    'contextPanel.region.openHere': 'Ouvrir un panneau ici',
   },
   es: {
     'contextPanel.surface.unavailable': 'La superficie de esta extensión no está disponible. Comprueba que esté activada y aprobada en Ajustes → Extensiones.',
@@ -109,6 +113,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Zona vacía',
     'contextPanel.region.gutterAria': 'Redimensionar zonas',
     'contextPanel.region.splitHint': 'Abre un panel aquí o cierra esta zona.',
+    'contextPanel.region.openHere': 'Abrir un panel aquí',
   },
   ja: {
     'contextPanel.surface.unavailable': 'この拡張機能のサーフェスは利用できません。設定 → 拡張機能で有効化と承認を確認してください。',
@@ -131,6 +136,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': '空の領域',
     'contextPanel.region.gutterAria': '領域のサイズを変更',
     'contextPanel.region.splitHint': 'ここでパネルを開くか、この領域を閉じてください。',
+    'contextPanel.region.openHere': 'ここでパネルを開く',
   },
   'pt-BR': {
     'contextPanel.surface.unavailable': 'A superfície desta extensão está indisponível. Verifique se ela está ativada e aprovada em Configurações → Extensões.',
@@ -153,6 +159,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Região vazia',
     'contextPanel.region.gutterAria': 'Redimensionar regiões',
     'contextPanel.region.splitHint': 'Abra um painel aqui ou feche esta região.',
+    'contextPanel.region.openHere': 'Abrir um painel aqui',
   },
   uk: {
     'contextPanel.surface.unavailable': 'Поверхня цього розширення недоступна. Перевірте, чи воно ввімкнене й схвалене в Налаштування → Розширення.',
@@ -175,6 +182,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Порожня область',
     'contextPanel.region.gutterAria': 'Змінити розмір областей',
     'contextPanel.region.splitHint': 'Відкрийте тут панель або закрийте цю область.',
+    'contextPanel.region.openHere': 'Відкрити панель тут',
   },
   ru: {
     'contextPanel.surface.unavailable': 'Поверхность этого расширения недоступна. Проверьте, что оно включено и одобрено в разделе Настройки → Расширения.',
@@ -197,6 +205,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Пустая область',
     'contextPanel.region.gutterAria': 'Изменить размер областей',
     'contextPanel.region.splitHint': 'Откройте здесь панель или закройте эту область.',
+    'contextPanel.region.openHere': 'Открыть панель здесь',
   },
   ko: {
     'contextPanel.surface.unavailable': '이 확장의 표면을 사용할 수 없습니다. 설정 → 확장에서 활성화 및 승인 여부를 확인하세요.',
@@ -219,6 +228,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': '빈 영역',
     'contextPanel.region.gutterAria': '영역 크기 조절',
     'contextPanel.region.splitHint': '여기에 패널을 열거나 이 영역을 닫으세요.',
+    'contextPanel.region.openHere': '여기에 패널 열기',
   },
   pl: {
     'contextPanel.surface.unavailable': 'Powierzchnia tego rozszerzenia jest niedostępna. Sprawdź w Ustawienia → Rozszerzenia, czy jest włączone i zatwierdzone.',
@@ -241,6 +251,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Pusty obszar',
     'contextPanel.region.gutterAria': 'Zmień rozmiar obszarów',
     'contextPanel.region.splitHint': 'Otwórz tutaj panel lub zamknij ten obszar.',
+    'contextPanel.region.openHere': 'Otwórz tutaj panel',
   },
   'zh-CN': {
     'contextPanel.surface.unavailable': '此扩展的画面不可用。请在设置 → 扩展中确认它已启用并已批准。',
@@ -263,6 +274,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': '空白区域',
     'contextPanel.region.gutterAria': '调整区域大小',
     'contextPanel.region.splitHint': '在此打开面板，或关闭此区域。',
+    'contextPanel.region.openHere': '在此打开面板',
   },
   'zh-TW': {
     'contextPanel.surface.unavailable': '此擴充功能的畫面無法使用。請在設定 → 擴充功能中確認它已啟用並已核准。',
@@ -285,6 +297,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': '空白區域',
     'contextPanel.region.gutterAria': '調整區域大小',
     'contextPanel.region.splitHint': '在此開啟面板，或關閉此區域。',
+    'contextPanel.region.openHere': '在此開啟面板',
   },
   tr: {
     'contextPanel.surface.unavailable': 'Bu uzantının yüzeyi kullanılamıyor. Ayarlar → Uzantılar\'da etkin ve onaylı olduğunu kontrol edin.',
@@ -307,6 +320,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'Boş alan',
     'contextPanel.region.gutterAria': 'Alanları yeniden boyutlandır',
     'contextPanel.region.splitHint': 'Buraya bir panel aç veya bu alanı kapat.',
+    'contextPanel.region.openHere': 'Buraya bir panel aç',
   },
   ar: {
     'contextPanel.surface.unavailable': 'واجهة هذه الإضافة غير متاحة. تحقق من أنها مفعّلة وموافق عليها في الإعدادات → الإضافات.',
@@ -329,6 +343,7 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'منطقة فارغة',
     'contextPanel.region.gutterAria': 'تغيير حجم المناطق',
     'contextPanel.region.splitHint': 'افتح لوحة هنا أو أغلق هذه المنطقة.',
+    'contextPanel.region.openHere': 'افتح لوحة هنا',
   },
   he: {
     'contextPanel.surface.unavailable': 'המשטח של ההרחבה הזו אינו זמין. יש לוודא שהיא מופעלת ומאושרת בהגדרות ← הרחבות.',
@@ -351,5 +366,6 @@ export const surfacePanelI18n = {
     'contextPanel.region.empty': 'אזור ריק',
     'contextPanel.region.gutterAria': 'שינוי גודל אזורים',
     'contextPanel.region.splitHint': 'אפשר לפתוח כאן לוח או לסגור אזור זה.',
+    'contextPanel.region.openHere': 'פתח כאן לוח',
   },
 } as const;

@@ -1737,6 +1737,7 @@ export const dict = {
   'contextPanel.browser.trustNotice': 'Pagina\'s die hier worden geopend draaien met volledige toegang tot OpenChamber — nodig voor inspectie en schermafbeeldingen. Open alleen sites die u vertrouwt: een kwaadaardige pagina kan uw gegevens lezen of namens u handelen.',
   'contextPanel.tab.closeTabAria': 'Tabblad {label} sluiten',
   'contextPanel.tab.menu.close': 'Sluiten',
+  'contextPanel.tab.menu.moveToRegion': 'Verplaatsen naar het deelvenster',
   'contextPanel.tab.menu.closeOthers': 'Andere sluiten',
   'contextPanel.tab.menu.closeToLeft': 'Tabbladen links sluiten',
   'contextPanel.tab.menu.closeToRight': 'Tabbladen rechts sluiten',

@@ -1765,6 +1765,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.browser.trustNotice': '在此開啟的頁面以對 OpenChamber 的完整存取權限執行 — 檢查與截圖需要此權限。僅開啟你信任的網站：惡意頁面可能讀取你的資料或以你的身分執行操作。',
   'contextPanel.tab.closeTabAria': '關閉 {label} 分頁',
   'contextPanel.tab.menu.close': '關閉',
+  'contextPanel.tab.menu.moveToRegion': '移至區域',
   'contextPanel.tab.menu.closeOthers': '關閉其他',
   'contextPanel.tab.menu.closeToLeft': '關閉左側分頁',
   'contextPanel.tab.menu.closeToRight': '關閉右側分頁',

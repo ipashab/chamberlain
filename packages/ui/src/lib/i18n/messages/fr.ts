@@ -1500,6 +1500,7 @@ export const dict = {
   'contextPanel.browser.emptyHint': 'Entrez une adresse ci-dessus pour commencer à naviguer sur le Web',
   'contextPanel.tab.closeTabAria': 'Fermer l\'onglet {label}',
   'contextPanel.tab.menu.close': 'Fermer',
+  'contextPanel.tab.menu.moveToRegion': 'Déplacer vers la zone',
   'contextPanel.tab.menu.closeOthers': 'Fermer les autres',
   'contextPanel.tab.menu.closeToLeft': 'Fermer les onglets à gauche',
   'contextPanel.tab.menu.closeToRight': 'Fermer les onglets à droite',

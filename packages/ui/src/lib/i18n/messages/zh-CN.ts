@@ -1746,6 +1746,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.browser.trustNotice': '在此打开的页面以对 OpenChamber 的完全访问权限运行 — 检查和截图需要此权限。仅打开你信任的站点：恶意页面可能读取你的数据或以你的身份执行操作。',
   'contextPanel.tab.closeTabAria': '关闭 {label} 标签',
   'contextPanel.tab.menu.close': '关闭',
+  'contextPanel.tab.menu.moveToRegion': '移至区域',
   'contextPanel.tab.menu.closeOthers': '关闭其他',
   'contextPanel.tab.menu.closeToLeft': '关闭左侧标签',
   'contextPanel.tab.menu.closeToRight': '关闭右侧标签',

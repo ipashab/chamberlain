@@ -1721,6 +1721,7 @@ export const dict = {
   'contextPanel.browser.trustNotice': 'דפים שנפתחים כאן רצים עם גישה מלאה ל-OpenChamber — זה נדרש לבדיקת רכיבים ולצילומי מסך. יש לפתוח רק אתרים מהימנים: דף זדוני עלול לקרוא את הנתונים שלך או לפעול בשמך.',
   'contextPanel.tab.closeTabAria': 'סגור את הכרטיסייה {label}',
   'contextPanel.tab.menu.close': 'סגור',
+  'contextPanel.tab.menu.moveToRegion': 'העבר לאזור',
   'contextPanel.tab.menu.closeOthers': 'סגור את האחרות',
   'contextPanel.tab.menu.closeToLeft': 'סגור כרטיסיות משמאל',
   'contextPanel.tab.menu.closeToRight': 'סגור כרטיסיות מימין',

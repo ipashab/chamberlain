@@ -1793,6 +1793,7 @@ export const dict: Record<I18nKey, string> = {
   'terminalView.preview.openTitle': '미리보기 패널 열기',
   'contextPanel.tab.closeTabAria': '{label} 탭 닫기',
   'contextPanel.tab.menu.close': '닫기',
+  'contextPanel.tab.menu.moveToRegion': '영역으로 이동',
   'contextPanel.tab.menu.closeOthers': '다른 탭 닫기',
   'contextPanel.tab.menu.closeToLeft': '왼쪽 탭 닫기',
   'contextPanel.tab.menu.closeToRight': '오른쪽 탭 닫기',

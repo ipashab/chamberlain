@@ -1734,6 +1734,7 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.browser.trustNotice": "Las páginas que abras aquí se ejecutan con acceso completo a OpenChamber: necesario para la inspección y las capturas. Abre solo sitios de confianza: una página maliciosa podría leer tus datos o actuar en tu nombre.",
   "contextPanel.tab.closeTabAria": "Cerrar pestaña {label}",
   "contextPanel.tab.menu.close": "Cerrar",
+  "contextPanel.tab.menu.moveToRegion": "Mover a la zona",
   "contextPanel.tab.menu.closeOthers": "Cerrar otras",
   "contextPanel.tab.menu.closeToLeft": "Cerrar pestañas a la izquierda",
   "contextPanel.tab.menu.closeToRight": "Cerrar pestañas a la derecha",

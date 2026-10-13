@@ -2160,6 +2160,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.preview.upstreamUnreachableHint': 'Upewnij się, że serwer deweloperski nadal działa, a następnie ponów próbę.',
   'contextPanel.tab.closeTabAria': 'Zamknij kartę {label}',
   'contextPanel.tab.menu.close': 'Zamknij',
+  'contextPanel.tab.menu.moveToRegion': 'Przenieś do obszaru',
   'contextPanel.tab.menu.closeOthers': 'Zamknij pozostałe',
   'contextPanel.tab.menu.closeToLeft': 'Zamknij karty po lewej',
   'contextPanel.tab.menu.closeToRight': 'Zamknij karty po prawej',

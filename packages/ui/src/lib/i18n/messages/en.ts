@@ -1745,6 +1745,7 @@ export const dict = {
   'contextPanel.browser.trustNotice': 'Pages opened here run with full access to OpenChamber — needed for inspect and screenshots. Only open sites you trust: a malicious page could read your data or act on your behalf.',
   'contextPanel.tab.closeTabAria': 'Close {label} tab',
   'contextPanel.tab.menu.close': 'Close',
+  'contextPanel.tab.menu.moveToRegion': 'Move to region',
   'contextPanel.tab.menu.closeOthers': 'Close others',
   'contextPanel.tab.menu.closeToLeft': 'Close tabs to the left',
   'contextPanel.tab.menu.closeToRight': 'Close tabs to the right',

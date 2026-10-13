@@ -1721,6 +1721,7 @@ export const dict = {
   'contextPanel.browser.trustNotice': 'تعمل الصفحات المفتوحة هنا بوصول كامل إلى OpenChamber — وهو أمر لازم للفحص ولقطات الشاشة. لا تفتح إلا المواقع التي تثق بها: قد تقرأ صفحة خبيثة بياناتك أو تتصرف نيابة عنك.',
   'contextPanel.tab.closeTabAria': 'إغلاق علامة التبويب {label}',
   'contextPanel.tab.menu.close': 'إغلاق',
+  'contextPanel.tab.menu.moveToRegion': 'نقل إلى المنطقة',
   'contextPanel.tab.menu.closeOthers': 'إغلاق الأخرى',
   'contextPanel.tab.menu.closeToLeft': 'إغلاق علامات التبويب إلى اليسار',
   'contextPanel.tab.menu.closeToRight': 'إغلاق علامات التبويب إلى اليمين',

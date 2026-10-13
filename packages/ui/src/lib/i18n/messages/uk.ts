@@ -1734,6 +1734,7 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.browser.trustNotice": "Сторінки, відкриті тут, працюють із повним доступом до OpenChamber — це потрібно для inspect і скріншотів. Відкривайте лише сайти, яким довіряєте: шкідлива сторінка може прочитати ваші дані чи діяти від вашого імені.",
   "contextPanel.tab.closeTabAria": "Закрити вкладку {label}",
   "contextPanel.tab.menu.close": "Закрити",
+  "contextPanel.tab.menu.moveToRegion": "Перемістити в область",
   "contextPanel.tab.menu.closeOthers": "Закрити інші",
   "contextPanel.tab.menu.closeToLeft": "Закрити вкладки ліворуч",
   "contextPanel.tab.menu.closeToRight": "Закрити вкладки праворуч",

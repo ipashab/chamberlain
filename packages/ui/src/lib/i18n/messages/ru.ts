@@ -1746,6 +1746,7 @@ export const dict = {
   'contextPanel.browser.trustNotice': 'Страницы, открытые здесь, работают с полным доступом к OpenChamber — это нужно для инспекции и скриншотов. Открывайте только доверенные сайты: вредоносная страница может прочитать ваши данные или действовать от вашего имени.',
   'contextPanel.tab.closeTabAria': 'Закрыть вкладку {label}',
   'contextPanel.tab.menu.close': 'Закрыть',
+  'contextPanel.tab.menu.moveToRegion': 'Переместить в область',
   'contextPanel.tab.menu.closeOthers': 'Закрыть остальные',
   'contextPanel.tab.menu.closeToLeft': 'Закрыть вкладки слева',
   'contextPanel.tab.menu.closeToRight': 'Закрыть вкладки справа',

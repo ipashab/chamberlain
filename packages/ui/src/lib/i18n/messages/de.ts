@@ -1500,6 +1500,7 @@ export const dict = {
   'contextPanel.browser.trustNotice': 'Seiten, die hier geöffnet werden, laufen mit vollständigem Zugriff auf OpenChamber — erforderlich für Inspect und Screenshots. Öffnen Sie nur Seiten, denen Sie vertrauen: Eine bösartige Seite könnte Ihre Daten lesen oder in Ihrem Namen handeln.',
   'contextPanel.tab.closeTabAria': '{label}-Registerkarte schließen',
   'contextPanel.tab.menu.close': 'Schließen',
+  'contextPanel.tab.menu.moveToRegion': 'In Bereich verschieben',
   'contextPanel.tab.menu.closeOthers': 'Andere schließen',
   'contextPanel.tab.menu.closeToLeft': 'Tabs links daneben schließen',
   'contextPanel.tab.menu.closeToRight': 'Tabs rechts daneben schließen',

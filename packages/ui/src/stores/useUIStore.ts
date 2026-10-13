@@ -1282,6 +1282,12 @@ interface UIStore {
   balanceLayoutSplit: (directory: string, splitId: string, leadingIndex: number, trailingIndex: number, trailingShare: number) => void;
   /** Moves one tab to a region leaf, activating it there. */
   moveContextPanelTabToLeaf: (directory: string, tabId: string, leafId: string, index?: number) => void;
+  /**
+   * Opens a surface into one chosen leaf: activates its most recent tab, or
+   * opens a fresh one, then moves it to the leaf — dropping it wherever the
+   * placement rules would put it. The leaf must already exist.
+   */
+  openContextSurfaceInLeaf: (directory: string, mode: ContextPanelMode, leafId: string) => void;
   /** Ids of every tab of one surface, the strip's whole `mode` group. */
   closeContextSurfaceTabs: (directory: string, mode: ContextPanelMode) => void;
   setNotesPanelHeight: (height: number) => void;
@@ -1807,6 +1813,48 @@ export const useUIStore = create<UIStore>()(
           }
 
           state.openContextPanelTab(normalizedDirectory, { mode });
+        },
+
+        openContextSurfaceInLeaf: (directory, mode, leafId) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory) {
+            return;
+          }
+          const state = get();
+          const panelState = state.contextPanelByDirectory[normalizedDirectory];
+          // The leaf must exist: an explicit target gone stale (a reload, a
+          // closed region) would otherwise invent a tree shape silently.
+          if (!leavesOf(panelState?.layout ?? CHAT_NODE).some((leaf) => leaf.id === leafId)) {
+            return;
+          }
+          const mostRecentOfMode = (tabsOfMode: ContextPanelTab[]) => (
+            // `>=` so equal timestamps (same-millisecond opens) resolve to the
+            // later tab in insertion order.
+            tabsOfMode.reduce((best, tab) => (tab.touchedAt >= best.touchedAt ? tab : best))
+          );
+          const existing = (panelState?.tabs ?? []).filter((tab) => tab.mode === mode);
+          if (existing.length > 0) {
+            // With an existing tab there is nothing to open — only its
+            // placement to decide. This is what lets a split-out chat or diff
+            // move into the empty region the user picked.
+            const target = mostRecentOfMode(existing).id;
+            state.moveContextPanelTabToLeaf(normalizedDirectory, target, leafId);
+            return;
+          }
+          // Content-driven modes without a tab stay put: the rail would not
+          // have offered them either. 'file' opens an empty editor.
+          if (mode === 'chat' || mode === 'team') {
+            return;
+          }
+          if (mode === 'file' && !state.contextEditorTreeVisible) {
+            set({ contextEditorTreeVisible: true });
+          }
+          state.openContextPanelTab(normalizedDirectory, { mode });
+          // The open just created the only tab of this mode; move that one.
+          const openedTabs = (get().contextPanelByDirectory[normalizedDirectory]?.tabs ?? []).filter((tab) => tab.mode === mode);
+          if (openedTabs.length > 0) {
+            state.moveContextPanelTabToLeaf(normalizedDirectory, mostRecentOfMode(openedTabs).id, leafId);
+          }
         },
 
         openContextPanelTab: (directory, tab, options) => {

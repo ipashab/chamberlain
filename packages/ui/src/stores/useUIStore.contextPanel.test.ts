@@ -1272,6 +1272,46 @@ describe('useUIStore workspace regions', () => {
     expect(targetLeaf.tabs).not.toContain(panel()?.tabs.find((tab) => tab.mode === 'terminal')?.id);
   });
 
+  test('opening into a chosen leaf lands there even with a filled region elsewhere', () => {
+    // The placement rules send every fresh surface to the first filled leaf;
+    // openContextSurfaceInLeaf is the one path that overrides them.
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+    store.splitLayoutRegion('/repo', { leafId: leaves()[0].id }, 'row', 0.5);
+    const emptyLeafId = leaves().find((leaf) => leaf.tabs.length === 0)?.id ?? '';
+
+    store.openContextSurfaceInLeaf('/repo', 'terminal', emptyLeafId);
+
+    const leaf = leaves().find((entry) => entry.id === emptyLeafId);
+    expect(leaf?.tabs).toHaveLength(1);
+    expect(leaf?.activeTabId).toBe(leaf?.tabs[0]);
+    expect(leaf && panel()?.tabs.find((tab) => tab.id === leaf.activeTabId)?.mode).toBe('terminal');
+  });
+
+  test('opening into a chosen leaf moves the surface there when it already shows elsewhere', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+    store.splitLayoutRegion('/repo', { leafId: leaves()[0].id }, 'row', 0.5);
+    const emptyLeafId = leaves().find((leaf) => leaf.tabs.length === 0)?.id ?? '';
+
+    store.openContextSurfaceInLeaf('/repo', 'git', emptyLeafId);
+
+    const leaf = leaves().find((entry) => entry.id === emptyLeafId);
+    expect(leaf?.tabs).toHaveLength(1);
+    expect(leaf?.activeTabId).toBe(panel()?.tabs.find((tab) => tab.mode === 'git')?.id);
+    expect(leaves().every((entry) => entry.id === emptyLeafId || entry.tabs.length === 0)).toBe(true);
+  });
+
+  test('opening into a stale leaf does nothing', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+
+    store.openContextSurfaceInLeaf('/repo', 'terminal', 'leaf-gone');
+
+    expect(leaves()).toHaveLength(1);
+    expect(panel()?.tabs.some((tab) => tab.mode === 'terminal')).toBe(false);
+  });
+
   test('closing the last file falls back to the file tree in its region', () => {
     const store = useUIStore.getState();
     store.openContextFile('/repo', '/repo/a.ts');

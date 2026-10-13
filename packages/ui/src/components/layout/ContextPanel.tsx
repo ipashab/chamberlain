@@ -2,6 +2,7 @@ import React from 'react';
 
 import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
 import { DiffViewIcon } from '@/components/icons/DiffIcon';
+import { RegionSurfaceMenu } from './RegionSurfaceMenu';
 import { Button } from '@/components/ui/button';
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { SortableTabsStrip } from '@/components/ui/sortable-tabs-strip';
@@ -41,7 +42,7 @@ import { changeRequestCopy } from '@/lib/source-control/changeRequestCopy';
 import { ContextPanelHeaderSlotProvider } from './contextPanelHeaderSlot';
 import { closeZoneOnEscape } from './zoneEscape';
 import { setRegionBody, setRegionHeaderSlot } from './regionHosts';
-import { findLeaf } from '@/lib/workspace/layoutTree';
+import { findLeaf, leavesOf } from '@/lib/workspace/layoutTree';
 
 const CONTEXT_TAB_LABEL_MAX_CHARS = 24;
 type TranslateFn = ReturnType<typeof useI18n>['t'];
@@ -505,12 +506,36 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
       const closeOthers = () => closeContextPanelTabs(directoryKey, allIds.filter((tabId) => tabId !== id));
       const closeAll = () => closeContextPanelTabs(directoryKey, allIds);
       const hasOthers = allIds.length > 1;
+      // Other regions this tab could move to, with the tab they show (an
+      // empty region moves the tab alone; a filled one takes it as a tab).
+      const otherLeaves = panelState ? leavesOf(panelState.layout).filter((entry) => entry.id !== leafId) : [];
+      const labelOfLeaf = (entryId: string) => {
+        const entry = otherLeaves.find((candidate) => candidate.id === entryId);
+        if (!entry) return null;
+        const entryTab = entry.activeTabId
+          ? (panelState?.tabs ?? []).find((tab) => tab.id === entry.activeTabId)
+          : null;
+        return entryTab?.label ?? entryTab?.sessionTitleFallback ?? t('contextPanel.region.empty');
+      };
       return (
         <>
           <ContextMenuItem onClick={close}>
             <Icon name="close" className="me-2 size-4" />
             {t('contextPanel.tab.menu.close')}
           </ContextMenuItem>
+          {otherLeaves.length > 0 && (
+            <ContextMenuSeparator />
+          )}
+          {otherLeaves.map((entry) => (
+            <ContextMenuItem
+              key={entry.id}
+              onClick={() => moveContextPanelTabToLeaf(directoryKey, id, entry.id)}
+            >
+              <Icon name="arrow-right" className="me-2 size-4" />
+              {t('contextPanel.tab.menu.moveToRegion')}
+              <span className="ms-2 max-w-40 truncate text-muted-foreground">{labelOfLeaf(entry.id)}</span>
+            </ContextMenuItem>
+          ))}
           <ContextMenuSeparator />
           <ContextMenuItem onClick={closeOthers} disabled={!hasOthers}>
             <Icon name="close-circle" className="me-2 size-4" />
@@ -524,7 +549,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
         </>
       );
     },
-    [closeContextPanelTabs, directoryKey, t],
+    [closeContextPanelTabs, directoryKey, leafId, moveContextPanelTabToLeaf, panelState, t],
   );
 
   const header = (
@@ -677,6 +702,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
           {!isOpen && activeTab === null && leaf && (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
               <span className="typography-ui-label text-muted-foreground">{t('contextPanel.region.empty')}</span>
+              <RegionSurfaceMenu leafId={leafId} directoryKey={directoryKey} />
               <span className="text-sm text-muted-foreground">{t('contextPanel.region.splitHint')}</span>
             </div>
           )}
