@@ -795,6 +795,21 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
+    id: 'integrations.confluence-account',
+    page: 'integrations',
+    titleKey: 'settings.confluence.title',
+    descriptionKey: 'settings.confluence.info',
+    keywords: ['confluence', 'data center', 'page', 'wiki', 'pat', 'token', 'self-hosted'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'integrations.confluence-connect',
+    page: 'integrations',
+    titleKey: 'settings.confluence.actions.connect',
+    keywords: ['confluence', 'connect', 'token', 'instance', 'tls'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'routing.token',
     page: 'routing',
     titleKey: 'settings.routing.token.label',

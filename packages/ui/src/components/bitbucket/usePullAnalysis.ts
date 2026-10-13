@@ -17,35 +17,39 @@ import type { State } from '@/sync/types';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 
 import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
-import { parseAnalysisResult, type AnalysisScope, type PullAnalysis } from './pullAnalysis';
-import { recallPullAnalysis, startPullAnalysis, type PullAnalysisEntry, type PullAnalysisStartResult } from './pullAnalysisSession';
+import { parseAnalysisResult, previousReadingDigest, type AnalysisScope, type PullAnalysis } from './pullAnalysis';
+import { recallPullAnalysis, recallPullAnalysisHistory, startPullAnalysis, type PullAnalysisEntry, type PullAnalysisStartResult } from './pullAnalysisSession';
 
 export type PullAnalysisState = {
     /** The remembered reading of this pull, if one was started. */
     entry: PullAnalysisEntry | null;
+    /** Every reading this pull went through, newest first. */
+    history: PullAnalysisEntry[];
     /** The last answer that fit the contract; null while unreadable. */
     analysis: PullAnalysis | null;
     /** The reading session is mid-turn right now. */
     analyzing: boolean;
     /** A reading exists and its session is quiet. */
     finished: boolean;
-    /** Start (or restart) the reading; the panel owns the words on failure. */
-    start: (scope: AnalysisScope) => Promise<PullAnalysisStartResult>;
-    /** Put the reading session on stage in the chat. */
-    openSession: () => void;
+    /** Start (or restart) the reading — the last answer and any attached brief ride along. */
+    start: (scope: AnalysisScope, brief: { title: string; material: string } | null) => Promise<PullAnalysisStartResult>;
+    /** Put a reading session on stage in the chat; the newest by default. */
+    openSession: (entry?: PullAnalysisEntry) => void;
 };
 
 export const usePullAnalysis = (view: BitbucketPullView | null): PullAnalysisState => {
     const url = view?.pull.url ?? null;
-    const [entry, setEntry] = React.useState<PullAnalysisEntry | null>(
-        () => (url ? recallPullAnalysis(url) : null),
+    const [history, setHistory] = React.useState<PullAnalysisEntry[]>(
+        () => (url ? recallPullAnalysisHistory(url) : []),
     );
 
     // The memory answers per pull: switching selects moves the reading
     // being watched to whatever that pull left behind.
     React.useEffect(() => {
-        setEntry(url ? recallPullAnalysis(url) : null);
+        setHistory(url ? recallPullAnalysisHistory(url) : []);
     }, [url]);
+
+    const entry = history[0] ?? null;
 
     const sessionId = entry?.sessionId ?? '';
     const messages = useSessionMessages(sessionId, entry?.directory);
@@ -87,17 +91,31 @@ export const usePullAnalysis = (view: BitbucketPullView | null): PullAnalysisSta
         return null;
     }, [assistantTexts]);
 
-    const start = React.useCallback(async (scope: AnalysisScope): Promise<PullAnalysisStartResult> => {
-        if (!view) return { ok: false, reason: 'no-directory' };
-        const result = await startPullAnalysis(view, scope);
-        if (result.ok) setEntry(result.entry);
-        return result;
-    }, [view]);
+    // The history must grow the moment a reading starts, not on reopen —
+    // the newest entry carries the session the panel is about to watch.
+    const refreshHistory = React.useCallback(() => {
+        setHistory(url ? recallPullAnalysisHistory(url) : []);
+    }, [url]);
 
-    const openSession = React.useCallback(() => {
-        if (!entry) return;
-        useSessionUIStore.getState().setCurrentSession(entry.sessionId, entry.directory);
+    const start = React.useCallback(async (scope: AnalysisScope, brief: { title: string; material: string } | null = null): Promise<PullAnalysisStartResult> => {
+        if (!view) return { ok: false, reason: 'no-directory' };
+        // A re-reading carries the last answer's digest, so the new session
+        // re-judges instead of restating. The moment of the last start is
+        // the "when" the digest speaks with; an answer that never parsed is
+        // no previous opinion at all.
+        const previous = analysis
+            ? { digest: previousReadingDigest(analysis), at: history[0]?.startedAt ?? 0 }
+            : null;
+        const result = await startPullAnalysis(view, scope, previous, brief);
+        if (result.ok) refreshHistory();
+        return result;
+    }, [view, analysis, history, refreshHistory]);
+
+    const openSession = React.useCallback((target?: PullAnalysisEntry) => {
+        const chosen = target ?? entry;
+        if (!chosen) return;
+        useSessionUIStore.getState().setCurrentSession(chosen.sessionId, chosen.directory);
     }, [entry]);
 
-    return { entry, analysis, analyzing, finished: sessionId !== '' && !analyzing, start, openSession };
+    return { entry, history, analysis, analyzing, finished: sessionId !== '' && !analyzing, start, openSession };
 };

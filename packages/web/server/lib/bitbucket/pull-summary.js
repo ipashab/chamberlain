@@ -65,7 +65,12 @@ export const summarizeBuildStatuses = (values) => {
   return { state: 'success', total: list.length };
 };
 
-const pullStateOf = (state) => {
+/**
+ * The provider-state words the fork's surfaces share: DC answers OPEN,
+ * MERGED or DECLINED — and anything unknown closes, the same honest
+ * reduction the team board's chip reads.
+ */
+export const pullStateOf = (state) => {
   if (state === 'OPEN') return 'open';
   if (state === 'MERGED') return 'merged';
   return 'closed';

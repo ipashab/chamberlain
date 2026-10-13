@@ -30,7 +30,7 @@
 import express from 'express';
 
 import { BitbucketError, createBitbucketAvatarRequest, createBitbucketRequest } from './client.js';
-import { readOpenPulls } from './pull-list.js';
+import { readDashboardPulls } from './pull-list.js';
 import { readPullView } from './pull-view.js';
 import { parseBitbucketPullUrl } from './url.js';
 
@@ -111,11 +111,13 @@ export const registerBitbucketRoutes = (app, dependencies) => {
   });
 
   /**
-   * The token's own open pulls — the preloaded list the panel lands on.
-   * `limit` is clamped server-side (1..25); the shape of a query string the
-   * express parser may hand back as an array reads back as the default, not
-   * a throw. The answer carries `truncated`, the honest admission the
-   * dashboard held more open pulls than the cap let the walk collect.
+   * The token's own pulls — the preloaded list the panel lands on: the
+   * open ones capped at `limit`, closed ones riding along so the panel can
+   * filter by state. `limit` is clamped server-side (1..25); the shape of
+   * a query string the express parser may hand back as an array reads back
+   * as the default, not a throw. The answer carries `truncated`, the
+   * honest admission the dashboard held more open pulls than the cap let
+   * the walk collect.
    */
   app.get('/api/openchamber/bitbucket/pulls', async (req, res) => {
     const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
@@ -128,7 +130,7 @@ export const registerBitbucketRoutes = (app, dependencies) => {
         return viewError(res, 409, 'unconfigured', 'No Bitbucket connection is configured.');
       }
       const request = (createRequest ?? createBitbucketRequest)();
-      const list = await readOpenPulls({
+      const list = await readDashboardPulls({
         request,
         config: { origin: instance.origin, token: instance.token, verifySsl: instance.verifySsl },
         limit,

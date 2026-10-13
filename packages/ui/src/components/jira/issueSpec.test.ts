@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import type { JiraIssueView } from '@/lib/jira/issue-view-api';
 import { getDefaultMagicPromptTemplate } from '@/lib/magicPrompts';
-import { buildIssueSpecPrompt, issueSpecSessionTitle, parseIssueSpecResult } from './issueSpec';
+import { buildIssueSpecAnswersPrompt, buildIssueSpecPrompt, issueSpecSessionTitle, parseIssueSpecResult } from './issueSpec';
 
 const VIEW: JiraIssueView = {
     issue: {
@@ -76,6 +76,29 @@ describe('buildIssueSpecPrompt', () => {
         expect(prompt).toContain('читай репозиторий текущей директории');
     });
 
+    test('an attached Confluence brief rides as its own section before the issue', () => {
+        const prompt = buildIssueSpecPrompt(VIEW, defaultMethodology, {
+            title: 'Приёмочные критерии релиза',
+            material: 'Confluence page: Приёмочные критерии релиза\n\nАртефакты выгружаются до релиза.',
+        });
+        expect(prompt).toContain('Постановка задачи приложена ниже');
+        expect(prompt).toContain('«Приёмочные критерии релиза»');
+        expect(prompt).toContain('## Постановка из Confluence');
+        expect(prompt).toContain('Артефакты выгружаются до релиза.');
+        // The brief precedes the issue's own material: the stakeholder's
+        // words arrive as the frame the issue then details.
+        expect(prompt.indexOf('Постановка из Confluence')).toBeLessThan(prompt.indexOf('## Задача'));
+        // The contradiction rule is part of the frame: a divergence is an
+        // open question, never a silent pick of a side.
+        expect(prompt).toContain('противоречие называется в открытых вопросах');
+    });
+
+    test('a spec without a brief embeds no brief section', () => {
+        const prompt = buildIssueSpecPrompt(VIEW, defaultMethodology, null);
+        expect(prompt).not.toContain('Постановка из Confluence');
+        expect(prompt).toContain('## Задача');
+    });
+
     test('the answer is a readable spec first, the JSON block a digest tail', () => {
         const prompt = buildIssueSpecPrompt(VIEW, defaultMethodology);
         expect(prompt).toContain('Сначала — полное читаемое ТЗ по-русски');
@@ -98,6 +121,34 @@ describe('buildIssueSpecPrompt', () => {
         expect(prompt).toContain('DEMO-3223');
         expect(prompt).toContain('Сборка падает на шаге выгрузки артефактов');
         expect(prompt).toContain('ровно один блок JSON');
+    });
+});
+
+describe('buildIssueSpecAnswersPrompt', () => {
+    test('carries every answered pair and names the issue it continues', () => {
+        const prompt = buildIssueSpecAnswersPrompt(VIEW, [
+            { question: 'Какой таймаут считать нормой?', answer: '60 секунд' },
+            { question: 'Нужен ли retry?', answer: 'Да, один повторный вызов' },
+        ]);
+        expect(prompt).toContain('DEMO-3223');
+        expect(prompt).toContain('Вопрос: Какой таймаут считать нормой?\n  Ответ: 60 секунд');
+        expect(prompt).toContain('Вопрос: Нужен ли retry?\n  Ответ: Да, один повторный вызов');
+        expect(prompt).toContain('Продолжим ТЗ');
+    });
+
+    test('demands the re-draft whole, under the same contract as the first ask', () => {
+        const prompt = buildIssueSpecAnswersPrompt(VIEW, [{ question: 'Кто отвечает за горячфикс?', answer: 'Дежурный' }]);
+        const firstAsk = buildIssueSpecPrompt(VIEW, getDefaultMagicPromptTemplate('jira.issue.spec.methodology'));
+        // The two-part contract is the app's, and a follow-up loosens none
+        // of it: readable spec first, one JSON block last.
+        expect(prompt).toContain('Пересобери ТЗ целиком');
+        expect(prompt).toContain('Вопросы без ответа остаются открытыми');
+        expect(prompt).toContain('## Ответ');
+        expect(prompt).toContain('ровно один блок JSON');
+        expect(prompt).toContain('"essence"');
+        // The answers section asks its own «## …» question; the contract is
+        // the last section, so the comparison starts from the last heading.
+        expect(prompt.slice(prompt.lastIndexOf('## Ответ'))).toBe(firstAsk.slice(firstAsk.indexOf('## Ответ')));
     });
 });
 

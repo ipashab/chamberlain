@@ -39,6 +39,9 @@ describe('JiraIssuesPanel', () => {
     // title — so the input teaches the search, not just the paste.
     expect(markup).toContain('Jira issue URL or key');
     expect(markup).toContain('Link, key or title');
+    // The hint under the field teaches the filter prefixes the server's
+    // search answers, so the syntax does not stay a secret of the code.
+    expect(markup).toContain('Words search the text. Add assignee:, reporter:, status: or project: to narrow the search.');
     // The landing state answers the empty surface with the teaching words
     // rather than a bare field.
     expect(markup).toContain('Paste a Jira issue link or key, or pick one you viewed before.');

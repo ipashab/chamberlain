@@ -17,8 +17,15 @@ import type { State } from '@/sync/types';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 
 import type { JiraIssueView } from '@/lib/jira/issue-view-api';
-import { parseIssueSpecResult, type IssueSpec } from './issueSpec';
-import { recallIssueSpec, startIssueSpec, type IssueSpecEntry, type IssueSpecStartResult } from './issueSpecSession';
+import { parseIssueSpecResult, type IssueSpec, type SpecAnswerPair } from './issueSpec';
+import {
+    recallIssueSpec,
+    startIssueSpec,
+    submitIssueSpecAnswers,
+    type IssueSpecAnswerResult,
+    type IssueSpecEntry,
+    type IssueSpecStartResult,
+} from './issueSpecSession';
 
 export type IssueSpecState = {
     /** The remembered reading of this issue, if one was started. */
@@ -29,8 +36,10 @@ export type IssueSpecState = {
     reading: boolean;
     /** A reading exists and its session is quiet. */
     finished: boolean;
-    /** Start (or restart) the reading; the panel owns the words on failure. */
-    start: () => Promise<IssueSpecStartResult>;
+    /** Start (or restart) the reading; an attached Confluence brief rides the first ask. */
+    start: (brief: { title: string; material: string } | null) => Promise<IssueSpecStartResult>;
+    /** Send the reader's answers into the spec session; the card re-drafts. */
+    answer: (answers: SpecAnswerPair[]) => Promise<IssueSpecAnswerResult>;
     /** Put the reading session on stage in the chat. */
     openSession: () => void;
 };
@@ -87,17 +96,22 @@ export const useIssueSpec = (view: JiraIssueView | null): IssueSpecState => {
         return null;
     }, [assistantTexts]);
 
-    const start = React.useCallback(async (): Promise<IssueSpecStartResult> => {
+    const start = React.useCallback(async (brief: { title: string; material: string } | null = null): Promise<IssueSpecStartResult> => {
         if (!view) return { ok: false, reason: 'no-directory' };
-        const result = await startIssueSpec(view);
+        const result = await startIssueSpec(view, brief);
         if (result.ok) setEntry(result.entry);
         return result;
     }, [view]);
+
+    const answer = React.useCallback(async (answers: SpecAnswerPair[]): Promise<IssueSpecAnswerResult> => {
+        if (!view || !entry) return { ok: false, reason: 'no-entry' };
+        return submitIssueSpecAnswers(view, entry, answers);
+    }, [view, entry]);
 
     const openSession = React.useCallback(() => {
         if (!entry) return;
         useSessionUIStore.getState().setCurrentSession(entry.sessionId, entry.directory);
     }, [entry]);
 
-    return { entry, spec, reading, finished: sessionId !== '' && !reading, start, openSession };
+    return { entry, spec, reading, finished: sessionId !== '' && !reading, start, answer, openSession };
 };

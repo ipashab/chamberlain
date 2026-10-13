@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { useI18n } from '@/lib/i18n';
 import { formatDateTimeForPreference } from '@/lib/timeFormat';
 import type { ViewErrorKind } from '@/lib/bitbucket/pull-view-api';
-import { type BitbucketOpenPull, fetchBitbucketOpenPulls } from '@/lib/bitbucket/pull-list-api';
-import { looksLikeUrl, matchesPullQuery, pullNumberOf } from '@/lib/bitbucket/pullSearch';
+import { type BitbucketDashboardPull, fetchBitbucketDashboardPulls } from '@/lib/bitbucket/pull-list-api';
+import { type PullStateFilter, looksLikeUrl, matchesPullQuery, matchesPullState, PULL_STATE_FILTERS, pullNumberOf } from '@/lib/bitbucket/pullSearch';
 import { useUIStore } from '@/stores/useUIStore';
 import { useBitbucketPullsStore } from '@/stores/useBitbucketPullsStore';
 import { usePullView } from './usePullView';
@@ -35,19 +35,23 @@ export const BitbucketPullsPanel: React.FC = () => {
     const [selected, setSelected] = React.useState<string | null>(null);
     const [readToken, setReadToken] = React.useState(0);
     const [listsOpen, setListsOpen] = React.useState(true);
+    // The list's state filter: DC owns a fixed state set, so the chips are
+    // the same words everywhere. Open is the landing state — the list the
+    // panel opened on before closed pulls started riding along.
+    const [stateFilter, setStateFilter] = React.useState<PullStateFilter>('open');
     const [openPullsState, setOpenPullsState] = React.useState<
-        { state: 'loading' } | { state: 'error'; kind: ViewErrorKind } | { state: 'ready'; pulls: BitbucketOpenPull[] }
+        { state: 'loading' } | { state: 'error'; kind: ViewErrorKind } | { state: 'ready'; pulls: BitbucketDashboardPull[] }
     >({ state: 'loading' });
     const [listToken, setListToken] = React.useState(0);
 
     const view = usePullView(selected, readToken);
 
-    // The open list is a read, not a cache: it happens when the surface
+    // The list is a read, not a cache: it happens when the surface
     // opens, again on retry, and a superseded answer never lands.
     React.useEffect(() => {
         let cancelled = false;
         setOpenPullsState({ state: 'loading' });
-        void fetchBitbucketOpenPulls().then((result) => {
+        void fetchBitbucketDashboardPulls().then((result) => {
             if (cancelled) return;
             setOpenPullsState(result.ok ? { state: 'ready', pulls: result.pulls } : { state: 'error', kind: result.kind });
         });
@@ -77,6 +81,14 @@ export const BitbucketPullsPanel: React.FC = () => {
         setSelected(url);
         setReadToken((token) => token + 1);
     };
+
+    // A handoff from the review board: open on the pull it named. The
+    // pending field is consumed once — the board's click is a target, not
+    // a memory, so the surface never replays it on a later mount.
+    React.useEffect(() => {
+        const pendingPullUrl = useUIStore.getState().consumePendingPull();
+        if (pendingPullUrl) openPull(pendingPullUrl);
+    }, []);
 
     // The input's three intents: a link reads on the server's word, a
     // number jumps to the pull the lists know, anything else has already
@@ -108,11 +120,16 @@ export const BitbucketPullsPanel: React.FC = () => {
 
     const query = looksLikeUrl(address) ? '' : address;
     const visiblePulls = openPullsState.state === 'ready'
-        ? openPullsState.pulls.filter((pull) => matchesPullQuery(pull, query))
+        ? openPullsState.pulls.filter((pull) =>
+            matchesPullState(pull.state, stateFilter) && matchesPullQuery(pull, query))
         : [];
     const visibleRecents = recents.filter((recent) => matchesPullQuery(recent, query));
     const nothingMatches = openPullsState.state === 'ready' && query.trim() !== ''
         && visiblePulls.length === 0 && visibleRecents.length === 0;
+    // A chip that hides every row says so itself; the landing invitation
+    // ("paste a link…") belongs to the truly empty list, not to a filter.
+    const chipHidesEverything = openPullsState.state === 'ready'
+        && openPullsState.pulls.length > 0 && visiblePulls.length === 0 && query.trim() === '';
 
     const hasPull = selected !== null && view.state !== 'idle';
 
@@ -154,13 +171,36 @@ export const BitbucketPullsPanel: React.FC = () => {
 
                 {openPullsState.state === 'ready' ? (
                     <section className="space-y-1.5">
+                        <div
+                            role="group"
+                            aria-label={t('pullsPanel.stateFilterLabel')}
+                            className="flex flex-wrap items-center gap-1"
+                        >
+                            {PULL_STATE_FILTERS.map((value) => (
+                                <Button
+                                    key={value}
+                                    type="button"
+                                    variant="chip"
+                                    size="xs"
+                                    aria-pressed={stateFilter === value}
+                                    className="!font-normal"
+                                    onClick={() => setStateFilter(value)}
+                                >
+                                    {value === 'all'
+                                        ? t('pullsPanel.stateAll')
+                                        : t(`chat.workStatus.teamBoard.pull.${value}`)}
+                                </Button>
+                            ))}
+                        </div>
                         <button
                             type="button"
                             className="flex w-full items-center justify-between text-left"
                             onClick={() => setListsOpen((open) => !open)}
                         >
                             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                {t('pullsPanel.openListTitle', { count: visiblePulls.length })}
+                                {stateFilter === 'open'
+                                    ? t('pullsPanel.openListTitle', { count: visiblePulls.length })
+                                    : t('pullsPanel.listTitleAny', { count: visiblePulls.length })}
                             </span>
                             <Icon
                                 name={listsOpen ? 'arrow-down-s' : 'arrow-right-s'}
@@ -171,6 +211,9 @@ export const BitbucketPullsPanel: React.FC = () => {
                             <div className="space-y-1">
                                 {openPullsState.pulls.length === 0 && query.trim() === '' ? (
                                     <p className="text-[12px] text-muted-foreground">{t('pullsPanel.openListEmpty')}</p>
+                                ) : null}
+                                {chipHidesEverything ? (
+                                    <p className="text-[12px] text-muted-foreground">{t('pullsPanel.listEmptyFiltered')}</p>
                                 ) : null}
                                 {visiblePulls.map((pull) => (
                                     <button
@@ -187,11 +230,26 @@ export const BitbucketPullsPanel: React.FC = () => {
                                                 {pull.author ? <> · {pull.author}</> : null}
                                             </span>
                                         </span>
-                                        {pull.updatedAt ? (
-                                            <span className="mt-0.5 shrink-0 text-[10px] text-muted-foreground">
-                                                {formatStamp(pull.updatedAt)}
-                                            </span>
-                                        ) : null}
+                                        <span className="mt-0.5 flex shrink-0 items-center gap-1.5">
+                                            {pull.state !== 'open' ? (
+                                                <span
+                                                    className="inline-flex items-center rounded-full px-1.5 text-[10px] font-medium leading-4"
+                                                    style={{
+                                                        color: pull.state === 'merged'
+                                                            ? 'var(--status-success)'
+                                                            : 'var(--muted-foreground)',
+                                                        backgroundColor: 'color-mix(in srgb, var(--muted-foreground) 12%, transparent)',
+                                                    }}
+                                                >
+                                                    {t(`chat.workStatus.teamBoard.pull.${pull.state}`)}
+                                                </span>
+                                            ) : null}
+                                            {pull.updatedAt ? (
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {formatStamp(pull.updatedAt)}
+                                                </span>
+                                            ) : null}
+                                        </span>
                                     </button>
                                 ))}
                             </div>
@@ -262,7 +320,7 @@ export const BitbucketPullsPanel: React.FC = () => {
                     <p className="text-[13px] text-muted-foreground">{t('pullsPanel.noMatch')}</p>
                 ) : null}
 
-                {!hasPull && !nothingMatches && openPullsState.state !== 'loading' && visiblePulls.length === 0 ? (
+                {!hasPull && !nothingMatches && !chipHidesEverything && openPullsState.state !== 'loading' && visiblePulls.length === 0 ? (
                     <p className="text-[13px] text-muted-foreground">{t('pullsPanel.empty')}</p>
                 ) : null}
 

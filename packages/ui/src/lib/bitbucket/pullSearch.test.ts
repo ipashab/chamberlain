@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { looksLikeUrl, matchesPullQuery, pullNumberOf } from './pullSearch';
+import { looksLikeUrl, matchesPullQuery, matchesPullState, PULL_STATE_FILTERS, pullNumberOf } from './pullSearch';
 
 describe('pullNumberOf', () => {
     test('reads a bare or hashed number, nothing else', () => {
@@ -61,5 +61,26 @@ describe('matchesPullQuery', () => {
         expect(matchesPullQuery(recent, '110')).toBe(true);
         expect(matchesPullQuery(recent, 'DEMO-7004')).toBe(true);
         expect(matchesPullQuery(recent, 'other')).toBe(false);
+    });
+});
+
+describe('matchesPullState', () => {
+    test('a chip keeps its own state, "all" keeps everything', () => {
+        expect(PULL_STATE_FILTERS).toEqual(['open', 'merged', 'closed', 'all']);
+        expect(matchesPullState('open', 'open')).toBe(true);
+        expect(matchesPullState('merged', 'merged')).toBe(true);
+        expect(matchesPullState('closed', 'closed')).toBe(true);
+        expect(matchesPullState('merged', 'open')).toBe(false);
+        expect(matchesPullState('closed', 'merged')).toBe(false);
+        for (const state of ['open', 'merged', 'closed']) {
+            expect(matchesPullState(state, 'all')).toBe(true);
+        }
+    });
+
+    test('the state words join the free-text haystack', () => {
+        const row = { number: 110, title: 'Map the modules', state: 'merged' };
+        expect(matchesPullQuery(row, 'merged')).toBe(true);
+        expect(matchesPullQuery(row, 'open')).toBe(false);
+        expect(matchesPullQuery(row, 'map')).toBe(true);
     });
 });

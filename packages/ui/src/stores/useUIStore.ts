@@ -27,7 +27,7 @@ export type { ContextPanelMode };
 export const clampContextEditorTreeWidth = (width: number): number =>
   Math.min(480, Math.max(200, Math.round(width)));
 
-const contextPanelModeSchema = z.enum(['diff', 'walkthrough', 'file', 'context', 'plan', 'chat', 'browser', 'git', 'pr', 'notes', 'terminal', 'pulls', 'jira']);
+const contextPanelModeSchema = z.enum(['diff', 'walkthrough', 'file', 'context', 'plan', 'chat', 'browser', 'git', 'pr', 'notes', 'terminal', 'pulls', 'jira', 'confluence', 'review']);
 const persistedPanelWidthsSchema = z.object({
   widthByMode: z.record(z.string(), z.number().finite().optional().catch(undefined)).catch({}),
   widthFractionByMode: z.record(z.string(), z.number().positive().max(1).optional().catch(undefined)).catch({}),
@@ -820,6 +820,12 @@ interface UIStore {
   pendingDiffScope: PendingDiffScope | null;
   pendingFileNavigation: PendingFileNavigation | null;
   pendingFileFocusPath: string | null;
+  // The review board's handoffs: one pull for the pulls surface to read,
+  // one issue for the jira surface, set at the click and consumed at the
+  // opening — the same deal the diff handoff uses, so a surface told to
+  // open on a target does not guess it from its own memory.
+  pendingPullUrl: string | null;
+  pendingIssueRef: string | null;
   isMobile: boolean;
   isCommandPaletteOpen: boolean;
   isHelpDialogOpen: boolean;
@@ -1092,7 +1098,11 @@ interface UIStore {
   setPendingFileNavigation: (navigation: PendingFileNavigation | null) => void;
   setPendingFileFocusPath: (path: string | null) => void;
   navigateToDiff: (filePath: string, staged?: boolean, scope?: PendingDiffScope | null) => void;
+  setPendingPull: (url: string | null) => void;
+  setPendingIssue: (ref: string | null) => void;
   consumePendingDiffFile: () => string | null;
+  consumePendingPull: () => string | null;
+  consumePendingIssue: () => string | null;
   setIsMobile: (isMobile: boolean) => void;
   toggleCommandPalette: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
@@ -1309,6 +1319,8 @@ export const useUIStore = create<UIStore>()(
         pendingDiffScope: null,
         pendingFileNavigation: null,
         pendingFileFocusPath: null,
+        pendingPullUrl: null,
+        pendingIssueRef: null,
         isMobile: false,
         isCommandPaletteOpen: false,
         isHelpDialogOpen: false,
@@ -2092,6 +2104,26 @@ export const useUIStore = create<UIStore>()(
             set({ pendingDiffFile: null, pendingDiffStaged: false, pendingDiffScope: null });
           }
           return pendingDiffFile;
+        },
+
+        setPendingPull: (url) => {
+          set({ pendingPullUrl: url });
+        },
+
+        setPendingIssue: (ref) => {
+          set({ pendingIssueRef: ref });
+        },
+
+        consumePendingPull: () => {
+          const { pendingPullUrl } = get();
+          set({ pendingPullUrl: null });
+          return pendingPullUrl;
+        },
+
+        consumePendingIssue: () => {
+          const { pendingIssueRef } = get();
+          set({ pendingIssueRef: null });
+          return pendingIssueRef;
         },
 
         setIsMobile: (isMobile) => {

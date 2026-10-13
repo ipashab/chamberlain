@@ -48,6 +48,44 @@ const specBlockSchema = z
 export const issueSpecSessionTitle = (view: JiraIssueView): string =>
     `Jira ${view.issue.key}: ${view.issue.summary}`.slice(0, 80);
 
+/** A named answer to one of the spec's open questions. */
+export type SpecAnswerPair = { question: string; answer: string };
+
+/**
+ * The answer contract, the one template both asking messages end with:
+ * the readable spec first, the JSON digest last. The card hangs off this
+ * shape, so a follow-up demands it as strictly as the first ask did —
+ * the session may notes get longer, but the structure never loosens.
+ */
+const answerContract = (): string => [
+    '## Ответ',
+    '',
+    'Ответ из двух частей. Сначала — полное читаемое ТЗ по-русски, для человека: связный текст обычными абзацами и списками (без всякого JSON). Именно он — главный ответ. В нём раскрывай каждый пункт по существу:',
+    '- суть задачи — одной-двумя строками, понятными заказчику;',
+    '- план доработок: что и где менять, по возможности с файлами, модулями, функциями или эндпоинтами — и почему именно так;',
+    '- критерии приёмки: каждый проверяем сам по себе;',
+    '- открытые вопросы и границы задачи — прямо, без домыслов.',
+    '',
+    'Затем, после ТЗ, последним сообщением — ровно один блок JSON, обёрнутый в тройные кавычки с языком `json`: машинная выжимка того же ТЗ для карточки интерфейса, не для чтения. Значения короткие, без повторения текста разбора, без комментариев внутри. Структура:',
+    '',
+    '```json',
+    '{',
+    '  "essence": "суть задачи одной-двумя строками",',
+    '  "plan": ["что и где менять: файл/модуль/эндпоинт — насколько код и материал позволяют", "..."],',
+    '  "acceptance": ["проверяемый критерий приёмки", "..."],',
+    '  "openQuestions": ["что в постановке неясно или не названо", "..."],',
+    '  "outOfScope": ["что в эту задачу не входит", "..."]',
+    '}',
+    '```',
+    '',
+    'Правила блока:',
+    '- Пиши только по материалу; домысел не принадлежит ТЗ. Чего в материале нет — «openQuestions».',
+    '- «plan»: 2–8 пунктов, каждый про одно конкретное изменение; где код доступен — с привязкой к файлам и функциям. Пункты без привязки к коду всё равно конкретны по смыслу.',
+    '- «acceptance»: 3–8 пунктов, каждый проверяем сам по себе; «сделать хорошо» — не критерий.',
+    '- «outOfScope»: пустой список, если границ задачи материал не намечает.',
+    '- Никаких ключей сверх перечисленных; ТЗ перед блоком — обычный текст, без JSON.',
+].join('\n');
+
 /**
  * The asking message: what to read, what to weigh, what to answer. The
  * instructions are the caller's to pass — the Magic Prompts settings own
@@ -62,44 +100,58 @@ export const issueSpecSessionTitle = (view: JiraIssueView): string =>
  * impossible, the plan stays faithful to the issue text and the gap
  * lands in the open questions.
  */
-export const buildIssueSpecPrompt = (view: JiraIssueView, methodology: string): string => {
+export const buildIssueSpecPrompt = (view: JiraIssueView, methodology: string, brief: { title: string; material: string } | null = null): string => {
     const parts = [
         `Составь техническое задание на разработку по Jira-задаче ${view.issue.key}: ${view.issue.summary}.`,
         'Материал задачи встроен в сообщение: ходить в Jira не нужно — источником постановки служит этот текст.',
         methodology,
         '',
+    ];
+    if (brief) {
+        parts.push(
+            `Постановка задачи приложена ниже — страница Confluence «${brief.title}». Это первоисточник замысла: где она и текст задачи расходятся, противоречие называется в открытых вопросах, а не решается молча.`,
+            '',
+            '## Постановка из Confluence',
+            '',
+            '```',
+            brief.material,
+            '```',
+            '',
+        );
+    }
+    parts.push(
         '## Задача',
         '',
         buildIssueViewMaterial(view),
         '',
-        '## Ответ',
-        '',
-        'Ответ из двух частей. Сначала — полное читаемое ТЗ по-русски, для человека: связный текст обычными абзацами и списками (без всякого JSON). Именно он — главный ответ. В нём раскрывай каждый пункт по существу:',
-        '- суть задачи — одной-двумя строками, понятными заказчику;',
-        '- план доработок: что и где менять, по возможности с файлами, модулями, функциями или эндпоинтами — и почему именно так;',
-        '- критерии приёмки: каждый проверяем сам по себе;',
-        '- открытые вопросы и границы задачи — прямо, без домыслов.',
-        '',
-        'Затем, после ТЗ, последним сообщением — ровно один блок JSON, обёрнутый в тройные кавычки с языком `json`: машинная выжимка того же ТЗ для карточки интерфейса, не для чтения. Значения короткие, без повторения текста разбора, без комментариев внутри. Структура:',
-        '',
-        '```json',
-        '{',
-        '  "essence": "суть задачи одной-двумя строками",',
-        '  "plan": ["что и где менять: файл/модуль/эндпоинт — насколько код и материал позволяют", "..."],',
-        '  "acceptance": ["проверяемый критерий приёмки", "..."],',
-        '  "openQuestions": ["что в постановке неясно или не названо", "..."],',
-        '  "outOfScope": ["что в эту задачу не входит", "..."]',
-        '}',
-        '```',
-        '',
-        'Правила блока:',
-        '- Пиши только по материалу; домысел не принадлежит ТЗ. Чего в материале нет — «openQuestions».',
-        '- «plan»: 2–8 пунктов, каждый про одно конкретное изменение; где код доступен — с привязкой к файлам и функциям. Пункты без привязки к коду всё равно конкретны по смыслу.',
-        '- «acceptance»: 3–8 пунктов, каждый проверяем сам по себе; «сделать хорошо» — не критерий.',
-        '- «outOfScope»: пустой список, если границ задачи материал не намечает.',
-        '- Никаких ключей сверх перечисленных; ТЗ перед блоком — обычный текст, без JSON.',
-    ];
+        answerContract(),
+    );
     return parts.join('\n');
+};
+
+/**
+ * The follow-up of the spec flow: the reader's answers to the open
+ * questions, sent into the session that drafted the spec. The prompt
+ * names each answered pair and demands the whole spec rebuilt — an
+ * answer does not patch a card, it re-drafts the document — under the
+ * same contract the first message set. Questions nobody answered stay
+ * open questions; a resolved one leaves the list only because the
+ * answer dissolved it, not because it was skipped.
+ */
+export const buildIssueSpecAnswersPrompt = (view: JiraIssueView, answers: SpecAnswerPair[]): string => {
+    const pairs = answers
+        .map((pair) => `- Вопрос: ${pair.question}\n  Ответ: ${pair.answer}`)
+        .join('\n');
+    return [
+        `Продолжим ТЗ по Jira-задаче ${view.issue.key}: ${view.issue.summary}.`,
+        'Ранее в этой сессии ты составил ТЗ; у него остались открытые вопросы. Часть из них заказчик ответил — ниже каждая пара «вопрос — ответ». Пересобери ТЗ целиком с учётом этих ответов, а не только затронутые пункты: суть, план, критерии приёмки, границы. Вопросы без ответа остаются открытыми — «openQuestions» сохраняет их.',
+        '',
+        '## Ответы на открытые вопросы',
+        '',
+        pairs,
+        '',
+        answerContract(),
+    ].join('\n');
 };
 
 /**

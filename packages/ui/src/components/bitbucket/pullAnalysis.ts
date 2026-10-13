@@ -187,6 +187,30 @@ const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string =
 };
 
 /**
+ * The digest of one reading, compact enough to ride along in the next
+ * reading's prompt: what the last annotation pass said, keyed the way the
+ * panel keys it. The summaries stay — re-judging a comment without knowing
+ * what was said about it is guessing — while the long notes stay behind.
+ */
+export const previousReadingDigest = (analysis: PullAnalysis): string => {
+    const comments: Record<string, { summary: string; justified: boolean | null; variants: string[] }> = {};
+    for (const [id, entry] of analysis.comments) {
+        comments[String(id)] = { summary: entry.summary, justified: entry.justified, variants: entry.variants };
+    }
+    const files: Record<string, { verdict: string; notes: string }> = {};
+    for (const [path, entry] of analysis.files) {
+        files[path] = { verdict: entry.verdict, notes: entry.notes };
+    }
+    return JSON.stringify({
+        comments,
+        files,
+        overall: analysis.overall
+            ? { verdict: analysis.overall.verdict, notes: analysis.overall.notes }
+            : null,
+    });
+};
+
+/**
  * The asking message: what to read, what to weigh, what to answer. The
  * judging instructions are the caller's to pass — the Magic Prompts
  * settings own their default and override — while the material and the
@@ -197,8 +221,25 @@ const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string =
  * work without any Bitbucket access of its own. The language of the
  * answer is Russian, and nothing here promises a button the panel does
  * not render.
+ *
+ * `previous` brings the last reading's digest: a re-analysis does not
+ * start from a blank page but re-judges — what the pull fixed since, what
+ * stands. Its frame tells the model plainly: the digest is one reading's
+ * opinion, not a verdict of the instance; the fresh material is the truth
+ * and the answer is a whole new reading, not a patch on the old one.
+ *
+ * `brief` brings a Confluence page the reader attached as the task's
+ * brief: the page's words embedded as a section of their own, with the
+ * frame that names them the attached brief — the reading treats them as
+ * the task's context, not as another file of the pull.
  */
-export const buildAnalysisPrompt = (view: BitbucketPullView, scope: AnalysisScope, methodology: string): string => {
+export const buildAnalysisPrompt = (
+    view: BitbucketPullView,
+    scope: AnalysisScope,
+    methodology: string,
+    previous: { digest: string; at: number } | null = null,
+    brief: { title: string; material: string } | null = null,
+): string => {
     const taskId = taskIdOfTitle(view.pull.title);
     // How to reach the requirements the diffs answer to: by the task key
     // when the title carries one, or honestly without one. The slot
@@ -216,6 +257,36 @@ export const buildAnalysisPrompt = (view: BitbucketPullView, scope: AnalysisScop
         `Проанализируй Bitbucket pull request #${view.pull.number}: ${view.pull.title}.`,
         'Материал ПРа встроен в сообщение: в сам Bitbucket ходить не нужно — комментариев и диффов здесь столько, сколько есть.',
         '',
+    ];
+
+    if (previous) {
+        const when = new Date(previous.at).toISOString();
+        head.push(
+            'Это повторное чтение ПРа: ниже приложена машинная выжимка предыдущего чтения. Отнесись к ней как к прошлому мнению, а не к истине: ПР мог измениться после неё. Разбери по существу, что из прежних выводов уже исправлено, а что сто́ит и почему, — и дай полное свежее чтение по контракту, а не список отличий от прошлого.',
+            '',
+            '## Выжимка предыдущего чтения (' + when + ')',
+            '',
+            '```json',
+            previous.digest,
+            '```',
+            '',
+        );
+    }
+
+    if (brief) {
+        head.push(
+            `Постановка задачи приложена ниже — страница Confluence «${brief.title}». Относись к ней как к контексту задачи, а не к материалу ПРа; отдельно запрашивать постановку не нужно.`,
+            '',
+            '## Постановка из Confluence',
+            '',
+            '```',
+            brief.material,
+            '```',
+            '',
+        );
+    }
+
+    head.push(
         methodologyText,
         '',
         '## Pull request',
@@ -225,7 +296,7 @@ export const buildAnalysisPrompt = (view: BitbucketPullView, scope: AnalysisScop
         `- Ветки: ${view.pull.fromBranch ?? '?'} → ${view.pull.toBranch ?? '?'}`,
         view.pull.description ? `- Описание:\n${view.pull.description}` : '- Описания нет.',
         '',
-    ];
+    );
 
     const sections: string[] = [];
 

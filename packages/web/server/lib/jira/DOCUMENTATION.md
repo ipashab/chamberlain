@@ -55,9 +55,10 @@ State persists as `jira.json` beside bitbucket.json and the rest:
 - `GET /api/openchamber/jira/issues/search?q=<words>&limit=<1..25>` — the
   quick finder: a text match of the words (or an exact-key look-up when
   the query itself is an issue key), newest by update, capped at `limit`
-  (default 10). The query is sanitized at the search boundary — JQL's
-  metacharacters never reach the instance. The same error kinds as the
-  view answer failures.
+  (default 10), with the `assignee:`, `reporter:`, `status:` and
+  `project:` prefixes becoming equality clauses. The query is sanitized
+  at the search boundary — JQL's metacharacters never reach the instance.
+  The same error kinds as the view answer failures.
 - `GET /api/openchamber/jira/issues/view?ref=<browse URL | issue key>` —
   the issue viewer's read: the issue's whole view, assembled by
   `issue-view.js` from the issue GET, the watchers page, and the epic's
@@ -145,7 +146,10 @@ back — the request module has GET as its only verb.
 The quick finder's read, one GET: the query's plain words as
 `text ~ "<words>*"` — the same quick search Jira's own header runs — or
 an exact-key look-up first when the query itself is an issue key, ordered
-by the last update, capped at the caller's limit. The sanitizing happens
-at this boundary because JQL is a language: JQL metacharacters are
-dropped before the words reach the instance. Rows without a key are
-dropped, not guessed.
+by the last update, capped at the caller's limit. The query may also
+speak four field filters — `assignee:`, `reporter:`, `status:` and
+`project:`, each as `prefix: value` or `prefix:value`, multi-word values
+running to the next prefix — which become equality clauses ANDed onto
+the text match. The sanitizing happens at this boundary because JQL is a
+language: JQL metacharacters are dropped before the words or the clause
+values reach the instance. Rows without a key are dropped, not guessed.

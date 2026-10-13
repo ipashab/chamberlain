@@ -8,6 +8,70 @@ set that shipped then.
 
 ---
 
+## `2.2.0-fork5` — repeated readings, refined specs, Confluence, the board
+
+**A pull remembers its readings.** Starting an analysis again no longer
+starts blind: the fresh reading carries a machine digest of the previous
+one — its comment and file verdicts, its overall judgement — framed for
+what it is, one reading's past opinion, not the truth. The model is told
+to re-judge in full: what the pull fixed since, what still stands, and
+a whole new reading by the same contract, never a patch on the old one.
+
+- The overview tab lists **every reading** of the pull, newest first,
+  each opening its own session; a reading whose answer never fit the
+  contract reports as «the previous reading exists», not as a silence.
+
+**A spec admits refinement.** The spec card's open questions now have
+their answer: a form under the card takes an answer per question, sends
+them to the spec's own session, and the spec is rebuilt whole — the
+answered questions fold into the plan, the unanswered ones stay open,
+and the session keeps its history of one conversation.
+
+**Jira's description reads the way Jira drawn it.** The issue viewer now
+renders the instance's own HTML for the description and comments —
+headings, lists, tables, code — purified to the prose tags a viewer may
+mount, falling back to the words alone where no DOM can sanitize. The
+pulls surface grew state chips over its list — open, merged, declined —
+so a glance narrows it, and the issues search grew prefix words:
+`assignee:`, `reporter:`, `status:`, `project:` beside the plain text.
+
+**Confluence Data Center joins the panel.** One more integrations card
+— origin, token, ssl choice — and the same read-only promise: every
+call is a GET, the token never leaving the server, the pages arriving
+as the instance rendered them, capped at what the reader holds with an
+honest «the rest stayed on the Confluence side».
+
+- The **pages surface** reads and searches: paste a page link or id, or
+  search by words; a recently-read rowlist remembers where you were.
+  A page reads whole — header facts, rendered body, external link —
+  and **Ask about this page** pins its words to the composer as a
+  context chip, the text a person would paste, not the tags.
+- **A page can ride along as the brief**: the analysis dialog of a pull
+  and the spec compose of an issue both grow a page picker — the chosen
+  page is fetched fresh at the moment the reading starts and embedded as
+  its own section, with the frame the reading needs: treat it as the
+  task's context, and where it and the issue text disagree, name the
+  conflict in the open questions, never resolve it in silence.
+
+**The review board answers «what needs me next».** One more surface on
+the rail: the open pulls of the connected Bitbucket account, each
+carrying its last reading's verdict — concerns first, questions next,
+approvals after them, reads without a parsed verdict, and the unread
+tail — with the Jira field beside them for the sprint's issues, the
+same prefix search the issues surface reads.
+
+- A verdict comes from the reading's own answer, parsed by the same
+  contract the pull body trusts; a reading still turning says so.
+- **A row's click is a handoff**: the pulls or issues surface opens on
+  exactly that pull or issue — the same pending-field deal the diff
+  handoff uses, consumed once at the opening, never replayed later.
+
+New UI strings carry real translations in all thirteen dictionaries.
+Server contracts documented in
+`packages/web/server/lib/confluence/DOCUMENTATION.md`.
+
+---
+
 ## `2.2.0-fork4` — Bitbucket and Jira, read whole and asked about
 
 **Bitbucket Data Center joins the context panel.** One instance config —
@@ -213,5 +277,6 @@ appId and icon), so both can live on one machine.
 All user-facing strings translated in the 13 locales the app ships.
 Theme tokens only — no hardcoded palette. Server contracts documented in
 `packages/web/server/lib/team/DOCUMENTATION.md`,
-`packages/web/server/lib/missions/DOCUMENTATION.md` and
-`packages/web/server/lib/assistants/DOCUMENTATION.md`.
+`packages/web/server/lib/missions/DOCUMENTATION.md`,
+`packages/web/server/lib/assistants/DOCUMENTATION.md` and
+`packages/web/server/lib/confluence/DOCUMENTATION.md`.

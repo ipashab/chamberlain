@@ -19,7 +19,9 @@ type BuiltInContextSurfaceId =
   | 'chat'
   | 'team'
   | 'pulls'
-  | 'jira';
+  | 'jira'
+  | 'confluence'
+  | 'review';
 
 export type ContextSurfaceId = BuiltInContextSurfaceId | `plugin:${string}`;
 
@@ -187,6 +189,24 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     mode: 'jira',
     icon: 'task',
     labelKey: 'contextPanel.mode.jira',
+    availability: 'always',
+  },
+  {
+    id: 'confluence',
+    descriptionKey: 'contextRail.surface.confluence.description',
+    defaultWidthFraction: 1 / 2,
+    mode: 'confluence',
+    icon: 'booklet',
+    labelKey: 'contextPanel.mode.confluence',
+    availability: 'always',
+  },
+  {
+    id: 'review',
+    descriptionKey: 'contextRail.surface.review.description',
+    defaultWidthFraction: 1 / 2,
+    mode: 'review',
+    icon: 'list-check-2',
+    labelKey: 'contextPanel.mode.review',
     availability: 'always',
   },
 ];

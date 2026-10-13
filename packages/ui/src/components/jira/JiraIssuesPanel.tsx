@@ -63,6 +63,14 @@ export const JiraIssuesPanel: React.FC = () => {
         setReadToken((token) => token + 1);
     };
 
+    // A handoff from the review board: open on the issue it named. The
+    // pending field is consumed once — the board's click is a target, not
+    // a memory, so the surface never replays it on a later mount.
+    React.useEffect(() => {
+        const pendingIssueRef = useUIStore.getState().consumePendingIssue();
+        if (pendingIssueRef) openIssue(pendingIssueRef);
+    }, []);
+
     const submit = () => {
         const trimmed = address.trim();
         if (!trimmed) return;
@@ -125,6 +133,10 @@ export const JiraIssuesPanel: React.FC = () => {
                     {t('jiraPanel.read')}
                 </Button>
             </form>
+
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {t('jiraPanel.searchHint')}
+            </p>
 
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
                 {searchState.state === 'loading' ? (

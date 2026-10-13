@@ -21,17 +21,32 @@ export const pullNumberOf = (query: string): number | null => {
  */
 export const looksLikeUrl = (query: string): boolean => /^https?:\/\//i.test(query.trim());
 
+/** The state chips the list offers: DC owns the words, "all" is the panel's. */
+export type PullStateFilter = 'open' | 'merged' | 'closed' | 'all';
+export const PULL_STATE_FILTERS: ReadonlyArray<PullStateFilter> = ['open', 'merged', 'closed', 'all'];
+
+/** A row answers whether the state chip keeps it ("all" keeps everything). */
+export const matchesPullState = (state: string, filter: PullStateFilter): boolean =>
+    filter === 'all' || state === filter;
+
 /** The words a filter matches against a row: one lowercase haystack. */
 const haystackOf = (parts: Array<string | null | undefined>): string =>
     parts.filter((part): part is string => Boolean(part)).join(' ').toLowerCase();
 
 /**
  * A list row answers whether the query finds it: the number, the title,
- * the repo coordinates and the author all count; case never does. An empty
- * query finds every row — the unfiltered list is the landing state.
+ * the repo coordinates, the author and the state all count; case never
+ * does. An empty query finds every row — the unfiltered list is the
+ * landing state.
  */
 export const matchesPullQuery = (
-    row: { number: number; title: string; author?: string | null; repo?: { project: string; slug: string } | null },
+    row: {
+        number: number;
+        title: string;
+        state?: string | null;
+        author?: string | null;
+        repo?: { project: string; slug: string } | null;
+    },
     query: string,
 ): boolean => {
     const trimmed = query.trim().toLowerCase();
@@ -40,6 +55,7 @@ export const matchesPullQuery = (
         `#${row.number}`,
         String(row.number),
         row.title,
+        row.state ?? null,
         row.author ?? null,
         row.repo ? `${row.repo.project}/${row.repo.slug}` : null,
     ]);

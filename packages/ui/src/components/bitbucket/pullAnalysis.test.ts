@@ -7,7 +7,9 @@ import {
     analysisSessionTitle,
     buildAnalysisPrompt,
     parseAnalysisResult,
+    previousReadingDigest,
     taskIdOfTitle,
+    type PullAnalysis,
 } from './pullAnalysis';
 
 // The judging guidance the analysis opens with — the Magic Prompts
@@ -250,6 +252,65 @@ describe('buildAnalysisPrompt', () => {
         expect(filesOnly).toContain('`autotests/experiments/src/model.py`');
         expect(filesOnly).toContain('открытых комментариев в материале нет');
         expect(filesOnly).not.toContain('101');
+    });
+
+    test('a previous reading rides along as a framed digest, before the material', () => {
+        const analysis: PullAnalysis = {
+            comments: new Map([[101, { summary: 'Таймаута нет', justified: true, variants: [' Добавить'] }]]),
+            files: new Map([['autotests/experiments/src/model.py', { verdict: 'questions', notes: 'Без теста' }]]),
+            overall: { verdict: 'questions', notes: 'Черновик' },
+        };
+        const digest = previousReadingDigest(analysis);
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology, { digest, at: 1700000000000 });
+        // The frame names it a repeat: the model re-judges the old opinion
+        // against fresh material instead of restating it.
+        expect(prompt).toContain('повторное чтение ПРа');
+        expect(prompt).toContain('прошлому мнению, а не к истине');
+        expect(prompt).toContain('## Выжимка предыдущего чтения');
+        expect(prompt).toContain(digest);
+        // The digest opens with the opinion it frames, the material follows.
+        expect(prompt.indexOf('Выжимка предыдущего чтения')).toBeLessThan(prompt.indexOf('## Pull request'));
+    });
+
+    test('a reading without a previous opinion says nothing about one', () => {
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology, null);
+        expect(prompt).not.toContain('повторное чтение');
+        expect(prompt).not.toContain('Выжимка предыдущего');
+    });
+
+    test('an attached Confluence brief rides as its own section with its frame', () => {
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology, null, {
+            title: 'Release checklist',
+            material: 'Confluence page: Release checklist\n\nПроверь артефакты.',
+        });
+        expect(prompt).toContain('Постановка задачи приложена ниже');
+        expect(prompt).toContain('«Release checklist»');
+        expect(prompt).toContain('## Постановка из Confluence');
+        expect(prompt).toContain('Проверь артефакты.');
+        // The attached brief sits before the material the reading judges.
+        expect(prompt.indexOf('Постановка из Confluence')).toBeLessThan(prompt.indexOf('## Pull request'));
+    });
+
+    test('a reading with neither a brief nor a previous opinion embeds neither', () => {
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology, null, null);
+        expect(prompt).not.toContain('Постановка из Confluence');
+        expect(prompt).toContain('## Pull request');
+    });
+
+    test('the digest keeps the keyed verdicts and drops nothing the re-judge needs', () => {
+        const analysis: PullAnalysis = {
+            comments: new Map([[101, { summary: 'Таймаута нет', justified: true, variants: ['Добавить'] }]]),
+            files: new Map([['config.yaml', { verdict: 'ok', notes: 'Норм' }]]),
+            overall: null,
+        };
+        const digest = JSON.parse(previousReadingDigest(analysis));
+        expect(digest.comments['101']).toEqual({
+            summary: 'Таймаута нет',
+            justified: true,
+            variants: ['Добавить'],
+        });
+        expect(digest.files['config.yaml']).toEqual({ verdict: 'ok', notes: 'Норм' });
+        expect(digest.overall).toBeNull();
     });
 
     test('the session title stays short and names the pull', () => {

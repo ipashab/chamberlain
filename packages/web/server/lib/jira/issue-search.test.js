@@ -42,6 +42,39 @@ describe('readJiraIssueSearch', () => {
     expect(decodeURIComponent(search)).toContain('issuekey = "DEMO-3223"');
   });
 
+  it('turns prefix filters into equality clauses ANDed onto the text match', async () => {
+    const request = vi.fn(async () => ({ issues: [] }));
+    await readJiraIssueSearch({ request, config, query: 'allure assignee: ivanov status: In Progress' });
+    const { search } = request.mock.calls[0][0];
+    const jql = decodeURIComponent(search);
+    expect(jql).toContain('text ~ "allure*"');
+    expect(jql).toContain('assignee = "ivanov"');
+    expect(jql).toContain('status = "In Progress"');
+    expect(jql).not.toContain('text ~ "allure assignee"');
+  });
+
+  it('reads the value in the prefix token and uppercases project keys', async () => {
+    const request = vi.fn(async () => ({ issues: [] }));
+    await readJiraIssueSearch({ request, config, query: 'project:demo reporter:acoder' });
+    const { search } = request.mock.calls[0][0];
+    const jql = decodeURIComponent(search);
+    expect(jql).toContain('project = "DEMO"');
+    expect(jql).toContain('reporter = "acoder"');
+  });
+
+  it('sanitizes a clause value the same way it sanitizes words', async () => {
+    const request = vi.fn(async () => ({ issues: [] }));
+    await readJiraIssueSearch({ request, config, query: 'assignee: iv"an/ov' });
+    const { search } = request.mock.calls[0][0];
+    expect(decodeURIComponent(search)).toContain('assignee = "ivanov"');
+  });
+
+  it('answers an empty list without asking the instance when a prefix values nothing', async () => {
+    const request = vi.fn();
+    expect(await readJiraIssueSearch({ request, config, query: 'assignee:' })).toEqual({ issues: [] });
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it('drops JQL metacharacters before the words reach the instance', async () => {
     const request = vi.fn(async () => ({ issues: [] }));
     await readJiraIssueSearch({ request, config, query: 'all"ure \\report/' });

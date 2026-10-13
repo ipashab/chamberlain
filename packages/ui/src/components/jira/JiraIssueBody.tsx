@@ -16,9 +16,12 @@ import {
     attachIssueLinksAsk,
     type IssueAskResult,
 } from './issueAsk';
+import { jiraWikiToMarkdown } from './wikiMarkdown';
 import { SimpleMarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { useIssueSpec } from './useIssueSpec';
-import type { IssueSpec } from './issueSpec';
+import { ConfluencePagePicker } from '@/components/confluence/ConfluencePagePicker';
+import { fetchAttachedBrief, type AttachedBrief } from '@/components/confluence/briefSource';
+import type { IssueSpec, SpecAnswerPair } from './issueSpec';
 import { JiraAvatar } from './JiraAvatar';
 
 /**
@@ -117,8 +120,14 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
     // The reading this issue asked for: its session, its answer, its card.
     const reading = useIssueSpec(view);
     const [specStarting, setSpecStarting] = React.useState(false);
+    // The Confluence page attached as the spec's brief, if one was picked:
+    // an id and a title until the start fetches the words.
+    const [briefPage, setBriefPage] = React.useState<{ id: string; title: string } | null>(null);
+    const [briefOpen, setBriefOpen] = React.useState(false);
     React.useEffect(() => {
         setSpecStarting(false);
+        setBriefPage(null);
+        setBriefOpen(false);
     }, [issue.url]);
 
     // The reading starts in its own session; the panel only reports how the
@@ -126,7 +135,17 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
     const startSpec = async () => {
         if (specStarting) return;
         setSpecStarting(true);
-        const result = await reading.start();
+        let brief: AttachedBrief | null = null;
+        if (briefPage) {
+            const fetched = await fetchAttachedBrief(briefPage.id);
+            if (!fetched.ok) {
+                setSpecStarting(false);
+                toast.error(t(`confluencePanel.error.${fetched.kind}`));
+                return;
+            }
+            brief = fetched.brief;
+        }
+        const result = await reading.start(brief);
         setSpecStarting(false);
         if (!result.ok) {
             if (result.reason === 'no-model') toast.error(t('jiraView.specNoModel'));
@@ -134,6 +153,60 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
             return;
         }
         toast.message(t('jiraView.specStarted'));
+    };
+
+    // The refinement turn: the answers leave for the spec session and the
+    // card re-drafts when the session answers. A failure is the start's
+    // own words — the ways a follow-up fails are the ways a start does.
+    const submitSpecAnswers = async (answers: SpecAnswerPair[]) => {
+        const result = await reading.answer(answers);
+        if (!result.ok) {
+            if (result.reason === 'no-model') toast.error(t('jiraView.specNoModel'));
+            else toast.error(t('jiraView.specFailed'));
+            return;
+        }
+        toast.message(t('jiraView.specAnswersSent'));
+    };
+
+    /**
+     * The open questions' answer sheet: one small textarea per question,
+     * the submit nothing until at least one answer carries words. The
+     * parent keys the instance by the questions themselves, so a re-draft
+     * with new questions starts the sheet anew.
+     */
+    const SpecAnswersForm: React.FC<{
+        questions: string[];
+        busy: boolean;
+        onSubmit: (answers: SpecAnswerPair[]) => void;
+    }> = ({ questions, busy, onSubmit }) => {
+        const [answers, setAnswers] = React.useState<string[]>(() => questions.map(() => ''));
+        const worthSending = answers.some((answer) => answer.trim() !== '');
+        if (!worthSending && busy) return null;
+        return (
+            <div className="mt-1 space-y-1.5 rounded-lg border border-border px-2 py-2">
+                {questions.map((question, index) => (
+                    <label key={question} className="block space-y-0.5">
+                        <span className="block break-words text-[11px] text-muted-foreground">{question}</span>
+                        <textarea
+                            value={answers[index] ?? ''}
+                            onChange={(event) => setAnswers((previous) => previous.map(
+                                (answer, at) => (at === index ? event.target.value : answer),
+                            ))}
+                            rows={2}
+                            placeholder={t('jiraView.specAnswerPlaceholder')}
+                            className="w-full resize-y rounded border border-border bg-transparent px-1.5 py-1 text-[12px] leading-relaxed"
+                        />
+                    </label>
+                ))}
+                <Button type="button" size="xs" disabled={!worthSending || busy} onClick={() => {
+                    onSubmit(questions
+                        .map((question, index) => ({ question, answer: (answers[index] ?? '').trim() }))
+                        .filter((pair) => pair.answer !== ''));
+                }}>
+                    {t('jiraView.specAnswerSubmit')}
+                </Button>
+            </div>
+        );
     };
 
     /** The spec card: the reading's answer as a card, not prose to parse. */
@@ -191,6 +264,12 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                             <li key={item} className="break-words text-[12px] leading-relaxed">{item}</li>
                         ))}
                     </ul>
+                    <SpecAnswersForm
+                        key={card.openQuestions.join('\u0000')}
+                        questions={card.openQuestions}
+                        busy={reading.reading}
+                        onSubmit={(answers) => void submitSpecAnswers(answers)}
+                    />
                 </div>
             ) : null}
             {card.outOfScope.length > 0 ? (
@@ -245,6 +324,13 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
     const descriptionHtml = React.useMemo(
         () => (view.description.html ? sanitizeRendered(view.description.html) : null),
         [view.description.html],
+    );
+    // The words the instance left as wiki — where it rendered no HTML of
+    // its own — become the Markdown the shared renderer reads, so the
+    // headings, lists and code the author wrote stay what they meant.
+    const descriptionMarkdown = React.useMemo(
+        () => jiraWikiToMarkdown(view.description.wiki),
+        [view.description.wiki],
     );
     const sprints = issue.sprints ?? [];
     const sprintsShown = sprints.slice(0, 2);
@@ -322,6 +408,16 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                 <Button
                     type="button"
                     size="sm"
+                    variant={briefPage === null ? 'ghost' : 'outline'}
+                    disabled={specStarting || reading.reading}
+                    onClick={() => setBriefOpen((open) => !open)}
+                >
+                    <Icon name="booklet" className="size-3.5 shrink-0" />
+                    {t('jiraView.specAttach')}
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
                     variant="ghost"
                     onClick={() => void openExternalUrl(issue.url)}
                 >
@@ -329,6 +425,18 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                     {t('jiraView.openExternal')}
                 </Button>
             </div>
+
+            {briefOpen || briefPage !== null ? (
+                <div className="space-y-1.5 rounded-lg border border-border px-2.5 py-2">
+                    <span className="block text-[11px] font-medium text-muted-foreground">
+                        {t('confluencePanel.pickerLabel')}
+                    </span>
+                    <ConfluencePagePicker selection={briefPage} onSelection={setBriefPage} />
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        {t('jiraView.specAttachHint')}
+                    </p>
+                </div>
+            ) : null}
 
             {reading.reading ? (
                 <p className="text-[13px] text-muted-foreground">{t('jiraView.specReading')}</p>
@@ -398,9 +506,14 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                             dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                         />
                     ) : (
-                        <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">
-                            {view.description.wiki}
-                        </p>
+                        <SimpleMarkdownRenderer
+                            className="break-words text-[13px] leading-relaxed"
+                            // The wiki words passed through the converter: the
+                            // description the author wrote keeps its structure.
+                            content={descriptionMarkdown}
+                            variant="tool"
+                            enableFileReferences={false}
+                        />
                     )}
                 </section>
             ) : null}
@@ -443,7 +556,10 @@ export const JiraIssueBody: React.FC<{ view: JiraIssueView }> = ({ view }) => {
                                 ) : comment.text ? (
                                     <SimpleMarkdownRenderer
                                         className="break-words pl-6 text-[13px] leading-relaxed"
-                                        content={comment.text}
+                                        // Where the instance answered the body as wiki words —
+                                        // no rendered HTML of its own — the words pass through
+                                        // the wiki reader before Markdown reads them.
+                                        content={jiraWikiToMarkdown(comment.text)}
                                         disableLinkSafety
                                         variant="tool"
                                         enableFileReferences={false}

@@ -18,7 +18,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 
 import type { JiraIssueView } from '@/lib/jira/issue-view-api';
 import { fetchMagicPromptOverrides, getDefaultMagicPromptTemplate, type MagicPromptId } from '@/lib/magicPrompts';
-import { buildIssueSpecPrompt, issueSpecSessionTitle } from './issueSpec';
+import { buildIssueSpecAnswersPrompt, buildIssueSpecPrompt, issueSpecSessionTitle, type SpecAnswerPair } from './issueSpec';
 
 /** The settings entry whose override replaces the default instructions. */
 const SPEC_METHODOLOGY_PROMPT_ID: MagicPromptId = 'jira.issue.spec.methodology';
@@ -47,6 +47,10 @@ export type IssueSpecEntry = {
 export type IssueSpecStartResult =
     | { ok: true; entry: IssueSpecEntry }
     | { ok: false; reason: 'no-directory' | 'no-model' | 'rejected' };
+
+export type IssueSpecAnswerResult =
+    | { ok: true }
+    | { ok: false; reason: 'no-entry' | 'no-model' };
 
 type Memory = Record<string, IssueSpecEntry>;
 
@@ -102,10 +106,13 @@ export const recallIssueSpec = (url: string): IssueSpecEntry | null =>
  * session's directory, the issue asked for in Russian with the JSON block
  * demanded back, and the panel's memory pointing at it. The new session
  * takes the stage in the chat the way a plan send does; the issue panel
- * stays where it was and watches from there.
+ * stays where it was and watches from there. An attached Confluence
+ * brief, when one was picked, rides along as the ask's own first
+ * section — the spec session opens knowing the stakeholder's words.
  */
 export const startIssueSpec = async (
     view: JiraIssueView,
+    brief: { title: string; material: string } | null = null,
 ): Promise<IssueSpecStartResult> => {
     const ui = useSessionUIStore.getState();
     const directory = ui.currentSessionId
@@ -146,7 +153,7 @@ export const startIssueSpec = async (
     ui.setCurrentSession(session.id, entry.directory);
 
     await ui.sendMessage(
-        buildIssueSpecPrompt(view, await effectiveSpecMethodology()),
+        buildIssueSpecPrompt(view, await effectiveSpecMethodology(), brief),
         config.currentProviderId,
         config.currentModelId,
         config.currentAgentName || undefined,
@@ -156,4 +163,35 @@ export const startIssueSpec = async (
         config.currentVariant || undefined,
     );
     return { ok: true, entry };
+};
+
+/**
+ * The spec flow's refinement turn: the reader's answers go into the same
+ * session that drafted the spec, so the re-draft knows everything the first
+ * pass knew. The session takes the stage the way the first ask moved it
+ * there — the person watches the re-draft land, because the answers are
+ * theirs and the conversation is one thread, not a new one.
+ */
+export const submitIssueSpecAnswers = async (
+    view: JiraIssueView,
+    entry: IssueSpecEntry,
+    answers: SpecAnswerPair[],
+): Promise<IssueSpecAnswerResult> => {
+    const config = useConfigStore.getState();
+    if (!config.currentProviderId || !config.currentModelId) {
+        return { ok: false, reason: 'no-model' };
+    }
+    const ui = useSessionUIStore.getState();
+    ui.setCurrentSession(entry.sessionId, entry.directory);
+    await ui.sendMessage(
+        buildIssueSpecAnswersPrompt(view, answers),
+        config.currentProviderId,
+        config.currentModelId,
+        config.currentAgentName || undefined,
+        undefined,
+        undefined,
+        undefined,
+        config.currentVariant || undefined,
+    );
+    return { ok: true };
 };

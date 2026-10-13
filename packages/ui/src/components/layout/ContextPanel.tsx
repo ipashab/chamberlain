@@ -25,6 +25,8 @@ const BitbucketPullsPanel = lazyWithChunkRecovery(() => import('@/components/bit
 // The Jira issue surface is the same kind of rail-opened read; its body
 // and its sanitized HTML stay out of the eager startup graph too.
 const JiraIssuesPanel = lazyWithChunkRecovery(() => import('@/components/jira/JiraIssuesPanel').then((m) => ({ default: m.JiraIssuesPanel })));
+const ConfluencePagesPanel = lazyWithChunkRecovery(() => import('@/components/confluence/ConfluencePagesPanel').then((m) => ({ default: m.ConfluencePagesPanel })));
+const ReviewDashboard = lazyWithChunkRecovery(() => import('@/components/review/ReviewDashboard').then((m) => ({ default: m.ReviewDashboard })));
 import { ProjectContextPanel } from './RightSidebarTabs';
 import { TeamBoardView } from '@/components/chat/work-status/TeamBoardView';
 import type { TeamMember } from '@/lib/team/team-board-api';
@@ -180,6 +182,8 @@ const getModeLabel = (
   if (mode === 'team') return t('contextPanel.mode.team');
   if (mode === 'pulls') return t('contextPanel.mode.pulls');
   if (mode === 'jira') return t('contextPanel.mode.jira');
+  if (mode === 'confluence') return t('contextPanel.mode.confluence');
+  if (mode === 'review') return t('contextPanel.mode.review');
   if (isPluginContextPanelMode(mode)) {
     const guest = useGuestsStore.getState().guests.find((entry) => entry.id === pluginIdFromMode(mode));
     return guest?.name ?? t('contextRail.surface.plugin');
@@ -983,6 +987,10 @@ export const ContextPanel: React.FC = () => {
                 ? <React.Suspense fallback={null}><BitbucketPullsPanel /></React.Suspense>
             : activeTab?.mode === 'jira'
                 ? <React.Suspense fallback={null}><JiraIssuesPanel /></React.Suspense>
+            : activeTab?.mode === 'confluence'
+                ? <React.Suspense fallback={null}><ConfluencePagesPanel /></React.Suspense>
+            : activeTab?.mode === 'review'
+                ? <React.Suspense fallback={null}><ReviewDashboard /></React.Suspense>
             : null;
 
   const browserTabs = React.useMemo(

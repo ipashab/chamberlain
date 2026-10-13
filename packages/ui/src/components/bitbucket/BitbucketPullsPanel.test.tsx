@@ -47,7 +47,7 @@ mock.module('@/sync/session-ui-store', () => ({
 // The landing list is a read, not render state: the static markup only ever
 // sees the pre-read moment, so the seam answers what a resolved read would.
 mock.module('@/lib/bitbucket/pull-list-api', () => ({
-  fetchBitbucketOpenPulls: async () => ({ ok: true, pulls: [], truncated: false }),
+  fetchBitbucketDashboardPulls: async () => ({ ok: true, pulls: [], truncated: false }),
 }));
 
 const { BitbucketPullsPanel } = await import('./BitbucketPullsPanel');
@@ -66,9 +66,9 @@ describe('BitbucketPullsPanel', () => {
     // title — so the input teaches the search, not just the paste.
     expect(markup).toContain('Bitbucket pull-request URL');
     expect(markup).toContain('Link, pull number or title');
-    // The open list's read has started; the landing state says so instead
+    // The list's read has started; the landing state says so instead
     // of guessing at rows that have not arrived.
-    expect(markup).toContain('Reading your open pull requests…');
+    expect(markup).toContain('Reading your pull requests…');
   });
 
   test('a remembered read draws its row with the pull it names', () => {

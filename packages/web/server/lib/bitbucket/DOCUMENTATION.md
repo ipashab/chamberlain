@@ -141,17 +141,20 @@ Diff representation: DC answers a diff as JSON files with hunks of
 is rebuilt here because that is the one diff form both consumers — the
 viewer and the chat material — read. The JSON never leaves this module.
 
-## The open pulls list (`pull-list.js`)
+## The account's pull list (`pull-list.js`)
 
 The pull surface's landing list: the token's own dashboard — the pulls
-the account authored or reviews — read through paged GETs, kept to the
-open ones in the order DC orders them (recent activity), capped at the
-caller's limit. The pull's URL number is its `id` on this instance: the
+the account authored or reviews — read through paged GETs, in the order
+DC orders them (recent activity), every state kept. The open rows are
+capped at the caller's limit; closed rows ride along in the same order up
+to a cap of their own, so the panel's state filter has something to
+filter; the state words are the summary's own (`open`, `merged`,
+`closed`). The pull's URL number is its `id` on this instance: the
 dashboard bodies carry no displayId and the web UI opens pulls by id,
 so the id is the number a user knows the pull by. Rows without repo
 coordinates are dropped, not guessed. `truncated` says the walk stopped
-before the dashboard emptied of open pulls; a closed pull never lands
-in the list, so the list is never mistaken for the whole account.
+before the dashboard emptied of open pulls — it never speaks about the
+closed riders, so the list is never mistaken for the whole account.
 
 ## The consumer (`team/pull-status.js`)
 

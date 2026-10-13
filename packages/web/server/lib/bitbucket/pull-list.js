@@ -1,11 +1,13 @@
 /**
- * The pull surface's landing list: the open pulls of the configured token's
+ * The pull surface's landing list: the pulls of the configured token's
  * own account. DC answers them on the dashboard resource — one GET per page,
  * the pulls the user authored or reviews, mixed open and closed and ordered
- * by recent activity. This module keeps the open ones, in the same order,
- * capped at the caller's limit, and says so when the walk stopped early:
- * the list is a memory of what the instance just showed, never a claim of
- * completeness it cannot keep.
+ * by recent activity. This module keeps them all in that order: the open
+ * ones capped at the caller's limit, the closed ones riding along up to the
+ * same cap so the panel can filter by state — with the same state words the
+ * team board's summary uses — and a `truncated` that still speaks only about
+ * the open ones the walk never reached. The list is a memory of what the
+ * instance just showed, never a claim of completeness it cannot keep.
  *
  * The number a pull carries in its URL is its `id` here: DC's pull bodies
  * carry no displayId on this resource and the web UI opens pulls by id, so
@@ -15,6 +17,7 @@
 import { z } from 'zod';
 
 import { BitbucketError } from './client.js';
+import { pullStateOf } from './pull-summary.js';
 
 const PAGE_LIMIT = 100;
 
@@ -69,7 +72,7 @@ const entryOf = (entry, origin) => {
     number: entry.id,
     url: `${origin}/projects/${project}/repos/${slug}/pull-requests/${entry.id}`,
     title: entry.title ?? `#${entry.id}`,
-    state: 'open',
+    state: pullStateOf(entry.state ?? (entry.open === false ? 'MERGED' : 'OPEN')),
     author: personNameOf(entry.author?.user),
     authorSlug: entry.author?.user?.slug ?? null,
     repo: { project, slug },
@@ -79,21 +82,27 @@ const entryOf = (entry, origin) => {
 };
 
 /**
- * The open pulls of the token's account, newest activity first. The walk
- * stops at the cap or the pages cap — whichever comes first — and reports
- * `truncated` when open pulls may exist beyond what was returned. The
- * dashboard resource is user-scoped and answers 404 for a user the token
- * cannot see; the error kinds flow through unchanged, so the panel draws
- * its own unconfigured/unauthorized/unreachable states.
+ * The token's own pulls, newest activity first. The walk stops when the
+ * open ones reach the cap or the pages cap — whichever comes first — and
+ * reports `truncated` when open pulls may exist beyond what was returned.
+ * Closed pulls ride along in the same activity order, up to a cap of their
+ * own, so the panel's state filter has something to filter; a closed pull
+ * seen past its cap is simply not kept — `truncated` never speaks about
+ * them. The dashboard resource is user-scoped and answers 404 for a user
+ * the token cannot see; the error kinds flow through unchanged, so the
+ * panel draws its own unconfigured/unauthorized/unreachable states.
  */
-export const readOpenPulls = async ({ request, config, limit = 10, maxPages = 3 }) => {
+export const readDashboardPulls = async ({ request, config, limit = 10, maxPages = 3 }) => {
   const origin = config?.origin;
   if (!origin) throw new BitbucketError('unconfigured', 'no Bitbucket instance is configured');
 
   const pulls = [];
+  const seen = new Set();
+  let openCount = 0;
+  let closedCount = 0;
   let truncated = false;
   let start = 0;
-  for (let page = 0; page < maxPages && pulls.length < limit; page += 1) {
+  for (let page = 0; page < maxPages && openCount < limit; page += 1) {
     const body = parseBody(
       dashboardPageSchema,
       await request({ config, path: '/rest/api/1.0/dashboard/pull-requests', search: `?start=${start}&limit=${PAGE_LIMIT}` }),
@@ -101,20 +110,27 @@ export const readOpenPulls = async ({ request, config, limit = 10, maxPages = 3 
     );
     const values = body.values ?? [];
     for (const entry of values) {
-      if (entry.open !== true) continue;
       const pull = entryOf(entry, origin);
       if (!pull) continue;
-      if (pulls.length >= limit) {
-        truncated = true;
-        break;
+      if (pull.state === 'open') {
+        if (openCount >= limit) {
+          truncated = true;
+          break;
+        }
+        openCount += 1;
+        pulls.push(pull);
+      } else if (closedCount < limit && !seen.has(pull.url)) {
+        seen.add(pull.url);
+        closedCount += 1;
+        pulls.push(pull);
       }
-      pulls.push(pull);
     }
+    if (truncated) break;
     if (body.isLastPage !== false || values.length === 0) {
       return { pulls, truncated };
     }
     start += values.length;
-    if (pulls.length >= limit) truncated = true;
+    if (openCount >= limit) truncated = true;
   }
   return { pulls, truncated };
 };

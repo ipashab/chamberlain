@@ -21,6 +21,8 @@ import {
     type PullAskResult,
 } from './pullAsk';
 import { BitbucketAvatar } from './BitbucketAvatar';
+import { ConfluencePagePicker } from '@/components/confluence/ConfluencePagePicker';
+import { fetchAttachedBrief, type AttachedBrief } from '@/components/confluence/briefSource';
 import {
     anchorRowIndex,
     codeMapOf,
@@ -54,18 +56,33 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
     const reading = usePullAnalysis(view);
     const [analyzeOpen, setAnalyzeOpen] = React.useState(false);
     const [scope, setScope] = React.useState<AnalysisScope>({ comments: true, files: true });
+    // The Confluence page the dialog attached as the reading's brief, if
+    // one was picked: an id and a title until the start fetches the words.
+    const [briefPage, setBriefPage] = React.useState<{ id: string; title: string } | null>(null);
     const [starting, setStarting] = React.useState(false);
 
     React.useEffect(() => {
         setTab('overview');
         setAnalyzeOpen(false);
+        setBriefPage(null);
     }, [view.pull.url]);
 
     // The reading starts in its own session; the panel only reports how the
-    // starting went, in the two ways it can fail: nowhere to run, no model.
+    // starting went, in the ways it can fail: nowhere to run, no model, or
+    // a brief the attached page would not give.
     const startAnalysis = async () => {
         setStarting(true);
-        const result = await reading.start(scope);
+        let brief: AttachedBrief | null = null;
+        if (briefPage) {
+            const fetched = await fetchAttachedBrief(briefPage.id);
+            if (!fetched.ok) {
+                setStarting(false);
+                toast.error(t(`confluencePanel.error.${fetched.kind}`));
+                return;
+            }
+            brief = fetched.brief;
+        }
+        const result = await reading.start(scope, brief);
         setStarting(false);
         if (!result.ok) {
             if (result.reason === 'no-model') toast.error(t('chat.workStatus.teamBoard.pullView.analyzeNoModel'));
@@ -243,6 +260,12 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                             {t(`chat.workStatus.teamBoard.pullView.${labelKey}`)}
                         </label>
                     ))}
+                    <div className="space-y-1 pt-1">
+                        <span className="block text-[11px] font-medium text-muted-foreground">
+                            {t('confluencePanel.pickerLabel')}
+                        </span>
+                        <ConfluencePagePicker selection={briefPage} onSelection={setBriefPage} />
+                    </div>
                     <div className="flex items-center gap-2">
                         <Button type="button" size="sm" disabled={starting} onClick={() => void startAnalysis()}>
                             {t('chat.workStatus.teamBoard.pullView.analyzeStart')}
@@ -261,7 +284,7 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                     <button
                         type="button"
                         className="shrink-0 text-[11px] underline decoration-dotted underline-offset-2 hover:text-foreground"
-                        onClick={reading.openSession}
+                        onClick={() => reading.openSession()}
                     >
                         {t('chat.workStatus.teamBoard.pullView.openAnalysisSession')}
                     </button>
@@ -274,7 +297,7 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                     <button
                         type="button"
                         className="shrink-0 text-[11px] underline decoration-dotted underline-offset-2 hover:text-foreground"
-                        onClick={reading.openSession}
+                        onClick={() => reading.openSession()}
                     >
                         {t('chat.workStatus.teamBoard.pullView.openAnalysisSession')}
                     </button>
@@ -331,6 +354,34 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                             </div>
                             <div className="rounded-lg border border-border bg-[var(--surface-muted)]/40 px-2.5 py-2">
                                 <SimpleMarkdownRenderer content={reading.analysis.overall.notes} disableLinkSafety variant="tool" enableFileReferences={false} />
+                            </div>
+                        </section>
+                    ) : null}
+
+                    {reading.history.length > 1 ? (
+                        <section className="space-y-1.5">
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                {t('chat.workStatus.teamBoard.pullView.readingsTitle', { count: reading.history.length })}
+                            </div>
+                            <div className="space-y-1">
+                                {reading.history.map((past, index) => (
+                                    <button
+                                        key={past.sessionId}
+                                        type="button"
+                                        className="flex w-full items-center gap-2 rounded-lg border border-border px-2 py-1 text-left"
+                                        onClick={() => reading.openSession(past)}
+                                    >
+                                        <Icon name="sparkling" className="size-3 shrink-0 text-muted-foreground" />
+                                        <span className="min-w-0 flex-1 truncate text-[12px]">
+                                            {index === 0
+                                                ? t('chat.workStatus.teamBoard.pullView.readingLatest')
+                                                : formatStamp(past.startedAt)}
+                                        </span>
+                                        <span className="shrink-0 text-[10px] text-muted-foreground">
+                                            {t('chat.workStatus.teamBoard.pullView.openReading')}
+                                        </span>
+                                    </button>
+                                ))}
                             </div>
                         </section>
                     ) : null}

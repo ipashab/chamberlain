@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { BitbucketError } from './client.js';
-import { readOpenPulls } from './pull-list.js';
+import { readDashboardPulls } from './pull-list.js';
 
 const entry = ({ id, title, open, updatedDate = 1000, state, project = 'DEMO', slug = 'demo-service' }) => ({
   id,
@@ -28,8 +28,8 @@ const makeRequest = (pages) => {
   });
 };
 
-describe('readOpenPulls', () => {
-  it('keeps the open pulls of the dashboard, drops the rest', async () => {
+describe('readDashboardPulls', () => {
+  it('keeps every pull in activity order with its real state, open and closed alike', async () => {
     const request = makeRequest([
       page([
         entry({ id: 4244, title: 'Add tracing headers', open: true, updatedDate: 2000 }),
@@ -37,7 +37,7 @@ describe('readOpenPulls', () => {
         entry({ id: 4242, title: 'Automate the reports', open: true, updatedDate: 1000 }),
       ]),
     ]);
-    const list = await readOpenPulls({ request, config });
+    const list = await readDashboardPulls({ request, config });
     expect(list).toEqual({
       pulls: [
         {
@@ -50,6 +50,17 @@ describe('readOpenPulls', () => {
           repo: { project: 'DEMO', slug: 'demo-service' },
           createdAt: 1000,
           updatedAt: 2000,
+        },
+        {
+          number: 8500,
+          url: 'https://bitbucket.example.com/projects/DEMO/repos/demo-service/pull-requests/8500',
+          title: 'Merged long ago',
+          state: 'merged',
+          author: 'Alex Coder',
+          authorSlug: 'acoder',
+          repo: { project: 'DEMO', slug: 'demo-service' },
+          createdAt: 2000,
+          updatedAt: 3000,
         },
         {
           number: 4242,
@@ -67,10 +78,31 @@ describe('readOpenPulls', () => {
     });
   });
 
-  it('never lands a closed pull in the list', async () => {
-    const request = makeRequest([page([entry({ id: 1, title: 'Done', open: false, state: 'MERGED' })])]);
-    const list = await readOpenPulls({ request, config, limit: 25 });
-    expect(list.pulls).toHaveLength(0);
+  it('speaks the summary state words: DECLINED and the unknown close', async () => {
+    const stateless = entry({ id: 2, title: 'Stateless', open: false, updatedDate: 2 });
+    stateless.state = null;
+    const request = makeRequest([
+      page([
+        entry({ id: 1, title: 'Declined', open: false, state: 'DECLINED' }),
+        stateless,
+      ]),
+    ]);
+    const list = await readDashboardPulls({ request, config, limit: 25 });
+    expect(list.pulls.map((pull) => [pull.number, pull.state])).toEqual([[1, 'closed'], [2, 'merged']]);
+    expect(list.truncated).toBe(false);
+  });
+
+  it('caps the closed riders at the limit without a truncation claim of their own', async () => {
+    const request = makeRequest([
+      page([
+        entry({ id: 101, title: 'Closed one', open: false, updatedDate: 1 }),
+        entry({ id: 102, title: 'Closed two', open: false, updatedDate: 2 }),
+        entry({ id: 103, title: 'Closed three', open: false, updatedDate: 3 }),
+        entry({ id: 4, title: 'Still open', open: true, updatedDate: 4 }),
+      ]),
+    ]);
+    const list = await readDashboardPulls({ request, config, limit: 2 });
+    expect(list.pulls.map((pull) => pull.number)).toEqual([101, 102, 4]);
     expect(list.truncated).toBe(false);
   });
 
@@ -85,7 +117,7 @@ describe('readOpenPulls', () => {
     const faceless = entry({ id: 11, title: 'No author name', open: true, updatedDate: 2 });
     faceless.author = { user: null };
     const request = makeRequest([page([broken, faceless, entry({ id: 10, title: 'Fine', open: true, updatedDate: 1 })])]);
-    const list = await readOpenPulls({ request, config });
+    const list = await readDashboardPulls({ request, config });
     expect(list.pulls.map((pull) => pull.number)).toEqual([11, 10]);
     expect(list.pulls[0].author).toBeNull();
     expect(list.pulls[0].authorSlug).toBeNull();
@@ -101,7 +133,7 @@ describe('readOpenPulls', () => {
       ]),
       page([entry({ id: 4, title: 'Four', open: true, updatedDate: 4 })]),
     ]);
-    const list = await readOpenPulls({ request, config, limit: 2 });
+    const list = await readDashboardPulls({ request, config, limit: 2 });
     expect(list.pulls.map((pull) => pull.number)).toEqual([1, 2]);
     expect(list.truncated).toBe(true);
   });
@@ -111,26 +143,26 @@ describe('readOpenPulls', () => {
       page([entry({ id: 1, title: 'One', open: true, updatedDate: 1 })], false),
       page([entry({ id: 2, title: 'Two', open: false, updatedDate: 2 })]),
     ]);
-    const list = await readOpenPulls({ request, config, limit: 10 });
-    expect(list.pulls.map((pull) => pull.number)).toEqual([1]);
+    const list = await readDashboardPulls({ request, config, limit: 10 });
+    expect(list.pulls.map((pull) => pull.number)).toEqual([1, 2]);
     expect(list.truncated).toBe(false);
   });
 
   it('refuses an unconfigured connection before any request', async () => {
     const request = vi.fn();
-    await expect(readOpenPulls({ request, config: null })).rejects.toMatchObject({ kind: 'unconfigured' });
+    await expect(readDashboardPulls({ request, config: null })).rejects.toMatchObject({ kind: 'unconfigured' });
     expect(request).not.toHaveBeenCalled();
   });
 
   it('demands the shape it reads', async () => {
     const request = vi.fn(async () => ({ values: 'not-a-list' }));
-    await expect(readOpenPulls({ request, config })).rejects.toMatchObject({ kind: 'server-error' });
+    await expect(readDashboardPulls({ request, config })).rejects.toMatchObject({ kind: 'server-error' });
   });
 
   it('propagates the client error kinds untouched', async () => {
     const request = vi.fn(async () => {
       throw new BitbucketError('unauthorized', 'the access token was rejected', 401);
     });
-    await expect(readOpenPulls({ request, config })).rejects.toMatchObject({ kind: 'unauthorized' });
+    await expect(readDashboardPulls({ request, config })).rejects.toMatchObject({ kind: 'unauthorized' });
   });
 });
