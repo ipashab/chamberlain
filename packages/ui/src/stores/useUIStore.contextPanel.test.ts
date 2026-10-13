@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
+import { leavesOf } from '../lib/workspace/layoutTree';
 import { CONTEXT_SURFACES, sortContextSurfaces } from '../lib/surfaces/registry';
 import {
   forgetBrowserTabOpenedWithAddress,
@@ -1365,6 +1366,157 @@ describe('useUIStore workspace zones', () => {
       expect(panel()).toMatchObject({ isOpen: true, activeTabId: 'git', heightByMode: {} });
       expect(panel()?.zones.left.isOpen).toBe(false);
       expect(panel()?.zones.bottom.isOpen).toBe(false);
+    } finally {
+      useUIStore.persist.setOptions(originalPersistOptions);
+    }
+  });
+});
+
+describe('useUIStore layout tree mirror', () => {
+  beforeEach(() => {
+    useUIStore.setState({ contextSurfaceZones: {} });
+  });
+
+  const panel = (directory = '/repo') => useUIStore.getState().contextPanelByDirectory[directory];
+  const layout = (directory = '/repo') => panel(directory)?.layout;
+
+  test('the first open splits the chat at the old right-panel share', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+
+    expect(layout()).toMatchObject({ kind: 'split', axis: 'row', fractions: [0.7, 0.3] });
+    expect(leavesOf(layout()).map((leaf) => leaf.tabs)).toEqual([['git']]);
+    expect(leavesOf(layout())[0].activeTabId).toBe('git');
+  });
+
+  test('later surfaces join the first leaf, and the tree stays on zone moves', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+    store.openContextSurface('/repo', 'terminal');
+    const before = layout();
+
+    // Where a surface is placed is zone business; the tree does not follow.
+    store.moveContextSurfaceToZone('terminal', 'bottom');
+    expect(layout()).toBe(before);
+
+    const leaves = leavesOf(layout());
+    expect(leaves.map((leaf) => leaf.tabs)).toEqual([['git', 'terminal']]);
+    expect(leaves[0].activeTabId).toBe('terminal');
+  });
+
+  test('closing the last tab leaves its region standing, empty, waiting', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+    store.closeContextPanelTab('/repo', 'git');
+
+    expect(panel()?.isOpen).toBe(false);
+    expect(leavesOf(layout()).map((leaf) => leaf.tabs)).toEqual([[]]);
+  });
+
+  test('closing the last file folds its placeholder into the tree as well', () => {
+    const store = useUIStore.getState();
+    store.openContextFile('/repo', '/repo/a.ts');
+    const fileTab = panel()?.tabs.find((tab) => tab.targetPath === '/repo/a.ts');
+    store.closeContextPanelTab('/repo', fileTab?.id ?? '');
+
+    const placeholderId = panel()?.tabs.find((tab) => tab.mode === 'file')?.id;
+    expect(leavesOf(layout()).map((leaf) => leaf.tabs)).toEqual([[placeholderId]]);
+    expect(leavesOf(layout())[0].activeTabId).toBe(placeholderId);
+  });
+
+  test('a moved folder keeps the renamed file tabs in their leaf', () => {
+    const store = useUIStore.getState();
+    store.openContextFile('/repo', '/repo/src/a.ts');
+    store.moveContextFilePaths('/repo', '/repo/src', '/repo/lib/src');
+
+    expect(leavesOf(layout()).map((leaf) => leaf.tabs)).toEqual([['file:/repo/lib/src/a.ts']]);
+    expect(leavesOf(layout())[0].activeTabId).toBe('file:/repo/lib/src/a.ts');
+  });
+
+  test('state saved before the tree loads as leaves in their old zone positions', async () => {
+    useUIStore.persist.setOptions({ storage: {
+      getItem: () => ({
+        version: 24,
+        state: {
+          contextSurfaceZones: { file: 'left' },
+          contextPanelByDirectory: {
+            '/repo': {
+              isOpen: true,
+              expanded: false,
+              widthByMode: {},
+              touchedAt: 1,
+              activeTabId: 'git',
+              tabs: [
+                { id: 'git', mode: 'git', dedupeKey: 'git', touchedAt: 1 },
+                { id: 'file:x', mode: 'file', dedupeKey: 'x', targetPath: '/repo/x.ts', touchedAt: 1 },
+              ],
+              zones: {
+                left: { isOpen: true, activeTabId: 'file:x' },
+                bottom: { isOpen: false, activeTabId: null },
+              },
+            },
+          },
+        },
+      }),
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    } });
+
+    try {
+      useUIStore.setState(useUIStore.getInitialState(), true);
+      await useUIStore.persist.rehydrate();
+
+      const tree = layout();
+      expect(tree).toMatchObject({ kind: 'split', axis: 'row', fractions: [0.3, 0.4, 0.3] });
+      expect(leavesOf(tree).map((leaf) => [leaf.id, leaf.tabs]))
+        .toEqual([['leaf-legacy-left', ['file:x']], ['leaf-legacy-right', ['git']]]);
+    } finally {
+      useUIStore.persist.setOptions(originalPersistOptions);
+    }
+  });
+
+  test('a stored tree loads as it was saved, repaired against the strip', async () => {
+    const tree = {
+      kind: 'split',
+      id: 's1',
+      axis: 'row',
+      fractions: [0.7, 0.3],
+      children: [
+        { kind: 'chat' },
+        { kind: 'leaf', id: 'l1', tabs: ['git', 'gone'], activeTabId: 'file:x' },
+      ],
+    };
+    useUIStore.persist.setOptions({ storage: {
+      getItem: () => ({
+        version: 24,
+        state: {
+          contextPanelByDirectory: {
+            '/repo': {
+              isOpen: true,
+              expanded: false,
+              widthByMode: {},
+              touchedAt: 1,
+              activeTabId: 'git',
+              tabs: [{ id: 'git', mode: 'git', dedupeKey: 'git', touchedAt: 1 }],
+              zones: {
+                left: { isOpen: false, activeTabId: null },
+                bottom: { isOpen: false, activeTabId: null },
+              },
+              layout: tree,
+            },
+          },
+        },
+      }),
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    } });
+
+    try {
+      useUIStore.setState(useUIStore.getInitialState(), true);
+      await useUIStore.persist.rehydrate();
+
+      expect(leavesOf(layout()).map((leaf) => [leaf.id, leaf.tabs, leaf.activeTabId]))
+        .toEqual([['l1', ['git'], 'git']]);
     } finally {
       useUIStore.persist.setOptions(originalPersistOptions);
     }

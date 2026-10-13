@@ -89,7 +89,7 @@ const workspaceNodeSchema: z.ZodType<WorkspaceNode> = z.lazy(() =>
       axis: z.enum(['row', 'column']),
       fractions: z.array(z.number()),
       // SAFETY: zod cannot type this recursive member of the lazy union;
-      // sanitizeTree re-checks every parsed node before the tree renders.
+      // the tree repair re-checks every parsed node before it renders.
       children: z.array(workspaceNodeSchema),
     }) as never,
   ]),
@@ -97,33 +97,38 @@ const workspaceNodeSchema: z.ZodType<WorkspaceNode> = z.lazy(() =>
 
 /**
  * Reads the stored layout. Any node form parses; hopeless data reads as the
- * chat alone. sanitizeTree repairs fractions and dangling active tabs on
- * the way in, so a corrupted region cannot take the layout down.
+ * chat alone. This repair keeps every tab the storage names — the live strip
+ * is known to the store, not to the schema — and fixes fractions and active
+ * tabs so a corrupted region cannot take the layout down.
  */
 export const storedTreeSchema = workspaceNodeSchema
   .nullable()
   .optional()
   .catch(null)
-  .transform((parsed) => (parsed ? sanitizeTree(parsed, new Set()) : CHAT_NODE));
+  .transform((parsed) => (parsed ? repair(parsed, keepEveryTab) : CHAT_NODE));
+
+const keepEveryTab = (): boolean => true;
 
 /**
  * Repairs a tree in one pass: splits with one child collapse, fractions
  * match children and sum to one, active tabs point at tabs the leaf really
- * holds. Called after every operation. `presentTabs` filters tab ids
- * against the live tab list; an empty set means trust every tab.
+ * holds. Called after every operation. `presentTabs` is the live tab strip:
+ * a tab the strip no longer holds leaves its leaf, and an empty strip
+ * empties every leaf — the region itself stays, it was split on purpose.
  */
-export const sanitizeTree = (tree: WorkspaceTree, presentTabs: ReadonlySet<string>): WorkspaceTree => repair(tree, presentTabs);
+export const sanitizeTree = (tree: WorkspaceTree, presentTabs: ReadonlySet<string>): WorkspaceTree =>
+  repair(tree, presentTabs.has.bind(presentTabs));
 
-const repair = (node: WorkspaceNode, presentTabs: ReadonlySet<string>): WorkspaceTree => {
+const repair = (node: WorkspaceNode, keepTab: (id: string) => boolean): WorkspaceTree => {
   if (node.kind === 'chat') return node;
   if (node.kind === 'leaf') {
-    const tabs = presentTabs.size === 0 ? [...node.tabs] : node.tabs.filter((id) => presentTabs.has(id));
+    const tabs = node.tabs.filter(keepTab);
     const activeTabId = tabs.includes(node.activeTabId ?? '') ? node.activeTabId : tabs.at(-1) ?? null;
     return tabs.length === node.tabs.length && activeTabId === node.activeTabId
       ? node
       : { ...node, tabs, activeTabId };
   }
-  const children = node.children.map((child) => repair(child, presentTabs));
+  const children = node.children.map((child) => repair(child, keepTab));
   if (children.length === 1) return children[0];
   if (children.length === 0) return CHAT_NODE;
   const childChanged = children.some((child, index) => child !== node.children[index]);

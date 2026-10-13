@@ -36,6 +36,16 @@ import {
   type ContextZoneView,
   type MovedZoneViews,
 } from '@/lib/workspace/zones';
+import {
+  CHAT_NODE,
+  openSurfaceInTree,
+  renameTabsInTree,
+  sanitizeTree,
+  storedTreeSchema,
+  treeFromZonedPanel,
+  activateTab as activateTabInTree,
+  type WorkspaceTree,
+} from '@/lib/workspace/layoutTree';
 import { sanitizeWorkStatusSectionOrder, type WorkStatusPanelSectionId } from '@/components/chat/work-status/sections';
 
 export type PendingDiffScope = 'working' | 'staged' | 'turn' | 'branch' | 'commit' | 'pr';
@@ -133,6 +143,12 @@ type ContextPanelDirectoryState = {
   activeTabId: string | null;
   /** The left and bottom zones. Every zone shows tabs of the surfaces placed in it. */
   zones: MovedZoneViews;
+  /**
+   * The same panel as a layout tree: any region splits, recursively, with
+   * the chat as one position among the rest. Dual-written with the zones
+   * until the renderer reads the tree alone.
+   */
+  layout: WorkspaceTree;
   // The width the user resized each surface to, px. A surface without one
   // opens at its registry default (`getContextSurfaceDefaultWidth`).
   widthByMode: Partial<Record<ContextPanelMode, number>>;
@@ -518,6 +534,10 @@ const resolveActiveContextPanelTabID = (tabs: ContextPanelTab[], activeTabId: st
   return tabs[tabs.length - 1].id;
 };
 
+// A directory state written before the layout tree existed carries none;
+// its tree reads as the chat alone and fills in through the normal open.
+const layoutOrChat = (layout: WorkspaceTree | undefined): WorkspaceTree => layout ?? CHAT_NODE;
+
 const touchContextPanelState = (
   prev: ContextPanelDirectoryState | undefined,
   placement: ContextZonePlacement,
@@ -527,6 +547,7 @@ const touchContextPanelState = (
     return settleZones({
       ...prev,
       tabs,
+      layout: sanitizeTree(layoutOrChat(prev.layout), new Set(tabs.map((tab) => tab.id))),
       zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(prev.zones), new Set(tabs.map((tab) => tab.id))),
       touchedAt: Date.now(),
     }, placement);
@@ -538,6 +559,7 @@ const touchContextPanelState = (
     tabs: [],
     activeTabId: null,
     zones: { left: CLOSED_ZONE_VIEW, bottom: CLOSED_ZONE_VIEW },
+    layout: CHAT_NODE,
     widthByMode: {},
     heightByMode: {},
     touchedAt: Date.now(),
@@ -618,9 +640,21 @@ const upsertContextPanelTab = (
     : resolveZoneActiveTabId(current.tabs, placement, zone, view.activeTabId) ?? nextTab.id;
   const clampedTabs = clampContextPanelTabs(tabs, CONTEXT_PANEL_MAX_TABS, activeTabId);
 
+  // The tree mirrors the strip: tabs the open replaced or the clamp retired
+  // leave their leaves, and the opened tab lands by the one rule
+  // openSurfaceInTree encodes — where its surface already shows, else the
+  // first filled leaf, else the first empty one, else a fresh split.
+  const layout = openSurfaceInTree(
+    sanitizeTree(layoutOrChat(current.layout), new Set(clampedTabs.map((tab) => tab.id))),
+    clampedTabs,
+    nextTab.id,
+    nextTab.mode,
+  ).tree;
+
   return settleZones(withZoneView({
     ...current,
     tabs: clampedTabs,
+    layout,
     touchedAt: Date.now(),
   }, zone, {
     isOpen: reveal ? true : view.isOpen,
@@ -643,6 +677,7 @@ const closeContextPanelTabs = (
   // Each zone settles on its own: closing a tab never changes what another
   // zone shows.
   const views: Partial<Record<ContextZone, Partial<ContextZoneView>>> = {};
+  let placeholderTabId: string | null = null;
   for (const zone of CONTEXT_ZONES) {
     const view = getZoneView(current, zone);
     const activeClosed = view.activeTabId ? closed.has(view.activeTabId) : false;
@@ -663,6 +698,7 @@ const closeContextPanelTabs = (
     // Closing the placeholder itself still closes the surface.
     if (activeMode === 'file' && !nextSameModeTab && closedTabs.some((tab) => tab.mode === 'file' && tab.targetPath)) {
       const placeholder = createContextPanelTab({ mode: 'file' });
+      placeholderTabId = placeholder.id;
       nextTabs = [...nextTabs, placeholder];
       views[zone] = { activeTabId: placeholder.id };
       continue;
@@ -673,7 +709,12 @@ const closeContextPanelTabs = (
       : { activeTabId: null, isOpen: false, expanded: false };
   }
 
-  let next: ContextPanelDirectoryState = { ...current, tabs: nextTabs, touchedAt: Date.now() };
+  let layout = sanitizeTree(layoutOrChat(current.layout), new Set(nextTabs.map((tab) => tab.id)));
+  if (placeholderTabId) {
+    layout = openSurfaceInTree(layout, nextTabs, placeholderTabId, 'file').tree;
+  }
+
+  let next: ContextPanelDirectoryState = { ...current, tabs: nextTabs, layout, touchedAt: Date.now() };
   for (const zone of CONTEXT_ZONES) {
     const patch = views[zone];
     if (patch) next = withZoneView(next, zone, patch);
@@ -748,6 +789,7 @@ const moveContextPanelFileTabs = (
   let next: ContextPanelDirectoryState = {
     ...current,
     tabs: tabs.filter((tab, index) => tab !== current.tabs[index] || !movedIds.has(tab.id)),
+    layout: renameTabsInTree(layoutOrChat(current.layout), renamed),
     touchedAt: Date.now(),
   };
   for (const zone of CONTEXT_ZONES) {
@@ -760,11 +802,13 @@ const moveContextPanelFileTabs = (
 
 const sanitizeContextPanelByDirectory = (
   value: unknown,
+  placement?: unknown,
 ): Record<string, ContextPanelDirectoryState> => {
   if (!value || typeof value !== 'object') {
     return {};
   }
 
+  const parsedPlacement = zonePlacementSchema.parse(placement ?? {});
   const source = value as Record<string, unknown>;
   const next: Record<string, ContextPanelDirectoryState> = {};
 
@@ -787,6 +831,7 @@ const sanitizeContextPanelByDirectory = (
       targetDirectory?: string | null;
       dedupeKey?: unknown;
       label?: unknown;
+      layout?: unknown;
     };
 
     let tabs = sanitizeContextPanelTabs(candidate.tabs);
@@ -809,6 +854,22 @@ const sanitizeContextPanelByDirectory = (
 
     const resolvedActiveTabId = resolveActiveContextPanelTabID(tabs, activeTabId);
     const clampedTabs = clampContextPanelTabs(tabs, CONTEXT_PANEL_MAX_TABS, resolvedActiveTabId);
+
+    // The layout tree reads from the surface placement when the stored state
+    // predates it: open zones become leaves where they stood, closed zones'
+    // tabs stay in the strip and enter a leaf the day they open. A stored
+    // tree is repaired against the surviving strip instead — tabs that did
+    // not survive sanitizing leave their leaves.
+    const zoneViews = keepZoneViewsOnTabs(zoneViewsSchema.parse(candidate.zones), new Set(clampedTabs.map((tab) => tab.id)));
+    const presentTabIds = new Set(clampedTabs.map((tab) => tab.id));
+    const layout = candidate.layout !== undefined
+      ? sanitizeTree(storedTreeSchema.parse(candidate.layout), presentTabIds)
+      : treeFromZonedPanel({
+          isOpen: candidate.isOpen === true,
+          activeTabId: resolvedActiveTabId,
+          tabs: clampedTabs,
+          zones: zoneViews,
+        }, parsedPlacement);
 
     // Legacy single `width` values are intentionally dropped: widths are now
     // per-surface, seeded from registry defaults until the user resizes.
@@ -833,7 +894,8 @@ const sanitizeContextPanelByDirectory = (
       activeTabId: resolveActiveContextPanelTabID(clampedTabs, resolvedActiveTabId),
       // Placement loads after this, so zones only keep ids that still exist
       // here; touchContextPanelState settles them against the placement.
-      zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(candidate.zones), new Set(clampedTabs.map((tab) => tab.id))),
+      zones: zoneViews,
+      layout,
       widthByMode,
       heightByMode,
       touchedAt: typeof candidate.touchedAt === 'number' && Number.isFinite(candidate.touchedAt)
@@ -1955,6 +2017,7 @@ export const useUIStore = create<UIStore>()(
               ...state.contextPanelByDirectory,
               [normalizedDirectory]: withZoneView({
                 ...current,
+                layout: activateTabInTree(current.layout, normalizedTabID),
                 touchedAt: Date.now(),
                 tabs: current.tabs.map((tab) => (tab.id === normalizedTabID
                   ? { ...tab, touchedAt: Date.now() }
@@ -3487,7 +3550,7 @@ export const useUIStore = create<UIStore>()(
           delete state.rightSidebarWidth;
           delete state.rightSidebarTab;
 
-          state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory);
+          state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory, state.contextSurfaceZones);
 
           if (version < 5) {
             if (!state.shortcutOverrides || typeof state.shortcutOverrides !== 'object') {
@@ -3505,11 +3568,11 @@ export const useUIStore = create<UIStore>()(
           }
 
           if (version < 6) {
-            state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory);
+            state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory, state.contextSurfaceZones);
           }
 
           if (version < 7) {
-            state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory);
+            state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory, state.contextSurfaceZones);
           }
 
           if (version < 8) {
@@ -3551,6 +3614,24 @@ export const useUIStore = create<UIStore>()(
           state.contextSurfaceZones = zonePlacementSchema.parse(state.contextSurfaceZones);
 
           return state;
+        },
+        // The panel directory is the one piece of persisted state whose
+        // shape keeps growing; merge is the boundary that re-reads it no
+        // matter which version wrote it, so a rehydrate at the same version
+        // is sanitized all the same.
+        merge: (persistedState, currentState) => {
+          // SAFETY: zustand hands this boundary whatever storage holds,
+          // possibly nothing. Every field read below then passes through
+          // its own schema — the directory through the sanitizer above.
+          const persisted = (persistedState ?? {}) as Partial<UIStore>;
+          return {
+            ...currentState,
+            ...persisted,
+            contextPanelByDirectory: sanitizeContextPanelByDirectory(
+              persisted.contextPanelByDirectory,
+              persisted.contextSurfaceZones,
+            ),
+          };
         },
         partialize: (state) => ({
           theme: state.theme,
