@@ -10,6 +10,7 @@ import { dict as koDict } from './messages/ko';
 import { dict as plDict } from './messages/pl';
 import { dict as ptBrDict } from './messages/pt-BR';
 import { dict as ukDict } from './messages/uk';
+import { dict as ruDict } from './messages/ru';
 import { dict as zhCnDict } from './messages/zh-CN';
 import { dict as zhTwDict } from './messages/zh-TW';
 import { dict as trDict } from './messages/tr';
@@ -25,6 +26,7 @@ const localeDictionaries = {
   ja: jaDict,
   'pt-BR': ptBrDict,
   uk: ukDict,
+  ru: ruDict,
   ko: koDict,
   pl: plDict,
   'zh-CN': zhCnDict,

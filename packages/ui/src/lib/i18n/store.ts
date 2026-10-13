@@ -26,7 +26,10 @@ async function loadDictionary(locale: Locale): Promise<I18nDictionary> {
     return cached;
   }
 
-  const mod = locale === 'zh-CN'
+  const mod =
+    // SAFETY: every locale dictionary module exports `dict` as a complete
+    // I18nDictionary; the assertion only re-narrows the dynamic-import union.
+    locale === 'zh-CN'
     ? await import('./messages/zh-CN') as { dict: I18nDictionary }
     : locale === 'fr'
       ? await import('./messages/fr') as { dict: I18nDictionary }
@@ -40,7 +43,9 @@ async function loadDictionary(locale: Locale): Promise<I18nDictionary> {
           ? await import('./messages/pt-BR') as { dict: I18nDictionary }
           : locale === 'uk'
             ? await import('./messages/uk') as { dict: I18nDictionary }
-            : locale === 'ko'
+            : locale === 'ru'
+              ? await import('./messages/ru') as { dict: I18nDictionary }
+              : locale === 'ko'
               ? await import('./messages/ko') as { dict: I18nDictionary }
               : locale === 'pl'
                 ? await import('./messages/pl') as { dict: I18nDictionary }

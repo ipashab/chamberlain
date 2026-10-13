@@ -108,6 +108,7 @@ export const dict = {
   'common.language.simplifiedChinese': 'Çince (Basitleştirilmiş)',
   'common.language.traditionalChinese': 'Çince (Geleneksel)',
   'common.language.ukrainian': 'Ukraynaca',
+  'common.language.russian': 'Rusça',
   'common.language.spanish': 'İspanyolca',
   'common.language.brazilianPortuguese': 'Brezilya Portekizcesi',
   'common.language.korean': 'Korece',

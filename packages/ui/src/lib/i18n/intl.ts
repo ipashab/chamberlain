@@ -9,6 +9,7 @@ const INTL_LOCALE_BY_LOCALE: Record<Locale, string> = {
   'zh-CN': 'zh-CN',
   'zh-TW': 'zh-TW',
   uk: 'uk-UA',
+  ru: 'ru-RU',
   es: 'es-ES',
   'pt-BR': 'pt-BR',
   ko: 'ko-KR',

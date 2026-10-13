@@ -60,6 +60,12 @@ export const linearPanelI18n = {
     'contextPanel.linear.priority.medium': 'Середній',
     'contextPanel.linear.priority.low': 'Низький',
   },
+  ru: {
+    'contextPanel.linear.priority.urgent': 'Срочный',
+    'contextPanel.linear.priority.high': 'Высокий',
+    'contextPanel.linear.priority.medium': 'Средний',
+    'contextPanel.linear.priority.low': 'Низкий',
+  },
   'zh-CN': {
     'contextPanel.linear.priority.urgent': '紧急',
     'contextPanel.linear.priority.high': '高',

@@ -133,6 +133,25 @@ const UK_MESSAGES: BootstrapMessages = {
   loadingData: (providersText, agentsText) => `Завантаження даних (${providersText}, ${agentsText})…`,
 };
 
+const RU_MESSAGES: BootstrapMessages = {
+  startingApi: 'Запуск OpenCode API…',
+  initializing: 'Инициализация…',
+  connecting: 'Подключение…',
+  connected: 'Подключено!',
+  connectionError: 'Ошибка подключения',
+  disconnected: 'Отключено',
+  reconnecting: 'Переподключение…',
+  initialDataLoadFailed: 'OpenCode подключён, но первичная загрузка данных не удалась.',
+  cliNotFound: 'OpenCode CLI не найден. Сначала установите его.',
+  providersReady: '✓ Провайдеры',
+  providersLoading: '… Провайдеры',
+  agentsReady: '✓ Агенты',
+  agentsLoading: '… Агенты',
+  startingDevServer: (hostLabel) => `Запуск dev-сервера веб-вью (${hostLabel})...`,
+  waitingDevServer: (hostLabel, attempt) => `Ожидание dev-сервера веб-вью (${hostLabel})... попытка ${attempt}`,
+  loadingData: (providersText, agentsText) => `Загрузка данных (${providersText}, ${agentsText})…`,
+};
+
 const ES_MESSAGES: BootstrapMessages = {
   startingApi: 'Iniciando la API de OpenCode…',
   initializing: 'Inicializando…',
@@ -316,6 +335,7 @@ const BOOTSTRAP_MESSAGES: Record<Locale, BootstrapMessages> = {
   'zh-CN': ZH_CN_MESSAGES,
   'zh-TW': ZH_TW_MESSAGES,
   uk: UK_MESSAGES,
+  ru: RU_MESSAGES,
   es: ES_MESSAGES,
   'pt-BR': PT_BR_MESSAGES,
   ko: KO_MESSAGES,

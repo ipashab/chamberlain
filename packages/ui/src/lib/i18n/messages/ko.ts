@@ -186,6 +186,7 @@ export const dict: Record<I18nKey, string> = {
   'common.language.simplifiedChinese': '중국어(간체)',
   'common.language.traditionalChinese': '중국어(번체)',
   'common.language.ukrainian': '우크라이나어',
+  'common.language.russian': '러시아어',
   'common.language.spanish': '스페인어',
   'common.language.brazilianPortuguese': '브라질 포르투갈어',
   'common.language.korean': '한국어',

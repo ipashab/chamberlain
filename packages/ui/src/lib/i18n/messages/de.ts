@@ -148,6 +148,7 @@ export const dict = {
   'common.language.simplifiedChinese': 'Chinesisch (Vereinfacht)',
   'common.language.traditionalChinese': 'Chinesisch (Traditionell)',
   'common.language.ukrainian': 'Ukrainisch',
+  'common.language.russian': 'Russisch',
   'common.language.spanish': 'Spanisch',
   'common.language.brazilianPortuguese': 'Brasilianisches Portugiesisch',
   'common.language.korean': 'Koreanisch',

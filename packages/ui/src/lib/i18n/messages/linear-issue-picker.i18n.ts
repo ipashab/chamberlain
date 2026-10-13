@@ -56,6 +56,13 @@ export const linearIssuePickerI18n = {
     'chat.workStatus.linkedIssues.openLinear': 'Відкрити {identifier} у Linear',
     'session.newWorktree.actions.startFromLinearIssue': 'Почати з Linear issue',
   },
+  ru: {
+    'chat.chatInput.actions.linkLinearIssue': 'Связать задачу Linear',
+    'chat.chatInput.linked.linearIssue.openInBrowserAria': 'Открыть задачу в Linear',
+    'chat.chatInput.linked.linearIssue.removeAria': 'Убрать связанную задачу Linear',
+    'chat.workStatus.linkedIssues.openLinear': 'Открыть {identifier} в Linear',
+    'session.newWorktree.actions.startFromLinearIssue': 'Задача Linear',
+  },
   ko: {
     'chat.chatInput.actions.linkLinearIssue': 'Linear 이슈 연결',
     'chat.chatInput.linked.linearIssue.openInBrowserAria': 'Linear에서 이슈 열기',
