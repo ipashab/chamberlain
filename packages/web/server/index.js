@@ -1765,7 +1765,7 @@ const enginesRuntime = createEnginesRuntime({
   env: process.env,
   fsPromises,
   getEngineBaseUrl: () => buildOpenCodeUrl(''),
-  getEngineAuthHeaders,
+  getEngineAuthHeaders: getOpenCodeAuthHeaders,
 });
 enginesRuntimeRef = enginesRuntime;
 // Assistants as contacts: saved personas with one continuing chat each.
