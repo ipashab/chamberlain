@@ -89,11 +89,22 @@ brief and tool allowances — as the preset JSON the shelf round-trips.
   re-parses. Bitbucket credentials live in the Settings → Integrations
   connection (`bitbucket/config-store.js`), never in teams.json.
 - **A finished task carries its answer.** The owner marks its own task
-  `completed` with the optional `result` parameter — the final answer, the
-  conclusion the user should read, capped at 8000 chars. The result lives on
-  the task (the board's details dialog shows it), and reopening the task
-  clears it: a fresh completion attaches a fresh answer, so the board never
-  shows a result the task's status contradicts.
+  `completed` with the `result` parameter — the final answer, the conclusion
+  the user should read, capped at 8000 chars. The result lives on the task
+  (the board's details dialog shows it), and reopening the task clears it: a
+  fresh completion attaches a fresh answer, so the board never shows a result
+  the task's status contradicts. Completion is evidence-checked: an update to
+  `completed` with neither a result nor a linked pull request is refused, so
+  a claim with nothing behind it never reaches the board.
+- **A task can carry a deadline.** `deadlineMinutes` on `task_create` (and
+  `task_update`, 0 clears, at most a week) sets the expected minutes from the
+  task entering `in_progress` until it is done. The deadline's clock starts on
+  the transition into `in_progress` and survives a restart; reopening clears
+  the run. The watchdog tick the stall check already uses sweeps the board
+  too: a task past its deadline is reported to the lead exactly once per
+  breach, and a changed deadline re-arms that report. The breach is news, not
+  a verdict — the task stays `in_progress` and the lead decides: interrupt
+  the owner, extend, or drop the task.
 - **Idle notifications.** A teammate that finishes a turn with something for
   the lead (a report, a completed own task) drops an `idle_notification` into
   the lead's mailbox and wakes the lead to synthesize.
