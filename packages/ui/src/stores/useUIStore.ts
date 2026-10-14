@@ -1288,6 +1288,13 @@ interface UIStore {
    * placement rules would put it. The leaf must already exist.
    */
   openContextSurfaceInLeaf: (directory: string, mode: ContextPanelMode, leafId: string) => void;
+  /**
+   * Opens one chosen tab into one chosen leaf — the session picker's and the
+   * sidebar drop's path for a chat: the tab dedupes with any open copy of the
+   * same session, and the open copy is the one that moves into the leaf.
+   * The leaf must already exist.
+   */
+  openContextPanelTabToLeaf: (directory: string, tab: ContextPanelTabDescriptor, leafId: string) => void;
   /** Ids of every tab of one surface, the strip's whole `mode` group. */
   closeContextSurfaceTabs: (directory: string, mode: ContextPanelMode) => void;
   setNotesPanelHeight: (height: number) => void;
@@ -1854,6 +1861,28 @@ export const useUIStore = create<UIStore>()(
           const openedTabs = (get().contextPanelByDirectory[normalizedDirectory]?.tabs ?? []).filter((tab) => tab.mode === mode);
           if (openedTabs.length > 0) {
             state.moveContextPanelTabToLeaf(normalizedDirectory, mostRecentOfMode(openedTabs).id, leafId);
+          }
+        },
+
+        openContextPanelTabToLeaf: (directory, tab, leafId) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory) {
+            return;
+          }
+          const state = get();
+          const panelState = state.contextPanelByDirectory[normalizedDirectory];
+          // The leaf must exist: a stale target would silently drop the tab
+          // into wherever the placement rules chose instead.
+          if (!leavesOf(panelState?.layout ?? CHAT_NODE).some((leaf) => leaf.id === leafId)) {
+            return;
+          }
+          state.openContextPanelTab(normalizedDirectory, tab);
+          // `openContextPanelTab` dedupes onto an existing tab of the same
+          // session; that tab — not a fresh one — is what lands in the leaf.
+          const opened = (get().contextPanelByDirectory[normalizedDirectory]?.tabs ?? [])
+            .find((entry) => entry.dedupeKey === tab.dedupeKey);
+          if (opened) {
+            state.moveContextPanelTabToLeaf(normalizedDirectory, opened.id, leafId);
           }
         },
 

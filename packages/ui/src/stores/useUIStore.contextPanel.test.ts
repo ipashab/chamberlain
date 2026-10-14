@@ -1312,6 +1312,65 @@ describe('useUIStore workspace regions', () => {
     expect(panel()?.tabs.some((tab) => tab.mode === 'terminal')).toBe(false);
   });
 
+  test('opening a chosen session into an empty leaf pins its chat there', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+    store.splitLayoutRegion('/repo', { leafId: leaves()[0].id }, 'row', 0.5);
+    const emptyLeafId = leaves().find((leaf) => leaf.tabs.length === 0)?.id ?? '';
+
+    store.openContextPanelTabToLeaf('/repo', {
+      mode: 'chat',
+      dedupeKey: 'session:ses_x',
+      label: 'Изучение',
+      sessionTitleFallback: 'Изучение',
+      targetDirectory: '/repo',
+    }, emptyLeafId);
+
+    const leaf = leaves().find((entry) => entry.id === emptyLeafId);
+    const chatTab = panel()?.tabs.find((tab) => tab.dedupeKey === 'session:ses_x');
+    expect(chatTab).toBeDefined();
+    expect(leaf?.tabs).toEqual([chatTab?.id]);
+    expect(leaf?.activeTabId).toBe(chatTab?.id);
+  });
+
+  test('dropping a session whose chat already shows elsewhere moves that tab, no copy', () => {
+    const store = useUIStore.getState();
+    store.openContextPanelTab('/repo', {
+      mode: 'chat',
+      dedupeKey: 'session:ses_x',
+      label: 'Изучение',
+      targetDirectory: '/repo',
+    });
+    const chatTabId = panel()?.tabs.find((tab) => tab.dedupeKey === 'session:ses_x')?.id ?? '';
+    store.splitLayoutRegion('/repo', { leafId: leaves()[0].id }, 'row', 0.5);
+    const emptyLeafId = leaves().find((leaf) => leaf.tabs.length === 0)?.id ?? '';
+
+    store.openContextPanelTabToLeaf('/repo', {
+      mode: 'chat',
+      dedupeKey: 'session:ses_x',
+      label: 'Изучение',
+      targetDirectory: '/repo',
+    }, emptyLeafId);
+
+    expect(panel()?.tabs.filter((tab) => tab.dedupeKey === 'session:ses_x')).toHaveLength(1);
+    expect(leaves().find((leaf) => leaf.id === emptyLeafId)?.tabs).toContain(chatTabId);
+  });
+
+  test('opening a chosen session into a stale leaf does nothing', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+
+    store.openContextPanelTabToLeaf('/repo', {
+      mode: 'chat',
+      dedupeKey: 'session:ses_x',
+      label: 'Изучение',
+      targetDirectory: '/repo',
+    }, 'leaf-gone');
+
+    expect(panel()?.tabs.some((tab) => tab.mode === 'chat')).toBe(false);
+    expect(leaves()).toHaveLength(1);
+  });
+
   test('closing the last file falls back to the file tree in its region', () => {
     const store = useUIStore.getState();
     store.openContextFile('/repo', '/repo/a.ts');

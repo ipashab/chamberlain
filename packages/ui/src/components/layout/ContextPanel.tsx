@@ -684,6 +684,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
       ref={panelRef}
       data-context-panel="true"
       data-context-panel-open={isOpen ? 'true' : 'false'}
+      data-region-leaf={leafId}
       tabIndex={-1}
       className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden"
       onKeyDownCapture={handlePanelKeyDownCapture}
@@ -703,7 +704,12 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
             <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
               <span className="typography-ui-label text-muted-foreground">{t('contextPanel.region.empty')}</span>
               <RegionSurfaceMenu leafId={leafId} directoryKey={directoryKey} />
-              <span className="text-sm text-muted-foreground">{t('contextPanel.region.splitHint')}</span>
+              <span className="text-sm text-muted-foreground" data-region-split-hint>
+                {t('contextPanel.region.splitHint')}
+              </span>
+              <span className="hidden text-sm text-muted-foreground" data-region-drop-hint>
+                {t('contextPanel.region.dropSession')}
+              </span>
             </div>
           )}
         </div>

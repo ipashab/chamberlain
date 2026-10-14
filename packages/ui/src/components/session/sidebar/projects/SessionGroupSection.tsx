@@ -1010,7 +1010,6 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
     <SessionFolderDndScope
       scopeKey={folderScopes[0]?.scopeKey ?? folderScopeKey}
       ownerKey={folderOwnerKey}
-      hasFolders={allFoldersForGroup.length > 0}
       onSessionDroppedOnFolder={(sessionId, target) => {
         const targetEntry = allFoldersForGroup.find(({ folder, scopeKey }) => folder.id === target.folderId && scopeKey === target.scopeKey);
         if (!targetEntry) return;

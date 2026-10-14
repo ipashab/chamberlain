@@ -121,6 +121,28 @@ button,
   transition: background-color 180ms ease;
 }
 
+/* A sidebar session drag is live: every context-panel region becomes a
+   drop target, the hovered one saying so with the primary outline. The
+   empty region's split hint trades places with the drop wording. */
+body.oc-session-dragging [data-region-leaf] {
+  outline: 1px dashed color-mix(in srgb, var(--primary-base) 30%, transparent);
+  outline-offset: -2px;
+  cursor: copy;
+}
+
+body.oc-session-dragging [data-region-leaf]:hover {
+  outline: 2px solid var(--primary-base);
+  outline-offset: -2px;
+}
+
+body.oc-session-dragging [data-region-split-hint] {
+  display: none;
+}
+
+body.oc-session-dragging [data-region-drop-hint] {
+  display: block;
+}
+
 /* Ensure interactive controls consistently show pointer cursor */
 :where(
   button,
