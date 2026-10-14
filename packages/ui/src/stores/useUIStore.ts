@@ -2075,15 +2075,26 @@ export const useUIStore = create<UIStore>()(
             const zone = zoneOfMode(state.contextSurfaceZones, targetTab.mode);
             const view = getZoneView(current, zone);
 
-            if (view.activeTabId === normalizedTabID && view.isOpen) {
+            // The view is bookkeeping the tree disproves the moment a region
+            // closes with its tab still in the strip: `view` still says open
+            // and active, while no leaf renders the tab. Only a tab a region
+            // really shows may pass unmoved; an unplaced one falls through
+            // and re-enters a region by the one placement rule every open takes.
+            const shownInALeaf = leavesOf(current.layout).some((leaf) => leaf.tabs.includes(normalizedTabID));
+            if (view.activeTabId === normalizedTabID && view.isOpen && shownInALeaf) {
               return showsFile ? { contextEditorVisible: true } : state;
             }
+
+            const activatedLayout = activateTabInTree(current.layout, normalizedTabID);
+            const layout = shownInALeaf
+              ? activatedLayout
+              : openSurfaceInTree(current.layout, current.tabs, normalizedTabID, targetTab.mode).tree;
 
             const byDirectory = {
               ...state.contextPanelByDirectory,
               [normalizedDirectory]: withZoneView({
                 ...current,
-                layout: activateTabInTree(current.layout, normalizedTabID),
+                layout,
                 touchedAt: Date.now(),
                 tabs: current.tabs.map((tab) => (tab.id === normalizedTabID
                   ? { ...tab, touchedAt: Date.now() }

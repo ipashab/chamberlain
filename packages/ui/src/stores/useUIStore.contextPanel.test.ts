@@ -546,6 +546,23 @@ describe('useUIStore openContextSurface', () => {
     expect(state?.tabs.map((tab) => tab.mode)).toEqual(['diff']);
   });
 
+  test('a tab left in the strip by a closed region re-enters a region on the next open', () => {
+    useUIStore.getState().openContextSurface(directory, 'browser');
+    useUIStore.getState().openContextSurface(directory, 'browser');
+
+    // The toggle above closed the browser's region; the tab survives in the
+    // strip but no leaf renders it. The next rail open has to re-place it —
+    // before the fix this click returned with nothing shown, because the
+    // strip bookkeeping still called the tab open and active.
+    useUIStore.getState().openContextSurface(directory, 'browser');
+
+    const state = useUIStore.getState().contextPanelByDirectory[directory];
+    expect(state?.tabs.map((tab) => tab.mode)).toEqual(['browser']);
+    const placed = leavesOf(state?.layout ?? CHAT_NODE).flatMap((leaf) => leaf.tabs);
+    expect(placed).toContain('browser');
+    expect(state?.isOpen).toBe(true);
+  });
+
   test('does nothing for content-driven modes without existing content', () => {
     useUIStore.getState().openContextSurface(directory, 'chat');
 
