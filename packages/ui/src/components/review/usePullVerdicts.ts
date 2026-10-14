@@ -52,29 +52,34 @@ export const usePullVerdicts = (
         [wanted, directory],
     );
 
+    // The verdict map is rebuilt from live messages on every store change;
+    // the shallow wrapper keeps its identity until a verdict really moved,
+    // so the board re-renders on verdicts, not on every part update.
     const verdictBySessionId = useDirectorySync(
-        React.useCallback((state: State) => {
-            // The watch's own member type names the contract this builds —
-            // the named owner of the verdict map, not an inline dictionary.
-            const out: PullVerdictsWatch['verdictBySessionId'] = {};
-            for (const entry of local) {
-                const messages = state.message[entry.sessionId] ?? [];
-                // Newest first, and only the newest answer that actually
-                // fits the contract counts; earlier drafts inside the same
-                // reading are exactly that — drafts.
-                for (let index = messages.length - 1; index >= 0; index -= 1) {
-                    const record = messages[index];
-                    if (record?.role !== 'assistant') continue;
-                    const text = flattenAssistantTextParts(state.part[record.id] ?? []).trim();
-                    const parsed = parseAnalysisResult(text);
-                    if (parsed?.overall) {
-                        out[entry.sessionId] = parsed.overall.verdict;
-                        break;
+        useShallow(
+            React.useCallback((state: State) => {
+                // The watch's own member type names the contract this builds —
+                // the named owner of the verdict map, not an inline dictionary.
+                const out: PullVerdictsWatch['verdictBySessionId'] = {};
+                for (const entry of local) {
+                    const messages = state.message[entry.sessionId] ?? [];
+                    // Newest first, and only the newest answer that actually
+                    // fits the contract counts; earlier drafts inside the same
+                    // reading are exactly that — drafts.
+                    for (let index = messages.length - 1; index >= 0; index -= 1) {
+                        const record = messages[index];
+                        if (record?.role !== 'assistant') continue;
+                        const text = flattenAssistantTextParts(state.part[record.id] ?? []).trim();
+                        const parsed = parseAnalysisResult(text);
+                        if (parsed?.overall) {
+                            out[entry.sessionId] = parsed.overall.verdict;
+                            break;
+                        }
                     }
                 }
-            }
-            return out;
-        }, [local]),
+                return out;
+            }, [local]),
+        ),
         directory ?? undefined,
     );
 
