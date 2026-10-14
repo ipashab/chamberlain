@@ -106,6 +106,7 @@ import { shouldBlockGuestFrameNavigation } from './guest-frame-navigation.mjs';
 import { createRelayDevTunnelBridge } from './relay-dev-tunnel.mjs';
 import { parsePairingDeepLink } from './pairing-deep-link.mjs';
 import { attachRendererRecovery } from './renderer-recovery.mjs';
+import { buildCrashedWindowDataUrl } from './crashed-window-page.mjs';
 import { createLoadFailureWarningFilter } from './load-failure-warnings.mjs';
 import { mintOutsideFileGrant } from '@openchamber/web/server/lib/fs/routes.js';
 import { fetchUpdateNotes } from '@openchamber/web/server/lib/changelog/update-notes.js';
@@ -2529,6 +2530,94 @@ const canUseTitleBarOverlay = (browserWindow) => (
   !browserWindow.isDestroyed()
 );
 
+// Windows main navigated to the crashed-window recovery page, with what that
+// page's reset command needs. Keyed by webContents: the renderer dying is the
+// normal way to get here.
+const crashedWindowRecoveries = new WeakMap();
+
+const isKnownCrashedPage = (webContents) => {
+  try {
+    return crashedWindowRecoveries.has(webContents);
+  } catch {
+    return false;
+  }
+};
+
+// Shared gate for the crashed-window page commands: only that page passes,
+// verified by webContents identity in the weak map plus the exact URL this
+// launch built. Every other renderer, local or remote, is refused.
+const resolveCrashedWindowEntry = (browserWindow) => {
+  const webContents = browserWindow?.webContents;
+  if (!webContents) return null;
+  const entry = crashedWindowRecoveries.get(webContents);
+  if (!entry) return null;
+  let pageUrl = '';
+  try {
+    pageUrl = webContents.getURL();
+  } catch {
+    return null;
+  }
+  if (pageUrl !== entry.pageUrl) return null;
+  return { webContents, entry };
+};
+
+// Where "Go back" returns to: the document the window had committed when the
+// renderer died. A window that died on a data: splash never committed one, so
+// packaged builds fall back to the single app URL and a dev window ends up
+// with whatever local origin exists; without any target the page hides its
+// buttons and states the problem alone.
+const resolveCrashRecoveryUrl = (browserWindow) => {
+  try {
+    const currentUrl = new URL(browserWindow.webContents.getURL());
+    if (currentUrl.protocol !== 'data:') return currentUrl.toString();
+  } catch {
+  }
+  if (shouldUsePackagedUi()) return buildPackagedUiUrl('/index.html');
+  return state.localOrigin || state.sidecarUrl || '';
+};
+
+/**
+ * The recovery page shown when a window's renderer keeps dying past the
+ * reload budget. Loaded from main, so it answers even though no renderer of
+ * the application is left standing; see crashed-window-page.mjs for what the
+ * user sees.
+ */
+const showCrashedWindowPage = (browserWindow, details = {}) => {
+  if (!browserWindow || browserWindow.isDestroyed()) return;
+  const webContents = browserWindow.webContents;
+  if (!webContents || webContents.isDestroyed()) return;
+  const existing = crashedWindowRecoveries.get(webContents);
+  if (existing) {
+    // The page main loaded is what died this time. Show it again from the
+    // entry that is still in place; a page that keeps dying past this point
+    // is the same loop one level down, which reloading cannot fix either.
+    webContents.loadURL(existing.pageUrl).catch(() => {});
+    return;
+  }
+  const retryUrl = resolveCrashRecoveryUrl(browserWindow);
+  const pageUrl = buildCrashedWindowDataUrl({ locale: readPreferredLocale(), retryUrl });
+  crashedWindowRecoveries.set(webContents, { pageUrl, retryUrl });
+  // Once the window leaves this page, it has to be able to crash into it
+  // again; drop the entry on the first navigation anywhere else.
+  webContents.once('did-start-navigation', (_event, url) => {
+    if (url !== pageUrl) crashedWindowRecoveries.delete(webContents);
+  });
+  webContents.loadURL(pageUrl).then(() => {
+    log.info('[electron] showing the crashed-window recovery page', {
+      label: browserWindow.__ocLabel,
+      reason: details?.reason ?? '',
+      exitCode: details?.exitCode,
+    });
+  }).catch((error) => {
+    crashedWindowRecoveries.delete(webContents);
+    log.warn('[electron] failed to show the crashed-window recovery page', {
+      label: browserWindow.__ocLabel,
+      error: error?.message || String(error),
+    });
+  });
+};
+
+
 // `adopt` hands over the window the entry module created before this module
 // loaded; it is already on the splash and shows itself on ready-to-show.
 const createBrowserWindow = ({ label, restoreGeometry, url, runtimeConfig = {}, adopt = null }) => {
@@ -2771,7 +2860,11 @@ const createBrowserWindow = ({ label, restoreGeometry, url, runtimeConfig = {}, 
   browserWindow.webContents.on('zoom-changed', () => {
     browserWindow.webContents.setZoomFactor(1);
   });
-  attachRendererRecovery(browserWindow, { log, label: 'window' });
+  attachRendererRecovery(browserWindow, {
+    log,
+    label: 'window',
+    onGaveUp: (details) => showCrashedWindowPage(browserWindow, details),
+  });
 
   browserWindow.webContents.on('dom-ready', () => {
     if (browserWindow.__ocLabel === 'main') {
@@ -3163,7 +3256,11 @@ const createMiniChatWindow = async ({ mode, sessionId = '', directory = '', proj
   browserWindow.__ocMiniChatSessionId = sessionWindowKey;
   browserWindow.__ocPinned = false;
 
-  attachRendererRecovery(browserWindow, { log, label: 'mini chat' });
+  attachRendererRecovery(browserWindow, {
+    log,
+    label: 'mini chat',
+    onGaveUp: (details) => showCrashedWindowPage(browserWindow, details),
+  });
 
   if (sessionWindowKey) {
     state.miniChatWindowsBySession.set(sessionWindowKey, browserWindow);
@@ -5232,6 +5329,36 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       return null;
     }
 
+    case 'desktop_crashed_window_retry':
+    case 'desktop_crashed_window_reset': {
+      const crashed = resolveCrashedWindowEntry(browserWindow);
+      if (!crashed || !crashed.entry.retryUrl) {
+        throw new Error('Not available outside the crash page');
+      }
+      if (command === 'desktop_crashed_window_retry') {
+        // Main navigates on the page's behalf: the renderer-initiated form
+        // runs into the navigation guard, which has no reason to trust a
+        // data: origin in dev. Answers before the navigation starts.
+        void crashed.webContents.loadURL(crashed.entry.retryUrl).catch(() => {});
+        return true;
+      }
+      let storageOrigin = '';
+      try {
+        storageOrigin = new URL(crashed.entry.retryUrl).origin;
+      } catch {
+      }
+      if (!storageOrigin) throw new Error('The window has no saved state to reset');
+      // Every localStorage key of the application origin: layout, tabs,
+      // review caches, drafts. Sessions and messages live on the server and
+      // stay untouched. Main navigates back on the page's behalf, same as
+      // the retry command: the guard would refuse the page's own data:
+      // origin in development.
+      await crashed.webContents.session.clearStorageData({ origin: storageOrigin, storages: ['localstorage'] });
+      log.info('[electron] cleared saved window state from the crash page', { origin: storageOrigin });
+      void crashed.webContents.loadURL(crashed.entry.retryUrl).catch(() => {});
+      return true;
+    }
+
     case 'desktop_get_lan_address':
       return await detectLanIPv4Address();
 
@@ -5790,7 +5917,13 @@ const COMMANDS_SAFE_FOR_REMOTE = new Set([
 ]);
 
 ipcMain.handle('openchamber:invoke', async (event, command, args) => {
-  if (!isLocalSender(event.sender) && !COMMANDS_SAFE_FOR_REMOTE.has(command)) {
+  // The crashed-window page is a data: URL, so in dev (where no local origin
+  // matches it) isLocalSender rejects it. Identity in the weak map replaces
+  // the origin check for its two commands: only a page main itself loaded is
+  // there, and nothing else can put a webContents into it.
+  const crashedPageCommand = command.startsWith('desktop_crashed_window_')
+    && isKnownCrashedPage(event.sender);
+  if (!isLocalSender(event.sender) && !crashedPageCommand && !COMMANDS_SAFE_FOR_REMOTE.has(command)) {
     log.warn(`[ipc] rejected ${command} from non-local origin: ${event.sender?.getURL?.() || '(unknown)'}`);
     throw new Error('IPC not available for this origin');
   }

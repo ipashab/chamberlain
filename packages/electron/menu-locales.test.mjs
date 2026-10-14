@@ -5,6 +5,7 @@ import {
   CONTEXT_MENU_LABEL_DICTIONARIES,
   MENU_LOCALE_DICTIONARIES,
   createContextMenuLabels,
+  crashPageLabel,
   menuLabel,
   normalizeMenuLocale,
   roleMenuItem,
@@ -49,6 +50,14 @@ test('menu dictionaries share identical key sets across locales', () => {
     const keys = Object.keys(CONTEXT_MENU_LABEL_DICTIONARIES[locale]).sort();
     assert.deepEqual(keys, enContextKeys, `context menu dictionary ${locale} key mismatch`);
   }
+});
+
+test('crash page labels resolve ru and fall back to English', () => {
+  assert.equal(crashPageLabel('ru', 'crashPage.retry'), 'Вернуться');
+  assert.equal(crashPageLabel('ru', 'crashPage.reset'), 'Сбросить сохранённое состояние');
+  assert.equal(crashPageLabel('de', 'crashPage.retry'), 'Go back');
+  assert.equal(crashPageLabel('en', 'crashPage.retry'), 'Go back');
+  assert.equal(crashPageLabel('ru', 'not.a.real.key'), 'not.a.real.key');
 });
 
 test('createContextMenuLabels starts in English and applies locale dictionaries', () => {

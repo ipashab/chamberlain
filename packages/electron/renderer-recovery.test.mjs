@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { setTimeout } from 'node:timers/promises';
 
-import { attachRendererRecovery, createRendererRecoveryPolicy } from './renderer-recovery.mjs';
+import {
+  attachRendererRecovery,
+  createRendererRecoveryPolicy,
+} from './renderer-recovery.mjs';
 
 const createFakeWindow = () => {
   const listeners = new Map();
@@ -96,5 +99,44 @@ test('skips the reload when the window is gone or the exit is not recoverable', 
   browserWindow.destroy();
   await setTimeout(150);
 
+  assert.equal(browserWindow.state.reloads, 0);
+});
+
+test('hands the window over through onGaveUp once the budget is spent', async () => {
+  const browserWindow = createFakeWindow();
+  const gaveUps = [];
+  attachRendererRecovery(browserWindow, {
+    log: createFakeLog(),
+    label: 'window',
+    onGaveUp: (details) => gaveUps.push(details),
+  });
+
+  const crashes = 6;
+  for (let i = 0; i < crashes; i += 1) {
+    browserWindow.emit('render-process-gone', { reason: 'crashed', exitCode: 5 });
+    await setTimeout(120);
+  }
+
+  // Three reloads inside the budget, then the page takes over: no further
+  // reload, one hand-off per crash past the budget.
+  assert.equal(browserWindow.state.reloads, 3);
+  assert.equal(gaveUps.length, crashes - 3);
+  assert.deepEqual(gaveUps[0], { reason: 'crashed', exitCode: 5 });
+});
+
+test('never hands over a window whose exit is not recoverable', async () => {
+  const browserWindow = createFakeWindow();
+  const gaveUps = [];
+  attachRendererRecovery(browserWindow, {
+    log: createFakeLog(),
+    label: 'window',
+    onGaveUp: (details) => gaveUps.push(details),
+  });
+
+  browserWindow.emit('render-process-gone', { reason: 'clean-exit', exitCode: 0 });
+  browserWindow.emit('render-process-gone', { reason: 'killed', exitCode: 9 });
+  await setTimeout(150);
+
+  assert.equal(gaveUps.length, 0);
   assert.equal(browserWindow.state.reloads, 0);
 });

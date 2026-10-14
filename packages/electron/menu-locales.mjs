@@ -1374,3 +1374,27 @@ export const createContextMenuLabels = () => {
   apply('en');
   return { labels, apply };
 };
+
+// Copy for the full-window recovery page main shows when the renderer-recovery
+// budget is spent (crashed-window-page.mjs). It ships the locales it is
+// translated for and resolves every other locale to English.
+const CRASH_PAGE_LABEL_DICTIONARIES = {
+  en: {
+    'crashPage.title': 'This window has stopped working',
+    'crashPage.body': 'The window could not come back after several restart attempts. If it keeps crashing, reset the saved state: the layout returns to defaults, while sessions and messages stay intact.',
+    'crashPage.retry': 'Go back',
+    'crashPage.reset': 'Reset saved state',
+  },
+  ru: {
+    'crashPage.title': 'Это окно перестало работать',
+    'crashPage.body': 'Окну не удалось вернуться после нескольких перезапусков. Если оно падает снова, сбросьте сохранённое состояние: раскладка вернётся к настройкам по умолчанию, а сессии и сообщения останутся нетронутыми.',
+    'crashPage.retry': 'Вернуться',
+    'crashPage.reset': 'Сбросить сохранённое состояние',
+  },
+};
+
+export const crashPageLabel = (locale, key) => (
+  CRASH_PAGE_LABEL_DICTIONARIES[locale]?.[key]
+    ?? CRASH_PAGE_LABEL_DICTIONARIES.en[key]
+    ?? key
+);
