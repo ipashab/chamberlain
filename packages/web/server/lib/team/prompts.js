@@ -84,7 +84,7 @@ const rosterSection = (members) => members
   })
   .join('\n');
 
-const boardSummary = (tasks) => {
+const boardSummary = (tasks, now = Date.now) => {
   const visible = tasks.filter((task) => task.status !== 'deleted');
   if (visible.length === 0) return 'The task board is empty.';
   const lines = visible
@@ -95,6 +95,19 @@ const boardSummary = (tasks) => {
       ];
       if (task.owner) bits.push(`owner: ${task.owner}`);
       if (task.blockedBy?.length) bits.push(`blocked_by: ${task.blockedBy.join(', ')}`);
+      // A running task with a deadline shows its budget where the lead reads
+      // it; a breach the watchdog already reported says so here too.
+      if (Number.isInteger(task.deadlineMinutes) && task.deadlineMinutes > 0) {
+        if (task.status === 'in_progress' && Number.isFinite(task.startedAt)) {
+          if (task.deadlineNotifiedAt) {
+            bits.push(`deadline: ${task.deadlineMinutes}m — passed, reported to the Team Lead`);
+          } else {
+            bits.push(`deadline: ${task.deadlineMinutes}m, ${Math.max(0, task.deadlineMinutes - Math.round((now() - task.startedAt) / 60_000))}m left`);
+          }
+        } else {
+          bits.push(`deadline: ${task.deadlineMinutes}m when started`);
+        }
+      }
       // The description is the assignment body: an owner woken by the board
       // summary must see the task details in the same prompt, not go digging.
       const description = String(task.description ?? '').trim();
@@ -236,7 +249,7 @@ refuse, send shutdown_rejected: <your reason>.
  * A message that would blow the context budget is clipped and stays unread
  * for full delivery next turn.
  */
-export const buildWakePayload = ({ member, team, messages, tasks, reportTo = null }) => {
+export const buildWakePayload = ({ member, team, messages, tasks, reportTo = null, now = Date.now }) => {
   const addressed = messages.slice(0, WAKE_LIMIT_PER_TURN);
   const lines = addressed.length > 0
     ? addressed
@@ -250,7 +263,7 @@ export const buildWakePayload = ({ member, team, messages, tasks, reportTo = nul
 
 ${lines}
 
-${boardSummary(tasks)}
+${boardSummary(tasks, now)}
 
 You are ${member.name} (role: ${member.role}), member of team "${team.name}".
 ${reportTo ? `Report your results to your sub-team lead ${reportTo.name} (slot_id: ${reportTo.slotId}).\n` : ''}Proceed with your work. Use team.read_messages for the full mailbox and

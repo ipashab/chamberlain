@@ -13,7 +13,7 @@ afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => fs.rm(directory, { recursive: true, force: true })));
 });
 
-const makeService = async () => {
+const makeService = async (overrides = {}) => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-team-'));
   temporaryDirectories.push(dataDir);
 
@@ -74,6 +74,8 @@ const makeService = async () => {
     getOpenCodeAuthHeaders: () => ({}),
     waitForOpenCodeReady: async () => {},
     createOpenCodeClient,
+    now: overrides.now,
+    watchdogIntervalMs: overrides.watchdogIntervalMs,
     sessionService: {
       send: async (sessionID, payload) => {
         sent.push({ sessionID, payload });
@@ -215,6 +217,7 @@ describe('team service', () => {
     const updated = await service.executeAction('team.task_update', {
       taskId: task.taskId,
       status: 'completed',
+      result: 'Mapped the modules; doc/maps.md now lists every one.',
     }, alice.sessionId);
     expect(updated.task.status).toBe('completed');
   });
@@ -651,6 +654,160 @@ describe('createTaskFromUi', () => {
     expect(cleared.task.pull).toBeNull();
     const [afterClear] = await service.snapshot();
     expect(afterClear.tasks.find((entry) => entry.taskId === task.taskId).pull).toBeNull();
+  });
+
+  it('refuses a completion with neither a result nor a pull request', async () => {
+    const { service } = await makeService();
+    const { roster } = await makeTeam(service);
+    const alice = roster[0];
+    const { task } = await service.executeAction('team.task_create', { subject: 'Claim a fix', owner: alice.slotId }, 'ses_lead');
+    await service.executeAction('team.task_update', { taskId: task.taskId, status: 'in_progress' }, alice.sessionId);
+
+    await expect(service.executeAction('team.task_update', {
+      taskId: task.taskId,
+      status: 'completed',
+    }, alice.sessionId)).rejects.toThrow(/needs evidence/);
+
+    // The refusal leaves the task running; only a stated answer lands it.
+    const [refused] = await service.snapshot();
+    expect(refused.tasks.find((entry) => entry.taskId === task.taskId).status).toBe('in_progress');
+    const done = await service.executeAction('team.task_update', {
+      taskId: task.taskId,
+      status: 'completed',
+      result: 'Fixed; 12 tests pass, 0 failed (pytest tests/test_fix.py).',
+    }, alice.sessionId);
+    expect(done.task.status).toBe('completed');
+  });
+
+  it('accepts a pull request as the evidence a completion needs', async () => {
+    const { service } = await makeService();
+    const { roster } = await makeTeam(service);
+    const alice = roster[0];
+    const { task } = await service.executeAction('team.task_create', { subject: 'Ship the change', owner: alice.slotId }, 'ses_lead');
+    await service.executeAction('team.task_update', { taskId: task.taskId, status: 'in_progress' }, alice.sessionId);
+
+    const done = await service.executeAction('team.task_update', {
+      taskId: task.taskId,
+      status: 'completed',
+      prUrl: 'https://github.com/octo/repo/pull/7',
+    }, alice.sessionId);
+    expect(done.task.status).toBe('completed');
+  });
+
+  it('makes a reopened task state fresh evidence on its next completion', async () => {
+    const { service } = await makeService();
+    const { roster } = await makeTeam(service);
+    const alice = roster[0];
+    const { task } = await service.executeAction('team.task_create', { subject: 'Two rounds', owner: alice.slotId }, 'ses_lead');
+    await service.executeAction('team.task_update', { taskId: task.taskId, status: 'in_progress' }, alice.sessionId);
+    await service.executeAction('team.task_update', {
+      taskId: task.taskId,
+      status: 'completed',
+      result: 'First round done.',
+    }, alice.sessionId);
+
+    // Reopening clears the old answer, so it cannot vouch for the new run.
+    await service.executeAction('team.task_update', { taskId: task.taskId, status: 'pending' }, alice.sessionId);
+    await expect(service.executeAction('team.task_update', {
+      taskId: task.taskId,
+      status: 'completed',
+    }, alice.sessionId)).rejects.toThrow(/needs evidence/);
+  });
+
+  it('validates and clears deadlineMinutes', async () => {
+    const { service } = await makeService();
+    const { roster } = await makeTeam(service);
+    const alice = roster[0];
+
+    await expect(service.executeAction('team.task_create', {
+      subject: 'Bad deadline', owner: alice.slotId, deadlineMinutes: -5,
+    }, 'ses_lead')).rejects.toThrow(/deadlineMinutes/);
+    await expect(service.executeAction('team.task_create', {
+      subject: 'Long horizon', owner: alice.slotId, deadlineMinutes: 20000,
+    }, 'ses_lead')).rejects.toThrow(/0 to 10080/);
+
+    const { task } = await service.executeAction('team.task_create', {
+      subject: 'Timed work', owner: alice.slotId, deadlineMinutes: 30,
+    }, 'ses_lead');
+    expect(task.deadlineMinutes).toBe(30);
+
+    // 0 clears the deadline on update.
+    const cleared = await service.executeAction('team.task_update', {
+      taskId: task.taskId, deadlineMinutes: 0,
+    }, 'ses_lead');
+    expect(cleared.task.deadlineMinutes).toBeNull();
+  });
+
+  it('reports a task running past its deadline to the lead once per breach', async () => {
+    let clock = 1_700_000_000_000;
+    const tick = async () => new Promise((resolve) => setTimeout(resolve, 25));
+    const { service, sent } = await makeService({ now: () => clock, watchdogIntervalMs: 5 });
+    await makeTeam(service);
+    const deadlineNews = (minutes) => sent.filter((entry) => entry.sessionID === 'ses_lead' && entry.payload.prompt.includes(`past its ${minutes}-minute deadline`));
+
+    // No owner: the task runs on the board, so the only member the breach
+    // wakes is the lead itself.
+    const { task } = await service.executeAction('team.task_create', {
+      subject: 'Slow work', deadlineMinutes: 30,
+    }, 'ses_lead');
+    await service.executeAction('team.task_update', { taskId: task.taskId, status: 'in_progress' }, 'ses_lead');
+
+    // The clock started at the transition; before the deadline, silence.
+    clock += 10 * 60_000;
+    await tick();
+    expect(deadlineNews(30)).toHaveLength(0);
+
+    // Past it, the lead hears once; the task stays in_progress.
+    clock += 21 * 60_000;
+    await tick();
+    expect(deadlineNews(30)).toHaveLength(1);
+    const [board] = await service.snapshot();
+    const breached = board.tasks.find((entry) => entry.taskId === task.taskId);
+    expect(breached.status).toBe('in_progress');
+    expect(breached.deadlineNotifiedAt).toBe(clock);
+
+    // The breach wake left the lead busy; the fake clock outruns the 300s
+    // stall window, so idle it or the stall turns into noise here.
+    await service.processPayload(idleEvent('ses_lead'));
+
+    // Further ticks do not repeat the news.
+    clock += 10 * 60_000;
+    await tick();
+    expect(deadlineNews(30)).toHaveLength(1);
+
+    // A deadline the lead extends re-arms the report for a fresh breach.
+    await service.executeAction('team.task_update', { taskId: task.taskId, deadlineMinutes: 90 }, 'ses_lead');
+    clock += 10 * 60_000;
+    await tick();
+    expect(deadlineNews(90)).toHaveLength(0);
+    clock += 50 * 60_000;
+    await tick();
+    expect(deadlineNews(90)).toHaveLength(1);
+  });
+
+  it('restarts the deadline clock when a reopened task runs again', async () => {
+    let clock = 1_700_000_000_000;
+    const { service } = await makeService({ now: () => clock, watchdogIntervalMs: 3600_000 });
+    const { roster } = await makeTeam(service);
+    const alice = roster[0];
+    const { task } = await service.executeAction('team.task_create', {
+      subject: 'Round trip', owner: alice.slotId, deadlineMinutes: 30,
+    }, 'ses_lead');
+
+    await service.executeAction('team.task_update', { taskId: task.taskId, status: 'in_progress' }, alice.sessionId);
+    const [firstRun] = await service.snapshot();
+    const startedFirst = firstRun.tasks.find((entry) => entry.taskId === task.taskId).startedAt;
+    expect(startedFirst).toBe(clock);
+
+    // Reopening clears the run; the next in_progress starts a fresh clock.
+    clock += 20 * 60_000;
+    await service.executeAction('team.task_update', { taskId: task.taskId, status: 'pending' }, alice.sessionId);
+    const [reopened] = await service.snapshot();
+    expect(reopened.tasks.find((entry) => entry.taskId === task.taskId).startedAt).toBeNull();
+
+    await service.executeAction('team.task_update', { taskId: task.taskId, status: 'in_progress' }, alice.sessionId);
+    const [secondRun] = await service.snapshot();
+    expect(secondRun.tasks.find((entry) => entry.taskId === task.taskId).startedAt).toBe(clock);
   });
 
   it('shows the pull to the roster and rejects malformed URLs', async () => {

@@ -40,13 +40,13 @@ export const TEAM_ACTION_DEFINITIONS = Object.freeze([
     action: 'team.task_create',
     title: 'Create a team task',
     leadOnly: false,
-    description: 'Add a task to the shared board; requires subject, optional description, owner (a teammate slotId), blockedBy (task ids that must finish first) and prUrl (the GitHub or Bitbucket Data Center pull-request URL once the work is reviewable). Assigning an owner notifies and wakes that teammate with the task details, so no separate message is needed to hand work off',
+    description: 'Add a task to the shared board; requires subject, optional description, owner (a teammate slotId), blockedBy (task ids that must finish first), prUrl (the GitHub or Bitbucket Data Center pull-request URL once the work is reviewable) and deadlineMinutes (expected minutes from the task starting in_progress until it is done; a breach notifies the Team Lead once). Assigning an owner notifies and wakes that teammate with the task details, so no separate message is needed to hand work off',
   },
   {
     action: 'team.task_update',
     title: 'Update a team task',
     leadOnly: false,
-    description: 'Update a board task; requires taskId, optional status (pending, in_progress, completed, deleted), description, owner, prUrl or result. The owner of a task marks it in_progress when starting and completed when done, attaching its final answer as result — the conclusion the user should read; prUrl links the task to its pull request (GitHub or Bitbucket Data Center) and takes an empty string to clear',
+    description: 'Update a board task; requires taskId, optional status (pending, in_progress, completed, deleted), description, owner, prUrl, deadlineMinutes (0 clears the deadline) or result. The owner of a task marks it in_progress when starting and completed when done, attaching its final answer as result — the conclusion the user should read — in the same call: a completion without a result or a linked pull request is rejected, say with evidence (commands run, tests passed) or pass prUrl; prUrl links the task to its pull request (GitHub or Bitbucket Data Center) and takes an empty string to clear',
   },
   {
     action: 'team.task_list',
@@ -155,5 +155,6 @@ export const TEAM_PARAMETER_PROPERTIES = Object.freeze({
   owner: { type: 'string', description: 'slotId the task is assigned to; task actions only' },
   blockedBy: { type: 'array', items: { type: 'string' }, description: 'Task ids that must finish before this one starts; team.task_create only' },
   prUrl: { type: 'string', description: 'Pull-request URL linking the task to its PR — GitHub (https://github.com/<owner>/<repo>/pull/<number>) or Bitbucket Data Center (https://<instance>/projects/<project>/repos/<slug>/pull-requests/<number>); team.task_create and team.task_update, empty string clears' },
-  result: { type: 'string', description: 'The finished task\'s final answer — the conclusion the user should read, not a log; attach it to your own task in the same team.task_update call that marks it completed, empty string clears' },
+  deadlineMinutes: { type: 'integer', description: 'Expected minutes from the task starting in_progress until it is done, at most 10080; team.task_create sets it and team.task_update can change it, 0 clears. Running past it notifies the Team Lead once while the task stays in_progress' },
+  result: { type: 'string', description: 'The finished task\'s final answer — the conclusion the user should read, not a log, with what backs it: commands run, tests passed; required evidence when team.task_update completes a task with no linked prUrl, attach it in the same call, empty string clears' },
 });

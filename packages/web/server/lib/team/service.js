@@ -39,6 +39,10 @@ const MAX_TASKS_PER_TEAM = 500;
 // completion. An owner dumping a whole log would bloat every board payload,
 // so the excess is cut at the boundary, same spirit as the subject cap.
 const MAX_TASK_RESULT_CHARS = 8000;
+// A task deadline is at most a week out: planning horizons beyond that are
+// guesses about a board the lead reshapes anyway, and the cap keeps a mistyped
+// number from quietly parking a task for months.
+const MAX_TASK_DEADLINE_MINUTES = 10_080;
 // Feed page size: one screen of a busy team. Larger asks are clamped, not
 // honored — the feed route is read by a panel, not an exporter.
 const ACTIVITY_PAGE_DEFAULT = 50;
@@ -68,6 +72,14 @@ const asNonEmptyString = (value) => {
 };
 
 const asList = (value) => (Array.isArray(value) ? value : []);
+
+const asPositiveIntOrNull = (value) =>
+  (Number.isInteger(value) && value > 0) ? value : null;
+
+// Number.isFinite passes only finite numbers, so non-numbers need no extra
+// narrowing to fall out.
+const asFiniteNumberOrNull = (value) =>
+  Number.isFinite(value) ? value : null;
 
 /**
  * A pull-request URL is the one PR address every producer of a PR can
@@ -133,6 +145,24 @@ const parseTaskResultInput = (value) => {
   const parsed = taskResultSchema.safeParse(value);
   if (!parsed.success) throw new TeamError('result must be text', 400);
   return parsed.data === '' ? null : parsed.data;
+};
+
+/**
+ * A task's expected duration, in whole minutes, measured from the turn it
+ * becomes in_progress. Absent leaves the stored deadline alone; 0 clears it,
+ * starting the task over the next time it runs. Setter and check share one
+ * counting rule: the deadline runs while the task is in_progress and stops
+ * the moment it completes, so reopening and restarting re-arms it.
+ */
+const taskDeadlineSchema = z.coerce.number().int().min(0).max(MAX_TASK_DEADLINE_MINUTES);
+
+const parseTaskDeadlineInput = (value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = taskDeadlineSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new TeamError(`deadlineMinutes must be a whole number of minutes, 0 to ${MAX_TASK_DEADLINE_MINUTES} (a week), 0 clears`, 400);
+  }
+  return parsed.data === 0 ? null : parsed.data;
 };
 
 class TeamError extends Error {
@@ -221,6 +251,12 @@ const serializeTeam = (team) => ({
     owner: task.owner ?? null,
     blockedBy: asList(task.blockedBy),
     pull: task.pull ?? null,
+    deadlineMinutes: asPositiveIntOrNull(task.deadlineMinutes),
+    // The deadline's clock. startedAt survives a restart so a task running
+    // across one keeps its promise; deadlineNotifiedAt keeps an already
+    // reported breach from being reported again after recovery.
+    startedAt: asFiniteNumberOrNull(task.startedAt),
+    deadlineNotifiedAt: asFiniteNumberOrNull(task.deadlineNotifiedAt),
     createdBy: task.createdBy ?? null,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
@@ -267,6 +303,7 @@ export const createTeamService = (dependencies) => {
     // briefings go through it so teammates behave like any dispatched session.
     sessionService,
     now = Date.now,
+    watchdogIntervalMs = WATCHDOG_INTERVAL_MS,
     broadcastUiEvent = null,
   } = dependencies;
 
@@ -437,7 +474,7 @@ export const createTeamService = (dependencies) => {
       ...asList(member.deliveredIds),
       ...unread.map((message) => message.id),
     ]));
-    const prompt = buildWakePayload({ team, member, messages: unread, tasks: team.tasks, reportTo: reportToMember(team, member) });
+    const prompt = buildWakePayload({ team, member, messages: unread, tasks: team.tasks, reportTo: reportToMember(team, member), now });
     try {
       await sessionService.send(member.sessionId, { prompt, directory: team.directory });
       member.status = 'busy';
@@ -1362,6 +1399,9 @@ export const createTeamService = (dependencies) => {
       owner: owner || null,
       blockedBy: [],
       pull: parseTaskPullInput(input?.prUrl) ?? null,
+      deadlineMinutes: parseTaskDeadlineInput(input?.deadlineMinutes) ?? null,
+      startedAt: null,
+      deadlineNotifiedAt: null,
       createdBy: 'user',
       createdAt: now(),
       updatedAt: now(),
@@ -1444,6 +1484,7 @@ export const createTeamService = (dependencies) => {
     }
     if (owner) requireSlot(team, owner);
     const pull = parseTaskPullInput(input.prUrl) ?? null;
+    const deadline = parseTaskDeadlineInput(input.deadlineMinutes) ?? null;
     const blockedBy = asList(input.blockedBy).map(String).filter(Boolean);
     for (const taskId of blockedBy) {
       if (!team.tasks.some((task) => task.taskId === taskId)) {
@@ -1459,6 +1500,9 @@ export const createTeamService = (dependencies) => {
       owner: owner || null,
       blockedBy,
       pull,
+      deadlineMinutes: deadline,
+      startedAt: null,
+      deadlineNotifiedAt: null,
       createdBy: member.slotId,
       createdAt: now(),
       updatedAt: now(),
@@ -1482,7 +1526,7 @@ export const createTeamService = (dependencies) => {
       await wakeMember(team, record).catch(() => {});
     }
     return {
-      task: { taskId: task.taskId, subject: task.subject, status: task.status, owner: task.owner, blockedBy: task.blockedBy, pull: task.pull ?? null },
+      task: { taskId: task.taskId, subject: task.subject, status: task.status, owner: task.owner, blockedBy: task.blockedBy, pull: task.pull ?? null, deadlineMinutes: task.deadlineMinutes },
       note: owner
         ? 'The owner was notified and woken with this task. Do not send a separate message just to hand it off.'
         : 'The task is on the board with no owner; assign it with team.task_update (owner) when you decide.',
@@ -1503,18 +1547,52 @@ export const createTeamService = (dependencies) => {
       throw new TeamError('status must be one of pending, in_progress, completed, deleted', 400);
     }
     const description = asNonEmptyString(input.description);
+    const pull = parseTaskPullInput(input.prUrl);
+    const result = parseTaskResultInput(input.result);
+    const deadline = parseTaskDeadlineInput(input.deadlineMinutes);
+    // A finished task carries evidence. "Completed" with neither a result
+    // the user can read nor a pull request to check is a claim with nothing
+    // behind it. Checked against what the task will hold after this update,
+    // before anything is applied — a refusal must not leave a half-updated
+    // task behind.
+    if (status === 'completed') {
+      const finalResult = result !== undefined ? result : task.result;
+      const finalPull = pull !== undefined ? pull : task.pull;
+      if (!finalResult && !finalPull) {
+        throw new TeamError(
+          'A completed task needs evidence the user can check: attach result (the conclusion and what backs it — commands run, tests passed) in this same call, or link the pull request with prUrl. Abandon the task with status deleted instead.',
+          400,
+        );
+      }
+    }
     if (description) task.description = description;
     if (owner) task.owner = owner;
+    // The deadline's clock: entering in_progress from any other status starts
+    // it and re-arms breach reporting; an explicit reopen clears the run so
+    // the next in_progress measures a fresh run, not the old one's residue.
+    if (status === 'in_progress' && task.status !== 'in_progress') {
+      task.startedAt = now();
+      task.deadlineNotifiedAt = null;
+    }
+    if (status === 'pending' && task.status !== 'pending') {
+      task.startedAt = null;
+      task.deadlineNotifiedAt = null;
+    }
     if (status) task.status = status;
-    const pull = parseTaskPullInput(input.prUrl);
     if (pull !== undefined) task.pull = pull;
     // The result is the answer of a *finished* task: only a completed task
     // carries one. Reopening clears the stale answer — a fresh completion
     // attaches a fresh one, so the board never shows a result the task's
     // current status already contradicts.
     if (status && status !== 'completed') task.result = null;
-    const result = parseTaskResultInput(input.result);
     if (result !== undefined) task.result = result;
+    if (deadline !== undefined) {
+      // A changed deadline deserves a fresh hearing: if the task is running
+      // under a breached one, the new value governs and one further breach
+      // reports again.
+      if (task.status === 'in_progress') task.deadlineNotifiedAt = null;
+      task.deadlineMinutes = deadline;
+    }
     task.updatedAt = now();
     // A teammate finishing its own task is a deliverable even when it forgets
     // the report message: the member's turn end notifies the lead either way.
@@ -1539,7 +1617,7 @@ export const createTeamService = (dependencies) => {
       });
       await wakeMember(team, record).catch(() => {});
     }
-    return { task: { taskId: task.taskId, subject: task.subject, status: task.status, owner: task.owner, pull: task.pull ?? null } };
+    return { task: { taskId: task.taskId, subject: task.subject, status: task.status, owner: task.owner, pull: task.pull ?? null, deadlineMinutes: task.deadlineMinutes ?? null } };
   };
 
   const actionTaskList = async (input, membership) => {
@@ -1764,12 +1842,14 @@ export const createTeamService = (dependencies) => {
 
   /**
    * The stall watchdog: a busy member with no event for the provider's
-   * request window is failed, not "busy forever".
+   * request window is failed, not "busy forever". The same tick sweeps the
+   * board for tasks that ran past their deadline: the breach is reported
+   * once, to the lead, who owns the board.
    */
   const startWatchdog = () => {
     if (watchdogTimer) return;
     watchdogTimer = setInterval(() => {
-      const check = async (team, member) => {
+      const checkMember = async (team, member) => {
         if (member.status !== 'busy' || member.removed) return;
         if (!Number.isFinite(member.lastActivityAt)) return;
         if (now() - member.lastActivityAt < MEMBER_STALL_TIMEOUT_MS) return;
@@ -1781,10 +1861,25 @@ export const createTeamService = (dependencies) => {
           content: `${member.name} went silent beyond the ${Math.round(MEMBER_STALL_TIMEOUT_MS / 1000)}s request window and was marked failed. Interrupt it with a new instruction (team.interrupt_agent), or dismiss it (team.shutdown_agent).`,
         }).catch(() => {});
       };
+      const checkTask = async (team, task) => {
+        if (task.status !== 'in_progress' || !Number.isInteger(task.deadlineMinutes)) return;
+        if (!Number.isFinite(task.startedAt) || task.deadlineNotifiedAt) return;
+        if (now() - task.startedAt < task.deadlineMinutes * 60_000) return;
+        task.deadlineNotifiedAt = now();
+        task.updatedAt = now();
+        schedulePersist();
+        broadcast('openchamber:team-task', { teamId: team.id, change: 'updated', taskId: task.taskId });
+        await notifyLead(team, {
+          from: 'system',
+          content: `Task '${task.subject}' (${task.taskId}) has been running for ${Math.round((now() - task.startedAt) / 60_000)} minutes, past its ${task.deadlineMinutes}-minute deadline, and is still in_progress. Interrupt the owner with new instructions (team.interrupt_agent), extend the deadline (team.task_update deadlineMinutes), or take it back (team.task_update status deleted).`,
+          summary: `Deadline passed: ${task.subject}`,
+        }).catch(() => {});
+      };
       for (const team of teams) {
-        for (const member of team.members) void check(team, member);
+        for (const member of team.members) void checkMember(team, member);
+        for (const task of team.tasks) void checkTask(team, task);
       }
-    }, WATCHDOG_INTERVAL_MS);
+    }, watchdogIntervalMs);
     if (typeof watchdogTimer.unref === 'function') watchdogTimer.unref();
   };
 
@@ -1866,6 +1961,12 @@ export const createTeamService = (dependencies) => {
               blockedBy: asList(task.blockedBy),
               // The PR ref the summaries route reads; nullish on older state.
               pull: task.pull ?? null,
+              // The deadline contract the tool writes; the board card reads
+              // them to flag a task running past its budget. Nullish on
+              // state persisted before deadlines existed.
+              deadlineMinutes: asPositiveIntOrNull(task.deadlineMinutes),
+              startedAt: asFiniteNumberOrNull(task.startedAt),
+              deadlineNotifiedAt: asFiniteNumberOrNull(task.deadlineNotifiedAt),
               createdBy: task.createdBy ?? null,
               createdAt: task.createdAt,
               updatedAt: task.updatedAt,
