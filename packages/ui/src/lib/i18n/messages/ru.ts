@@ -3,6 +3,7 @@ import { settingsDict } from './ru.settings';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
+import { projectKnowledgeI18n } from './project-knowledge.i18n';
 import { linearPanelI18n } from './linear-panel.i18n';
 import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
@@ -12,6 +13,7 @@ import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
+import { projectActionsI18n } from './project-actions.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -128,6 +130,7 @@ export const dict = {
   ...linearIssuePickerI18n.ru,
   ...referencePickerI18n.ru,
   ...sessionMenuHintsI18n.ru,
+  ...projectKnowledgeI18n.ru,
   ...linearPanelI18n.ru,
   ...routingI18n.ru,
   ...pluginPanelI18n.ru,
@@ -137,6 +140,7 @@ export const dict = {
   ...webSearchI18n.ru,
   ...isolatedSpacesI18n.ru,
   ...sourceBoardI18n.ru,
+  ...projectActionsI18n.ru,
   ...environmentI18n.ru,
   ...providersI18n.ru,
   ...mcpGridI18n.ru,
@@ -276,7 +280,7 @@ export const dict = {
   'mobile.header.metadata.usage': 'Использование',
   'mobile.menu.titleAria': 'Инструменты рабочей области',
   'mobile.menu.files': 'Файлы',
-  'mobile.menu.changes': 'Изменения',
+  'mobile.menu.git': 'Git',
   'mobile.menu.terminal': 'Терминал',
   'mobile.menu.mcp': 'MCP',
   'mobile.menu.instances': 'Экземпляры',
@@ -347,6 +351,7 @@ export const dict = {
   'mobile.sessions.sheet.title': 'Сессии',
   'mobile.sessions.sheet.description': 'Переключайте проекты, открывайте сессии или начинайте новый чат.',
   'mobile.sessions.search.placeholder': 'Поиск сессий',
+  'mobile.sessions.footer.more': 'Ещё',
   'mobile.sessions.empty': 'Сессии не найдены.',
   'mobile.sessions.unassignedProject': 'Другие сессии',
   'mobile.sessions.newSessionAria': 'Начать новую сессию в этом проекте',
@@ -647,6 +652,8 @@ export const dict = {
   'sessions.sidebar.header.displayMode.showArchived': 'Показывать архивные сессии',
   'sessions.sidebar.header.displayMode.collapseAll': 'Свернуть все',
   'sessions.sidebar.header.displayMode.expandAll': 'Развернуть все',
+  'sessions.sidebar.header.displayMode.showPinned': 'Показывать раздел закреплённых',
+  'sessions.sidebar.header.displayMode.detailedZoneRows': 'Подробные строки',
   'sessions.sidebar.header.projectSort.manual': 'Вручную',
   'sessions.sidebar.header.projectSort.aToZ': 'A → Z',
   'sessions.sidebar.header.projectSort.zToA': 'Z → A',
@@ -669,6 +676,7 @@ export const dict = {
   'sessions.sidebar.empty.noMatches.searchArchive': 'Поискать в архиве',
   'sessions.sidebar.activity.chatsTitle': 'Чаты',
   'sessions.sidebar.activity.chatsEmpty': 'Чатов пока нет.',
+  'sessions.sidebar.activity.pinnedTitle': 'Закреплённые',
   'chat.chatInput.chooseProject': 'Выбрать проект',
   'sessions.archivePage.allDirectories': 'Все каталоги',
   'sessions.sidebar.header.viewMode.label': 'Вид',
@@ -1539,7 +1547,6 @@ export const dict = {
   'contextPanel.mode.diff': 'Изменения',
   'contextPanel.mode.stagedDiff': 'Diff индексированного',
   'contextPanel.mode.workingDiff': 'Diff рабочего дерева',
-  'contextPanel.mode.plan': 'План',
   'contextPanel.mode.pr': 'Пул-реквест',
   'contextPanel.mode.mr': 'Запрос на слияние',
   'gitView.mergeRequest.title': 'Запрос на слияние',
@@ -1670,7 +1677,6 @@ export const dict = {
   'walkthrough.blocked.serverUnsupported.description': 'Сервер OpenChamber, к которому подключено приложение, не ответил на API разбора — значит, он старее приложения. Обновите сервер до 1.18 или новее, затем обновите страницу.',
   'walkthrough.blocked.contextTooSmall.descriptionUnknownModel': 'Малая модель вмещает около {available} тыс. символов, а этому diff нужно около {required} тыс. Ничего не обрезается — выберите модель с большим контекстом.',
   'walkthrough.blocked.structuredOutput.descriptionUnknownModel': 'Малая модель не поддерживает структурированные ответы, которые нужны разбору.',
-  'contextRail.surface.plan.description': 'Просмотр текущего плана',
   'contextRail.surface.pr.description': 'Создание, просмотр и слияние пул-реквеста текущей ветки',
   'contextRail.surface.mr.description': 'Создание, просмотр и слияние запроса на слияние текущей ветки',
   'contextRail.surface.notes.description': 'Заметки, todo, планы и память агента для проекта',
@@ -2032,6 +2038,8 @@ export const dict = {
   'diffView.fileTree.showAsTree': 'Деревом',
   'diffView.fileTree.collapseDirectoryAria': 'Свернуть {path}',
   'diffView.fileTree.expandDirectoryAria': 'Развернуть {path}',
+  'diffView.layout.switchToUnified': 'Переключить на единый вид',
+  'diffView.layout.switchToSideBySide': 'Переключить на двухколоночный вид',
   'diffView.fileTree.resize': 'Изменить размер дерева файлов',
   'diffView.state.selectSessionDirectory': 'Выберите каталог сессии, чтобы посмотреть diff',
   'diffView.state.loadingRepositoryStatus': 'Загрузка статуса репозитория…',
@@ -2123,16 +2131,10 @@ export const dict = {
   'rightSidebar.contextNotesTodo.empty.selectProject': 'Выберите проект, чтобы добавлять заметки и todo.',
   'rightSidebar.contextNotesTodo.notes.placeholder': 'Заносите контекст, напоминания или ссылки',
   'rightSidebar.contextNotesTodo.notes.addAria': 'Добавить заметку',
-  'rightSidebar.contextNotesTodo.notes.empty': 'Заметок пока нет. Заносите контекст, напоминания или ссылки.',
   'rightSidebar.contextNotesTodo.notes.actions.expand': 'Развернуть заметку',
-  'rightSidebar.contextNotesTodo.notes.actions.collapse': 'Свернуть заметку',
   'rightSidebar.contextNotesTodo.notes.actions.delete': 'Удалить заметку',
-  'rightSidebar.contextNotesTodo.notes.actions.pin': 'Закрепить в контексте агента',
-  'rightSidebar.contextNotesTodo.notes.actions.unpin': 'Открепить от контекста агента',
   'rightSidebar.contextNotesTodo.notes.source.selection': 'Из чата',
   'rightSidebar.contextNotesTodo.notes.source.agent': 'От агента',
-  'rightSidebar.contextNotesTodo.search.placeholder': 'Поиск',
-  'rightSidebar.contextNotesTodo.search.clear': 'Очистить поиск',
   'rightSidebar.contextNotesTodo.search.noResults': 'Ничего не найдено по запросу «{query}».',
   'rightSidebar.contextNotesTodo.toast.deleteNoteFailed': 'Не удалось удалить заметку',
   'rightSidebar.contextNotesTodo.toast.createNoteFailed': 'Не удалось создать заметку',
@@ -2142,7 +2144,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.actions.back': 'Назад к планам',
   'rightSidebar.contextNotesTodo.tabs.memory': 'Память',
   'rightSidebar.contextNotesTodo.sections.label': 'Разделы контекста проекта',
-  'rightSidebar.contextNotesTodo.sections.resize': 'Изменить размер боковой колонки разделов',
   'rightSidebar.contextNotesTodo.memory.scope.project': 'Проект',
   'rightSidebar.contextNotesTodo.memory.scope.label': 'Область памяти',
   'rightSidebar.contextNotesTodo.memory.scope.global': 'О вас',
@@ -2168,7 +2169,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.todo.actions.markComplete': 'Отметить «{text}» выполненной',
   'rightSidebar.contextNotesTodo.todo.actions.collapse': 'Свернуть «{text}»',
   'rightSidebar.contextNotesTodo.todo.actions.expand': 'Развернуть «{text}»',
-  'rightSidebar.contextNotesTodo.todo.actions.delete': 'Удалить «{text}»',
   'rightSidebar.contextNotesTodo.todo.actions.send': 'Отправить «{text}»',
   'rightSidebar.contextNotesTodo.todo.actions.reorder': 'Изменить порядок «{text}»',
   'rightSidebar.contextNotesTodo.todo.sendMenu.currentSession': 'Отправить в текущую сессию',
@@ -2180,7 +2180,6 @@ export const dict = {
   'rightSidebar.contextNotesTodo.plans.sharedBadge': 'В репозитории',
   'rightSidebar.contextNotesTodo.plans.share': 'Переместить в папку планов репозитория, чтобы её видел каждый, кто делает pull',
   'rightSidebar.contextNotesTodo.plans.makePersonal': 'Переместить в мои планы, вне репозитория',
-  'rightSidebar.contextNotesTodo.plans.deletePlanWithTitle': 'Удалить план «{title}»',
   'rightSidebar.contextNotesTodo.sendDialog.title.newSession': 'Отправить в новую сессию',
   'rightSidebar.contextNotesTodo.sendDialog.title.newWorktree': 'Отправить в новый worktree',
   'rightSidebar.contextNotesTodo.sendDialog.variant.default': 'По умолчанию',
@@ -3533,6 +3532,7 @@ export const dict = {
   'updateDialog.error.updaterDisabled': 'Обновлятор остановился после неудачной установки. Закройте OpenChamber, откройте его снова и повторите обновление.',
   'updateDialog.error.restartFailed': 'Не удалось перезапустить приложение для установки обновления.',
   'updateDialog.error.restartUnavailable': 'Для установки обновления требуется приложение OpenChamber для desktop.',
+  'updateDialog.desktopHostInstall': 'Доступен OpenChamber {version}. Обновите приложение на компьютере, где оно запущено.',
   'mobileUpdate.toast.available.title': 'Доступно обновление OpenChamber',
   'mobileUpdate.toast.available.description': 'Версия {version} готова для Android.',
   'mobileUpdate.toast.actions.download': 'Скачать',

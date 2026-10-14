@@ -12,7 +12,6 @@ import {
 import { Icon } from '@/components/icon/Icon';
 import { useDeviceInfo } from '@/lib/device';
 import { isVSCodeRuntime } from '@/lib/desktop';
-import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
 import { useSourceControlAuthStore } from '@/stores/useSourceControlAuthStore';
 import { useGuestSurfaces } from '@/hooks/useGuestSurfaces';
 import { useUIStore } from '@/stores/useUIStore';
@@ -48,7 +47,6 @@ export const RegionSurfaceMenu: React.FC<Args> = ({ leafId, directoryKey }) => {
   const panelState = useUIStore((state) => (directoryKey ? state.contextPanelByDirectory[directoryKey] : undefined));
   const contextRailOrder = useUIStore((state) => state.contextRailOrder);
   const contextRailHiddenSurfaces = useUIStore((state) => state.contextRailHiddenSurfaces);
-  const planModeEnabled = useFeatureFlagsStore((state) => state.planModeEnabled);
   const sourceControlConnected = useSourceControlAuthStore((state) => Object.values(state.entries)
     .some((entry) => entry.status?.status === 'connected'));
   const guestSurfaces = useGuestSurfaces();
@@ -57,13 +55,12 @@ export const RegionSurfaceMenu: React.FC<Args> = ({ leafId, directoryKey }) => {
   const surfaces = React.useMemo(() => getVisibleContextRailSurfaces({
     railOrder: contextRailOrder,
     hiddenSurfaces: contextRailHiddenSurfaces,
-    planModeEnabled,
     isVSCode: isVSCodeRuntime(),
     screenWidth,
     tabs: panelState?.tabs ?? [],
     sourceControlConnected,
     extras: guestSurfaces,
-  }), [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, planModeEnabled, screenWidth, sourceControlConnected, panelState?.tabs]);
+  }), [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, screenWidth, sourceControlConnected, panelState?.tabs]);
 
   const chatSurface = React.useMemo(
     () => CONTEXT_SURFACES.find((surface) => surface.mode === 'chat') ?? null,

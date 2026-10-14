@@ -13,7 +13,6 @@ import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
 // plan statically pulls their stacks into the eager startup graph even when
 // no such tab is open. The keep-alive surfaces load in ContextSurfacePanes.
 const GitView = lazyWithChunkRecovery(() => import('@/components/views/GitView').then((m) => ({ default: m.GitView })));
-const PlanView = lazyWithChunkRecovery(() => import('@/components/views/PlanView').then((m) => ({ default: m.PlanView })));
 const BitbucketPullsPanel = lazyWithChunkRecovery(() => import('@/components/bitbucket/BitbucketPullsPanel').then((m) => ({ default: m.BitbucketPullsPanel })));
 const JiraIssuesPanel = lazyWithChunkRecovery(() => import('@/components/jira/JiraIssuesPanel').then((m) => ({ default: m.JiraIssuesPanel })));
 const ConfluencePagesPanel = lazyWithChunkRecovery(() => import('@/components/confluence/ConfluencePagesPanel').then((m) => ({ default: m.ConfluencePagesPanel })));
@@ -86,7 +85,6 @@ const getModeLabel = (
   if (mode === 'file') return t('contextPanel.mode.files');
   if (mode === 'diff') return t('contextPanel.mode.diff');
   if (mode === 'walkthrough') return t('contextPanel.mode.walkthrough');
-  if (mode === 'plan') return t('contextPanel.mode.plan');
   if (mode === 'browser') return t('contextPanel.mode.browser');
   if (mode === 'git') return t('layout.rightSidebar.git');
   if (mode === 'pr') return t('contextPanel.mode.pr');
@@ -215,10 +213,6 @@ const getTabIcon = (
     return <Icon name="git-pull-request" className="h-3.5 w-3.5" />;
   }
 
-  if (tab.mode === 'plan') {
-    return <Icon name="file-text" className="h-3.5 w-3.5" />;
-  }
-
   if (tab.mode === 'context') {
     return <Icon name="donut-chart-fill" className="h-3.5 w-3.5" />;
   }
@@ -306,7 +300,7 @@ const truncateTabLabel = (value: string, maxChars: number): string => {
 // Surfaces rendered by the region itself and remounted on every switch; the
 // rest stay alive in ContextSurfacePanes.
 const isRemountedSurface = (mode: ContextPanelMode): boolean => (
-  mode === 'context' || mode === 'git' || mode === 'pr' || mode === 'notes' || mode === 'plan'
+  mode === 'context' || mode === 'git' || mode === 'pr' || mode === 'notes'
     || mode === 'team' || mode === 'pulls' || mode === 'jira' || mode === 'confluence' || mode === 'review'
 );
 
@@ -472,13 +466,6 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
                 ? <PullRequestView />
             : activeTab?.mode === 'notes'
                 ? <ContextPanelHeaderSlotProvider value={headerSlotEl}><ProjectContextPanel visible={isOpen} /></ContextPanelHeaderSlotProvider>
-        : activeTab?.mode === 'plan'
-            ? <React.Suspense fallback={null}><ContextPanelHeaderSlotProvider value={headerSlotEl}><PlanView
-                targetPath={activeTab.targetPath}
-                savedProjectPlan={activeTab.projectPlanId && activeTab.projectPlanRef
-                  ? { projectRef: activeTab.projectPlanRef, planId: activeTab.projectPlanId }
-                  : null}
-              /></ContextPanelHeaderSlotProvider></React.Suspense>
             : activeTab?.mode === 'team'
                 ? <div className="flex h-full min-h-0 flex-col p-3"><TeamBoardView
                     sessionId={getTeamSessionIDFromDedupeKey(activeTab.dedupeKey)}
