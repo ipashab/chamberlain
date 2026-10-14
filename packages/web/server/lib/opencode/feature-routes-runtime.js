@@ -220,6 +220,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       surfaceViewerHeaders,
       openchamberUserConfigRoot,
       managedChatsRoot,
+      enginesRuntime,
       normalizeDirectoryPath,
       resolveProjectDirectory,
       resolveOptionalProjectDirectory,
@@ -364,6 +365,9 @@ export const createFeatureRoutesRuntime = (dependencies) => {
 
     registerMissionsRoutes(app, { missionsService });
     registerAssistantsRoutes(app, { assistantsService });
+    // Engines register themselves (and warm the /health snapshot as a side
+    // effect) — one registration call, additive only, no existing route touched.
+    enginesRuntime.registerRoutes(app);
 
     registerMarkdownImageGrantRoutes(app, {
       fsPromises,

@@ -4,6 +4,12 @@ export const createOpenCodeNetworkRuntime = (deps) => {
     state,
     getOpenCodeAuthHeaders,
     configuredOpenCodeHostname = '127.0.0.1',
+    // Multi-engine routing seam: buildOpenCodeUrl is the one function the
+    // whole repo asks "where is the engine" through (~30 modules). When the
+    // ACTIVE engine descriptor declares its own address, all engine requests
+    // reroute there. null (or never provided) keeps byte-for-byte legacy
+    // behavior — late-bound in server/index.js, called at request time only.
+    resolveActiveEngineUrl = null,
   } = deps;
 
   const resolveConnectHostname = () => {
@@ -83,13 +89,17 @@ export const createOpenCodeNetworkRuntime = (deps) => {
   };
 
   const buildOpenCodeUrl = (path, prefixOverride) => {
-    if (!state.openCodePort) {
+    // A declared engine URL beats everything: it is explicit config against an
+    // implicit default, and it carries its own port — the host's port state is
+    // not relevant to it (do not throw below for it).
+    const activeEngineUrl = resolveActiveEngineUrl?.() ?? null;
+    if (!activeEngineUrl && !state.openCodePort) {
       throw new Error('OpenCode port is not available');
     }
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     const prefix = normalizeApiPrefix(prefixOverride !== undefined ? prefixOverride : '');
     const fullPath = `${prefix}${normalizedPath}`;
-    const base = state.openCodeBaseUrl ?? `http://${resolveConnectHostname()}:${state.openCodePort}`;
+    const base = activeEngineUrl ?? state.openCodeBaseUrl ?? `http://${resolveConnectHostname()}:${state.openCodePort}`;
     return `${base}${fullPath}`;
   };
 

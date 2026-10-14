@@ -15,6 +15,7 @@ const createRuntime = (overrides = {}) => createOpenCodeNetworkRuntime({
   },
   getOpenCodeAuthHeaders: () => ({}),
   configuredOpenCodeHostname: overrides.configuredOpenCodeHostname,
+  resolveActiveEngineUrl: overrides.resolveActiveEngineUrl,
 });
 
 describe('OpenCode network runtime', () => {
@@ -32,6 +33,27 @@ describe('OpenCode network runtime', () => {
     const readyPromise = runtime.waitForReady('http://127.0.0.1:4096', 1);
 
     await expect(readyPromise).resolves.toBe(false);
+  });
+
+  it('routes engine requests to the active engine URL when the registry provides one', () => {
+    const runtime = createRuntime({ resolveActiveEngineUrl: () => 'http://codex-engine:4096' });
+
+    expect(runtime.buildOpenCodeUrl('/provider')).toBe('http://codex-engine:4096/provider');
+  });
+
+  it('keeps the port guard out of the way for a declared engine URL', () => {
+    const runtime = createRuntime({
+      state: { openCodePort: null },
+      resolveActiveEngineUrl: () => 'http://127.0.0.1:7777',
+    });
+
+    expect(runtime.buildOpenCodeUrl('/provider')).toBe('http://127.0.0.1:7777/provider');
+  });
+
+  it('builds legacy managed URLs when the registry provides no engine URL', () => {
+    const runtime = createRuntime({ resolveActiveEngineUrl: () => null });
+
+    expect(runtime.buildOpenCodeUrl('/provider')).toBe('http://127.0.0.1:4096/provider');
   });
 
   it('builds managed OpenCode URLs against IPv4 loopback by default', () => {

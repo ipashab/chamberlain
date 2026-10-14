@@ -155,6 +155,7 @@ import { createOpenChamberSessionService } from './lib/openchamber-sessions/rout
 import { createOpenCodeClient as createSessionScopedOpenCodeClient } from './lib/openchamber-sessions/opencode-client.js';
 import { createTeamService } from './lib/team/service.js';
 import { createMissionsService } from './lib/missions/service.js';
+import { createEnginesRuntime } from './lib/engines/index.js';
 import { createAssistantsService } from './lib/assistants/service.js';
 import { createTeamPresetStore } from './lib/team/presets.js';
 import { createBitbucketConfigStore } from './lib/bitbucket/config-store.js';
@@ -823,10 +824,22 @@ Object.defineProperties(openCodeNetworkState, {
   openCodeApiDetectionTimer: { get: () => openCodeApiDetectionTimer, set: (value) => { openCodeApiDetectionTimer = value; } },
 });
 
+// The engines runtime is created LATER (it depends on the network runtime's
+// buildOpenCodeUrl for probe targets), while the network layer needs an "is
+// there an active engine with its own declared URL" reader right now — hence
+// late binding: the ref stays null until the runtime exists. Both sides call
+// it at request time only, so it is always in place by then, and no startup
+// order has to change.
+let enginesRuntimeRef = null;
+
 const openCodeNetworkRuntime = createOpenCodeNetworkRuntime({
   state: openCodeNetworkState,
   getOpenCodeAuthHeaders,
   configuredOpenCodeHostname: ENV_CONFIGURED_OPENCODE_HOSTNAME,
+  // Multi-engine routing seam: buildOpenCodeUrl is the one function the repo
+  // asks "where is the engine" through (~30 modules), so one declared URL
+  // reroutes every engine request at once. null keeps legacy routing.
+  resolveActiveEngineUrl: () => enginesRuntimeRef?.getActiveEngineOwnUrl?.() ?? null,
 });
 
 const waitForReady = (...args) => openCodeNetworkRuntime.waitForReady(...args);
@@ -1743,6 +1756,18 @@ const missionsService = createMissionsService({
 });
 void missionsService.init().catch((error) =>
   console.warn('[missions] could not initialize mission state:', error?.message ?? error));
+// Engines: descriptor-file registry ("add an engine = drop engine.json in
+// OC_ENGINES_DIR", no host restart). Descriptor-only snapshot for /health and
+// /api/openchamber/engines; one real probe for /api/openchamber/engines/active.
+// Lifecycle (spawn/stop) stays where it is — this only describes, resolves,
+// probes and routes.
+const enginesRuntime = createEnginesRuntime({
+  env: process.env,
+  fsPromises,
+  getEngineBaseUrl: () => buildOpenCodeUrl(''),
+  getEngineAuthHeaders,
+});
+enginesRuntimeRef = enginesRuntime;
 // Assistants as contacts: saved personas with one continuing chat each.
 // Opening a contact continues its thread or starts a fresh one with the
 // persona as the opening message.
@@ -2335,6 +2360,11 @@ async function main(options = {}) {
         openCodeApiPrefix: '',
         openCodeApiPrefixDetected: true,
         isOpenCodeReady,
+        // Descriptors only, read from the registry cache — a hot path never
+        // touches a directory or an engine. null before warmup: a not-yet-read
+        // registry is a visible fact, not something to paper over.
+        engine: enginesRuntime.getCachedSnapshot()?.active ?? null,
+        engineRegistry: enginesRuntime.getCachedSnapshot()?.engines ?? null,
         lastOpenCodeError,
         lastOpenCodeLaunchDiagnostics,
         lastOpenCodeHealthFailure,
@@ -2563,6 +2593,7 @@ async function main(options = {}) {
     confluenceConfigStore,
     missionsService,
     assistantsService,
+    enginesRuntime,
     onGuestDeactivated: async (event) => {
       guestSurfaceRuntime?.endForGuest(event.guestId);
       return browserControlRouter.handleGuestDeactivated(event);
