@@ -9,6 +9,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -136,6 +137,7 @@ export const dict = {
   ...pluginPanelI18n.ru,
   ...surfacePanelI18n.ru,
   ...fileArtifactsI18n.ru,
+  ...htmlRenderI18n.ru,
   ...usageStatsI18n.ru,
   ...webSearchI18n.ru,
   ...isolatedSpacesI18n.ru,
@@ -233,6 +235,7 @@ export const dict = {
   'mobile.connect.notice.authExpired': 'Доступ к {label} истёк или был отозван. Войдите снова.',
   'mobile.connect.recovery.description': 'Не удалось подключиться к сохранённому серверу. Проверьте, что он запущен, или выберите другой экземпляр.',
   'mobile.connect.scanQr': 'Сканировать QR-код',
+  'mobile.connect.notice.relayLimit': 'Реле отклонило подключение к {label}: слишком много устройств или переподключений. Закройте OpenChamber на другом устройстве или подождите минуту, затем нажмите {label}, чтобы попробовать снова.',
   'mobile.connect.welcome.scanHint': 'На компьютере откройте «Добавить устройство», чтобы показать QR-код, затем отсканируйте его здесь.',
   'mobile.connect.advanced': 'Дополнительно',
   'mobile.connect.manual.toggle': 'Подключиться по адресу',
@@ -249,6 +252,7 @@ export const dict = {
   'mobile.connect.error.unreachable': 'Не удалось связаться с сервером OpenChamber.',
   'mobile.connect.error.authRequired': 'Этому серверу нужны пароль или токен клиента.',
   'mobile.connect.error.passwordFailed': 'Не удалось разблокировать сервер. Проверьте пароль.',
+  'mobile.connect.error.relayLimit': 'Реле отклонило подключение: слишком много устройств или переподключений. Закройте OpenChamber на другом устройстве или подождите минуту и попробуйте снова.',
   'mobile.instances.addTitle': 'Добавить экземпляр',
   'mobile.instances.addManual': 'Добавить по адресу',
   'mobile.instances.editTitle': 'Редактировать экземпляр',
@@ -2500,6 +2504,7 @@ export const dict = {
   'session.newWorktree.toast.worktreeCreatedDescription': '{target} — подготовка в фоне',
   'session.newWorktree.toast.fetchSourceFailed': 'Не удалось получить данные с удалённого репозитория — создан из локального состояния',
   'session.newWorktree.toast.fetchSourceAccess': 'Не удалось получить данные: доступу к этому репозиторию нужно внимание в «Настройке репозитория». Создан из локального состояния.',
+  'session.newWorktree.toast.branchBackup': '{branch} теперь совпадает с удалённой. Её прежние коммиты сохранены в {backup}.',
   'session.githubIntegration.tabs.pullRequests': 'Пул-реквесты',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'Ветка уже переключена в worktree',
   'session.githubIntegration.validation.failed': 'Проверка не пройдена',
@@ -3308,6 +3313,11 @@ export const dict = {
   'desktopHostSwitcher.toast.sshConnected': 'SSH-инстанс «{host}» подключён',
   'desktopHostSwitcher.toast.sshFailedToConnect': 'Не удалось подключить SSH-инстанс «{host}»',
   'desktopHostSwitcher.toast.instanceUnreachable': 'Инстанс «{host}» недоступен',
+  'desktopHostSwitcher.toast.relayLimit': 'Реле отклонило подключение к «{host}»: слишком много устройств или переподключений. Закройте OpenChamber на другом устройстве или подождите минуту и попробуйте снова.',
+  'desktopHostSwitcher.status.relayLimit': 'Достигнут лимит реле',
+  'relayConnection.limitReached.title': 'Реле отклонило подключение',
+  'relayConnection.limitReached.description': 'Слишком много устройств или переподключений у этого экземпляра. Закройте OpenChamber на другом устройстве или подождите минуту и попробуйте снова.',
+  'relayConnection.limitReached.retry': 'Попробовать снова',
   'miniChat.header.newSession': 'Новая сессия',
   'miniChat.header.session': 'Сессия',
   'miniChat.header.defaultAgent': 'Агент по умолчанию',

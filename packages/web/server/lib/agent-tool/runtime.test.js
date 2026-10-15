@@ -420,7 +420,7 @@ describe('managed agent tool runtime', () => {
     expect(tool.openchamber_team.input.properties.action.oneOf.map((entry) => entry.const))
       .toEqual(expect.arrayContaining(['team.start', 'team.spawn_agent', 'team.task_create']));
     expect(Object.keys(tool.openchamber_team.input.properties.parameters.properties).sort())
-      .toEqual(['agent', 'blockedBy', 'description', 'domain', 'isDomainLead', 'message', 'model', 'name', 'newName', 'owner', 'prUrl', 'reason', 'result', 'sinceMessageId', 'slotId', 'status', 'subject', 'taskId', 'to']);
+      .toEqual(['agent', 'blockedBy', 'deadlineMinutes', 'description', 'domain', 'isDomainLead', 'message', 'model', 'name', 'newName', 'owner', 'prUrl', 'reason', 'result', 'sinceMessageId', 'slotId', 'status', 'subject', 'taskId', 'to']);
 
     // Team inputs must not leak into the control tool's schema.
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('slotId');
@@ -468,6 +468,19 @@ describe('managed agent tool runtime', () => {
     const { runtime: plain, dataDir: plainDir } = await createRuntime();
     await prepareManagedEnv(plain, { includeControl: true, includeWeb: false, includeMemory: false });
     expect(Object.keys(await loadTools(plainDir, 'nonotify'))).toEqual(['openchamber', 'openchamber_team']);
+  });
+
+  it('exposes render as its own tool carrying only the page and its title', async () => {
+    const { runtime, dataDir } = await createRuntime();
+    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false, includeRender: true });
+    const tool = await loadTools(dataDir, 'render');
+
+    // The team tool is a fork capability that ships always (it is inert
+    // outside a team), so it rides along here too.
+    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_team', 'openchamber_render']);
+    expect(Object.keys(tool.openchamber_render.input.properties.parameters.properties).sort()).toEqual(['html', 'title']);
+    expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('html');
+    expect(tool.openchamber_render.description).toContain('--chart-1');
   });
 
   it('registers every tool as a direct tool unless Code Mode is asked for', async () => {

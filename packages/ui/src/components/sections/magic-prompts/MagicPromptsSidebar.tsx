@@ -48,6 +48,12 @@ export const MagicPromptsSidebar: React.FC<MagicPromptsSidebarProps> = ({ onItem
         ],
       },
       {
+        groupKey: 'settings.magicPrompts.sidebar.group.memory',
+        items: [
+          { id: 'memory.tidy', titleKey: 'settings.magicPrompts.sidebar.item.memoryTidy' },
+        ],
+      },
+      {
         groupKey: 'settings.magicPrompts.sidebar.group.integration',
         items: [
           { id: 'bitbucket.pull.analysis', titleKey: 'settings.magicPrompts.sidebar.item.bitbucketPullAnalysis' },

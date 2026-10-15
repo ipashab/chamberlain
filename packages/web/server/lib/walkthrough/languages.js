@@ -23,6 +23,7 @@ const LANGUAGE_NAMES = {
   'zh-CN': 'Simplified Chinese',
   'zh-TW': 'Traditional Chinese',
   uk: 'Ukrainian',
+  ru: 'Russian',
   es: 'Spanish',
   'pt-BR': 'Brazilian Portuguese',
   ko: 'Korean',
