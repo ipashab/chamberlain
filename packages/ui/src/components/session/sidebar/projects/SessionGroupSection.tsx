@@ -34,6 +34,9 @@ import {
   selectFolderRootNodes,
 } from '../sessions/sessionNodeItemUtils';
 import { useSessionFoldersStore } from '@/stores/useSessionFoldersStore';
+import { useSessionGroupPresetsStore } from '@/stores/useSessionGroupPresetsStore';
+import { offerFolderAgentToSession } from '@/lib/session-groups/offerFolderAgent';
+import { opencodeClient } from '@/lib/opencode/client';
 import { useFreshestSourceControlVisualSummaryForBranch } from '@/stores/useGitHubPrStatusStore';
 
 type FolderScope = { scopeKey: string; directory: string | null };
@@ -48,6 +51,8 @@ import { CollapsedSessionActivityIndicator } from '../sessions/collapsedActivity
 import { useCollapsedSessionActivityState } from '../sessions/collapsedActivityState';
 import { SessionTreeItem, type SessionTreeItemProps } from '../sessions/SessionTreeItem';
 import { FolderDeleteConfirmDialog } from '../shell/ConfirmDialogs';
+import { FolderGroupAgentDialog } from '../../folders/FolderGroupAgentDialog';
+import { useFolderGroupAgentDialogStore } from '@/stores/useFolderGroupAgentDialogStore';
 import { getSessionFolderOwnerKey } from '../sessions/sessionFolderIdentity';
 import { SpaceActionsMenu } from '@/components/session/spaces/SpaceActions';
 import { SpaceGroupStatus } from '@/components/session/spaces/SpaceGroupStatus';
@@ -367,8 +372,19 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
   const renameFolder = useSessionFoldersStore((state) => state.renameFolder);
   const deleteFolder = useSessionFoldersStore((state) => state.deleteFolder);
   const addSessionToFolder = useSessionFoldersStore((state) => state.addSessionToFolder);
+  const groupPresets = useSessionGroupPresetsStore((state) => state.presets);
+  const groupPresetFolderIds = React.useMemo(() => {
+    // Derived from the stable record so the selector itself stays
+    // referentially stable between renders; the row check is a set lookup.
+    const ids = new Set<string>();
+    for (const preset of Object.values(groupPresets)) {
+      if (preset.defaultAgent) ids.add(preset.folderId);
+    }
+    return ids;
+  }, [groupPresets]);
   const showDeletionDialog = useUIStore((state) => state.showDeletionDialog);
   const [deleteFolderConfirm, setDeleteFolderConfirm] = React.useState<DeleteFolderConfirm>(null);
+  const groupAgentDialogTarget = useFolderGroupAgentDialogStore((state) => state.target);
   const compareSessionNodes = React.useCallback((a: SessionNode, b: SessionNode) => {
     const aIndex = sessionOrderIndex.get(a.session.id);
     const bIndex = sessionOrderIndex.get(b.session.id);
@@ -797,6 +813,11 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
             isRenaming={isRenamingFolder}
             renameDraft={isRenamingFolder ? folderRename?.draft : undefined}
             onRenameDraftChange={setFolderRenameDraft}
+            onGroupAgent={() => {
+              useFolderGroupAgentDialogStore.getState()
+                .openFolderGroupAgentDialog({ folderId: folder.id, folderName: folder.name });
+            }}
+            hasGroupAgent={groupPresetFolderIds.has(folder.id)}
             onRenameSave={() => {
               const trimmed = folderRename?.draft.trim() ?? '';
               if (trimmed) {
@@ -1045,7 +1066,22 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
             foldersStore.removeSessionFromFolder(scopeKey, sessionId);
           }
         }
+        const movedFolder = targetEntry.folder;
         addSessionToFolder(targetEntry.scopeKey, target.folderId, sessionId);
+        // A folder with a group preset offers its agent to a session that
+        // already exists: 'ask' once, 'always' without asking, 'never' not at
+        // all. New sessions are covered by the create path instead.
+        if (movedFolder.id === target.folderId) {
+          const preset = useSessionGroupPresetsStore.getState().getFolderPreset(target.folderId);
+          if (preset?.defaultAgent) {
+            const { applyRule } = preset;
+            if (applyRule === 'always') {
+              void opencodeClient.switchSessionAgent(sessionId, preset.defaultAgent, targetEntry.scopeDirectory ?? null);
+            } else if (applyRule === 'ask') {
+              offerFolderAgentToSession(sessionId, preset.folderId, preset.defaultAgent, t);
+            }
+          }
+        }
       }}
     >
       {renderFolderItems()}
@@ -1113,12 +1149,21 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
       const value = deleteFolderConfirm;
       if (!value) return;
       deleteFolder(value.scopeKey, value.folderId);
+      // Keep the preset from outliving its folder.
+      useSessionGroupPresetsStore.getState().clearFolderPreset(value.folderId);
       setDeleteFolderConfirm(null);
     }}
   />;
 
+  const folderGroupAgentDialog = <FolderGroupAgentDialog
+    open={groupAgentDialogTarget !== null}
+    onOpenChange={(open) => { if (!open) useFolderGroupAgentDialogStore.getState().closeFolderGroupAgentDialog(); }}
+    folderId={groupAgentDialogTarget?.folderId ?? ''}
+    folderName={groupAgentDialogTarget?.folderName ?? ''}
+  />;
+
   if (hideGroupLabel) {
-    return renderBody ? <><div className="oc-group"><div className={cn('oc-group-body', groupBodyPaddingClass)}>{body}</div></div>{folderDeleteDialog}</> : null;
+    return renderBody ? <><div className="oc-group"><div className={cn('oc-group-body', groupBodyPaddingClass)}>{body}</div></div>{folderDeleteDialog}{folderGroupAgentDialog}</> : null;
   }
 
   return (
@@ -1356,7 +1401,7 @@ function SessionGroupSectionBase(props: SessionGroupSectionProps): React.ReactNo
       {/* Outside the header, which is a button of its own: the status line can hold one. */}
       {group.space ? <SpaceGroupStatus spaceId={group.space.id} className="pb-1 ps-5" /> : null}
       {!isCollapsed && renderBody ? <div className={cn('oc-group-body', groupBodyPaddingClass)}>{body}</div> : null}
-    </div>{folderDeleteDialog}</>
+    </div>{folderDeleteDialog}{renderBody ? folderGroupAgentDialog : null}</>
   );
 }
 

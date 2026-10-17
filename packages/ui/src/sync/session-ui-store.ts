@@ -29,6 +29,7 @@ import { fetchSessionKnowledge, reportSessionKnowledgeDelivered } from "@/lib/se
 import { useGlobalSessionsStore, resolveGlobalSessionDirectory } from "@/stores/useGlobalSessionsStore"
 import { isDirectoryUnknown, useDirectoryStore } from "@/stores/useDirectoryStore"
 import { useSessionFoldersStore } from "@/stores/useSessionFoldersStore"
+import { useSessionGroupPresetsStore } from "@/stores/useSessionGroupPresetsStore"
 import { selectCommandsForDirectory, useCommandsStore } from "@/stores/useCommandsStore"
 import { selectSkillsForDirectory, useSkillsStore } from "@/stores/useSkillsStore"
 import { getDeferredSafeStorage } from "@/stores/utils/safeStorage"
@@ -952,7 +953,17 @@ const createSessionWithDraftLifecycle = async (
     const resolved = await resolveCreatableDraftDirectory(draft, directoryOverride)
     if (resolved.status === "aborted") return null
     const directory = resolved.directory
-    const session = await createSessionAction(title, directory, metadata, selectionTransition, selection)
+
+    // A folder bound to a group preset starts its sessions on the group's
+    // agent, unless the caller already decided a selection of its own.
+    const folderPreset = targetFolderId
+      ? useSessionGroupPresetsStore.getState().getFolderPreset(targetFolderId)
+      : null
+    const createdWithSelection = folderPreset?.defaultAgent
+      ? { ...selection, agent: selection?.agent ?? folderPreset.defaultAgent }
+      : selection
+
+    const session = await createSessionAction(title, directory, metadata, selectionTransition, createdWithSelection)
     if (!session) return null
 
     useSessionUIStore.getState().closeNewSessionDraft()

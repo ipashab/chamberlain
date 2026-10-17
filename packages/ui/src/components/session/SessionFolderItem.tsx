@@ -50,6 +50,10 @@ interface SessionFolderItemProps<TSessionNode> {
   hideActions?: boolean;
   /** Whether folder belongs to archived section */
   archivedBucket?: boolean;
+  /** Opens the "group agent" dialog; absent hides the folder's agent button */
+  onGroupAgent?: () => void;
+  /** Set when a group preset names this folder, for the row's marker. */
+  hasGroupAgent?: boolean;
 }
 
 const SessionFolderItemBase = <TSessionNode,>({
@@ -78,6 +82,8 @@ const SessionFolderItemBase = <TSessionNode,>({
   canExpand = true,
   hideActions = false,
   archivedBucket = false,
+  onGroupAgent,
+  hasGroupAgent = false,
 }: SessionFolderItemProps<TSessionNode>) => {
   const { t } = useI18n();
   const [localRenaming, setLocalRenaming] = React.useState(false);
@@ -311,6 +317,23 @@ const SessionFolderItemBase = <TSessionNode,>({
                   aria-label={t('sessions.sidebar.folderItem.renameAria', { folderName: folder.name })}
                 >
                   <Icon name="pencil-ai" className="h-3 w-3" />
+                </button>
+              ) : null}
+              {!archivedBucket && onGroupAgent ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onGroupAgent();
+                  }}
+                  className={cn(
+                    'inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-interactive-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    hasGroupAgent ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  aria-label={t('sessions.sidebar.folderItem.groupAgentAria', { folderName: folder.name })}
+                  title={t('sessions.sidebar.folderItem.groupAgent')}
+                >
+                  <Icon name="ai-agent" className="h-3.5 w-3.5" />
                 </button>
               ) : null}
               <button
