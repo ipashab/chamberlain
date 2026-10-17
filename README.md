@@ -8,15 +8,18 @@
 <a href="https://www.blacksmith.sh/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/blacksmith-dark.svg"><img src="docs/references/badges/blacksmith-light.svg" height="28" alt="CI powered by Blacksmith" /></picture></a>
 
 > [!NOTE]
-> **This is the team-operations fork of OpenChamber.** It builds five blocks on top of upstream, each with its own surface:
+> <img src="packages/electron/resources/icons/chamberlain/icon-chamberlain.png" width="20" height="20" align="absmiddle" /> **This is Chamberlain — the team-operations fork of OpenChamber.** It builds a coherent block on top of upstream, each piece with its own surface:
 >
 > - **Team Mode.** A lead you chat with plus staffed teammates: shared task board with pull-request badges, live roster, sub-teams, one activity feed.
 > - **Missions.** A Goals page where a goal prompt is filed into a paced queue and run as a fresh session or a lead-led team, watched to completion.
 > - **Contacts.** Saved assistant personas (a reviewer, a planner) with one continuing chat each, one click away in the sidebar.
+> - **Review surfaces.** Bitbucket DC, Jira and Confluence read-only: pull requests and issues open as rich views, a dedicated session analyzes a pull or drafts a spec, and the judging methodology is a Magic Prompts setting.
+> - **A workspace you arrange.** Panels as regions around the chat — dock, float, move by the layout tree — with the review board and the tracker beside the conversation.
+> - **Engines as files.** Model engines registered by descriptor files, and session folders that set the agent their new chats start on.
 > - **`/compactnew`.** Compact a long chat and continue in a fresh one seeded with the summary.
-> - **Bitbucket DC and Jira, read-only.** Pull requests and issues open as rich views; a dedicated session analyzes a pull (comment footnotes, file verdicts) or drafts a spec from a Jira task, and the judging methodology is a Magic Prompts setting.
+> - **Russian, whole.** The `ru` locale carries every key upstream ships.
 >
-> Fork release: `2.2.0-fork4`, based on upstream `2.2.0`. The full list, commit by commit: [README-FORK.md](README-FORK.md).
+> Fork release: [`2.4.0-fork1`](../../releases/tag/v2.4.0-fork1), based on upstream `2.4.0` — macOS builds attach to the release as `Chamberlain-*.dmg`. The app installs beside stock OpenChamber under its own name and icon. The full story, commit by commit: [README-FORK.md](README-FORK.md).
 
 ## Run agent work. Keep control. Ship from anywhere.
 
