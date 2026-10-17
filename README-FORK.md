@@ -195,11 +195,11 @@ from the pull title's task key.
 
 ## Distribution
 
-`3fa5412` packages this fork as "OpenChamber Beta": own `productName`,
-`appId` and corner-badge icon, so it installs beside stock OpenChamber
-instead of over it. `oc-dev package --flavor beta` produces the DMG;
-the icon is rendered from the stock PNG at build time and asset paths
-are restored afterwards.
+`3fa5412` first packaged this fork under its own name; since `2.4.0-fork1`
+that name is "Chamberlain": own `productName`, `appId` and a brass-seal
+icon (a key on teal wax), so it installs beside stock OpenChamber instead
+of over it. `oc-dev package --flavor beta` produces the DMG; the icon is
+rendered at build time and asset paths are restored afterwards.
 
 ## Conventions this work follows
 

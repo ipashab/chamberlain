@@ -286,11 +286,13 @@ the zip) — macOS, Apple silicon.
 
 The app is ad-hoc signed and not notarized: on first launch macOS may
 refuse it, so right-click → Open once, or run
-`xattr -dr com.apple.quarantine "/Applications/OpenChamber Beta.app"`
+`xattr -dr com.apple.quarantine "/Applications/Chamberlain.app"`
 after dragging it to Applications.
 
-The beta flavor installs beside stock OpenChamber (own `productName`,
-appId and icon), so both can live on one machine.
+Since `2.4.0-fork1` the flavor carries its own name: **Chamberlain**
+(own `productName`, appId `dev.openchamber.chamberlain` and a brass-seal
+icon), installed beside stock OpenChamber so both can live on one machine.
+Earlier releases shipped the same flavor as "OpenChamber Beta".
 
 ## Conventions
 
