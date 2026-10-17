@@ -9,6 +9,7 @@ import { routingI18n } from './routing.i18n';
 import { pluginPanelI18n } from './plugin-panel.i18n';
 import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
+import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
@@ -19,6 +20,9 @@ import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
+import { gitIdentityEditorI18n } from './git-identity-editor.i18n';
+import { integrationsCatalogI18n } from './integrations-catalog.i18n';
+import { settingsLayoutI18n } from './settings-layout.i18n';
 
 export const dict = {
   'opencodeCompatibility.bundled': 'OpenCode поставляется вместе с OpenChamber. Обновите OpenChamber, чтобы получить OpenCode v2.',
@@ -137,6 +141,7 @@ export const dict = {
   ...pluginPanelI18n.ru,
   ...surfacePanelI18n.ru,
   ...fileArtifactsI18n.ru,
+  ...fileContentSearchI18n.ru,
   ...htmlRenderI18n.ru,
   ...usageStatsI18n.ru,
   ...webSearchI18n.ru,
@@ -147,6 +152,9 @@ export const dict = {
   ...providersI18n.ru,
   ...mcpGridI18n.ru,
   ...pluginsGridI18n.ru,
+  ...gitIdentityEditorI18n.ru,
+  ...integrationsCatalogI18n.ru,
+  ...settingsLayoutI18n.ru,
   'terminalView.actions.attachSelection': 'Прикрепить выделенный вывод',
   'terminalView.actions.copySelection': 'Скопировать выделенный вывод',
   'terminalView.toast.selectionCopied': 'Вывод скопирован',
@@ -4250,4 +4258,27 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': 'У этой задачи уже есть идущий запуск',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Эта задача уже ждёт в очереди и запустится, когда освободится слот',
   'chat.modelControls.agentFavoriteAdd': 'Добавить в избранное. При наличии избранного Tab переключает только его',
+  'settings.remoteInstances.clientAuth.relayConflict.title': "За этот компьютер отвечает другой",
+  'settings.remoteInstances.clientAuth.relayConflict.description': "Устройства, добавленные как «Отовсюду», постоянно переключаются между этим компьютером и другим. Так бывает, когда данные OpenChamber скопировали на второй компьютер и оба запущены.",
+  'settings.remoteInstances.clientAuth.relayConflict.action': "Отделить этот компьютер",
+  'settings.remoteInstances.clientAuth.relayConflict.confirmTitle': "Отделить этот компьютер?",
+  'settings.remoteInstances.clientAuth.relayConflict.confirmMessage': "Устройства, добавленные как «Отовсюду», продолжат обращаться к другому компьютеру. Чтобы пользоваться устройством отсюда, добавьте его здесь снова через «Добавить устройство».\n\nУстройства, добавленные как «Только домашняя сеть», продолжат работать.",
+  'settings.remoteInstances.clientAuth.relayConflict.confirmAction': "Отделить",
+  'settings.remoteInstances.clientAuth.relayConflict.toast.success': "Этот компьютер теперь сам по себе. Добавьте устройства здесь снова, чтобы доставаться до них отовсюду.",
+  'settings.remoteInstances.clientAuth.relayConflict.toast.failed': "Не удалось отделить этот компьютер",
+  'settings.github.page.flow.autoRefresh': "(автообновление)",
+  'sessions.sidebar.session.pin.pinFailed': "Не удалось закрепить сессию",
+  'sessions.sidebar.session.pin.unpinFailed': "Не удалось открепить сессию",
+  'sessions.sidebar.group.pr.status.checksRunning': "Проверки идут",
+  'contextPanel.tracker.branchTab': "Текущая ветка",
+  'contextPanel.tracker.loadFailed': "Не удалось загрузить этот объект.",
+  'contextPanel.tracker.unavailable': "OpenChamber не может прочитать этот объект здесь.",
+  'diffView.nestedRepository.description': "У этой папки своя история Git. Откройте её как проект, чтобы закоммитить эти изменения.",
+  'diffView.nestedRepository.openAsProject': "Открыть как проект",
+  'diffView.nestedRepository.openFailed': "Не удалось открыть эту папку как проект",
+  'diffView.nestedRepository.loading': "Читаю изменения репозитория…",
+  'diffView.nestedRepository.loadFailed': "Не удалось прочитать изменения репозитория",
+  'diffView.nestedRepository.noChanges': "В этом репозитории изменений нет",
+  'openCodeStatusDialog.actions.download': "Скачать лог",
+  'openCodeStatusDialog.toast.collectFailed': "Не удалось собрать диагностику",
 } satisfies Record<I18nKey, string>;

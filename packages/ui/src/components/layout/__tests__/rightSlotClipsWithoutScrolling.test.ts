@@ -18,21 +18,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const source = readFileSync(join(__dirname, '..', 'ContextPanel.tsx'), 'utf-8');
+const source = readFileSync(join(__dirname, '..', 'WorkspaceLayout.tsx'), 'utf-8');
 
-// Every zone frame shares the aside, so the left and bottom zones clip the same way.
+// The aside is the layout row's right edge; every region shares it.
 const slotElement = (): string => {
-  const start = source.indexOf("data-right-slot={zone === 'right' ? '' : undefined}");
+  const start = source.indexOf('data-right-slot=""');
   expect(start).toBeGreaterThan(-1);
-  const end = source.indexOf('style={panelStyle}', start);
+  const end = source.indexOf('</aside>', start);
   expect(end).toBeGreaterThan(start);
-  return source.slice(start, end);
-};
-
-const panelStyle = (): string => {
-  const start = source.indexOf('const panelStyle: React.CSSProperties = {');
-  expect(start).toBeGreaterThan(-1);
-  const end = source.indexOf('};', start);
   return source.slice(start, end);
 };
 
@@ -45,6 +38,6 @@ describe('right slot cannot be scrolled sideways', () => {
   });
 
   test('the slot style sets no per-axis overflow that would turn clip into hidden', () => {
-    expect(/overflow[XY]?\s*:/.test(panelStyle())).toBe(false);
+    expect(/overflow[XY]?\s*:/.test(slotElement())).toBe(false);
   });
 });

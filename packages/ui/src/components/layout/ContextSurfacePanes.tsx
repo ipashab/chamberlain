@@ -30,6 +30,7 @@ import { MovablePane } from './MovablePane';
 import { SidebarFilesTree } from './SidebarFilesTree';
 import { closeZoneOnEscape } from './zoneEscape';
 import { usePaneHostsStore } from './regionHosts';
+import { PauseClock } from '@/components/ui/pause-clock';
 
 // Heavy views stay on-demand (same as MainLayout): importing DiffView/FilesView
 // or the walkthrough statically pulls the CodeMirror and @pierre/diffs stacks
@@ -429,6 +430,7 @@ export const ContextSurfacePanes: React.FC = () => {
     openContextPanelTab(directoryKey, {
       mode: 'diff',
       targetPath: diffActiveTab.targetPath,
+      targetDirectory: diffActiveTab.targetDirectory,
       stagedDiff: nextScope === 'staged',
       diffScope: nextScope,
     });
@@ -577,6 +579,7 @@ export const ContextSurfacePanes: React.FC = () => {
             className={cn('absolute inset-0', !shown && 'invisible pointer-events-none')}
           >
             <div className="h-full" aria-hidden={!shown || undefined}>
+              <PauseClock paused={!shown}>
               <BrowserPane
                 initialUrl={tab.targetPath ?? ''}
                 directory={tab.directory}
@@ -584,6 +587,7 @@ export const ContextSurfacePanes: React.FC = () => {
                 ownerSessionId={tab.ownerSessionId}
                 visible={shown}
               />
+              </PauseClock>
             </div>
           </RegionPane>
         );

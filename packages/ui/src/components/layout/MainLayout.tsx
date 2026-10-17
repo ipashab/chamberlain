@@ -32,6 +32,7 @@ import { useSessionListSync } from '@/components/session/sidebar/list/useSession
 import { setChatCovered } from './rightSlot';
 
 import { ChatView } from '@/components/views/ChatView';
+import { DiagnosticDialogAvailableContext } from '@/lib/diagnostics/dialog-availability';
 
 const loadSettingsWindow = () => import('@/components/views/SettingsWindow').then(m => m.SettingsWindow);
 
@@ -47,6 +48,7 @@ const loadScheduledTasksDialog = () => import('@/components/session/ScheduledTas
 const loadMissionsDialog = () => import('@/components/session/MissionsDialog').then((m) => m.MissionsDialog);
 const loadAssistantsDialog = () => import('@/components/session/AssistantsDialog').then((m) => m.AssistantsDialog);
 const loadArchiveView = () => import('@/components/views/ArchiveView').then((m) => m.ArchiveView);
+const loadIntegrationsCatalogView = () => import('@/components/views/IntegrationsCatalogView').then((m) => m.IntegrationsCatalogView);
 const loadUsageStatsView = () => import('@/components/views/usage/UsageStatsView').then((m) => m.UsageStatsView);
 const loadSourceBoardView = () => import('@/components/sourceBoard/SourceBoardView').then((m) => m.SourceBoardView);
 const loadWorktreesView = () => import('@/components/views/WorktreesView').then((m) => m.WorktreesView);
@@ -114,6 +116,7 @@ export const MainLayout: React.FC = () => {
     const isMissionsPageOpen = useUIStore((state) => state.isMissionsDialogOpen);
     const isAssistantsPageOpen = useUIStore((state) => state.isAssistantsDialogOpen);
     const isArchivePageOpen = useUIStore((state) => state.isArchivePageOpen);
+    const isIntegrationsCatalogOpen = useUIStore((state) => state.isIntegrationsCatalogOpen);
     const isUsageStatsPageOpen = useUIStore((state) => state.isUsageStatsPageOpen);
     const isSourceBoardOpen = useUIStore((state) => state.isSourceBoardOpen);
     const worktreesPageProjectId = useUIStore((state) => state.worktreesPageProjectId);
@@ -136,7 +139,7 @@ export const MainLayout: React.FC = () => {
     // Any full-page surface replacing the chat area. While open, the chat is
     // fully hidden (not just covered) so none of its floating chrome bleeds
     // through, and selecting a session or draft anywhere closes the surface.
-    const isSurfacePageOpen = isScheduledTasksPageOpen || isMissionsPageOpen || isAssistantsPageOpen || isArchivePageOpen || isUsageStatsPageOpen || isSourceBoardOpen || Boolean(worktreesPageProjectId) || isSpacesPageOpen || isRunOverviewOpen || Boolean(guestPage);
+    const isSurfacePageOpen = isScheduledTasksPageOpen || isMissionsPageOpen || isAssistantsPageOpen || isArchivePageOpen || isIntegrationsCatalogOpen || isUsageStatsPageOpen || isSourceBoardOpen || Boolean(worktreesPageProjectId) || isSpacesPageOpen || isRunOverviewOpen || Boolean(guestPage);
     // The work-status card sits in the right slot, outside the hidden chat,
     // so the slot is told to hide it with the chat.
     React.useLayoutEffect(() => {
@@ -170,7 +173,7 @@ export const MainLayout: React.FC = () => {
     }, [isMobile, setIsMobile]);
 
     return (
-        <DiffWorkerProvider>
+        <DiagnosticDialogAvailableContext.Provider value><DiffWorkerProvider>
             <ProjectActionsProvider>
             <div
                 data-page-scroll-lock="true"
@@ -220,6 +223,7 @@ export const MainLayout: React.FC = () => {
                                             <ErrorBoundary><OnDemand needed={isMissionsPageOpen} load={loadMissionsDialog} onFailure={closeMainSurfaces} /></ErrorBoundary>
                                             <ErrorBoundary><OnDemand needed={isAssistantsPageOpen} load={loadAssistantsDialog} onFailure={closeMainSurfaces} /></ErrorBoundary>
                                             <ErrorBoundary><OnDemand needed={isArchivePageOpen} load={loadArchiveView} onFailure={closeMainSurfaces} /></ErrorBoundary>
+                                            <ErrorBoundary><OnDemand needed={isIntegrationsCatalogOpen} load={loadIntegrationsCatalogView} onFailure={closeMainSurfaces} /></ErrorBoundary>
                                             {isUsageStatsPageOpen && (
                                                 <div className="absolute inset-0 z-10 bg-background">
                                                     <ErrorBoundary><OnDemand needed load={loadUsageStatsView} onFailure={closeMainSurfaces} /></ErrorBoundary>
@@ -258,6 +262,6 @@ export const MainLayout: React.FC = () => {
                 ) : null}
             </div>
             </ProjectActionsProvider>
-        </DiffWorkerProvider>
+        </DiffWorkerProvider></DiagnosticDialogAvailableContext.Provider>
     );
 };

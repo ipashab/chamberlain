@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// The keep-alive terminal pane lives in ContextSurfacePanes, portalled into its zone.
+// The keep-alive terminal pane lives in ContextSurfacePanes, placed into its region.
 const contextPanelSource = readFileSync(join(__dirname, '..', 'ContextSurfacePanes.tsx'), 'utf-8');
 
 describe('context panel terminal target wiring', () => {
@@ -29,9 +29,9 @@ describe('context panel terminal target wiring', () => {
     expect(renderEnd).toBeGreaterThan(renderStart);
     const renderBlock = contextPanelSource.slice(renderStart, renderEnd);
 
-    expect(renderBlock).toContain("terminalZone.activeTab?.mode === 'terminal' ? 'block' : 'hidden'");
+    expect(renderBlock).toContain("shownInRegion(terminalTab.id) ? 'block' : 'hidden'");
     expect(renderBlock).toContain('<TerminalView');
-    expect(renderBlock).toContain("visible={terminalZone.isOpen && terminalZone.activeTab?.mode === 'terminal'}");
+    expect(renderBlock).toContain('visible={shownInRegion(terminalTab.id)}');
     expect(renderBlock).toContain('directory={terminalTab.targetDirectory}');
     expect(renderBlock).not.toContain('directory={activeTab?.targetDirectory}');
     expect(renderBlock).not.toContain('directory={effectiveDirectory}');

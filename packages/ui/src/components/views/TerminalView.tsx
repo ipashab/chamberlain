@@ -2,12 +2,14 @@ import React from 'react';
 
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { ACTIVE_PROJECT_ACTION_LIFECYCLES, useTerminalStore } from '@/stores/useTerminalStore';
+import { Spinner } from '@/components/ui/spinner';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { type TerminalStreamEvent } from '@/lib/api/types';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useFontPreferences } from '@/hooks/useFontPreferences';
 import { CODE_FONT_OPTION_MAP, DEFAULT_MONO_FONT } from '@/lib/fontOptions';
 import { convertThemeToXterm } from '@/lib/terminalTheme';
+import { usePageColors } from '@/hooks/usePageColors';
 import { TerminalViewport, type TerminalController } from '@/components/terminal/TerminalViewport';
 import { focusChatInput } from '@/components/chat/composer/editor/dom';
 import type { MonoFontOption } from '@/lib/fontOptions';
@@ -35,6 +37,7 @@ import { formatShortcutForDisplay } from '@/lib/shortcuts';
 import { observeTerminalSessions } from '@/lib/terminalSessionObserver';
 import { ContextPanelHeaderToolbar } from '@/components/layout/contextPanelHeaderSlot';
 import { useInContextPanelHeader } from '@/components/layout/contextPanelHeaderSlotContext';
+import { useZoneInteractive } from '@/components/layout/zoneInteractiveContext';
 
 type TerminalViewProps = {
     visible?: boolean;
@@ -101,12 +104,18 @@ const resolveTabIconName = (iconKey: string | null): IconName => {
     return matchedIcon?.Icon ?? 'terminal';
 };
 
+/** A project action that starts, runs or stops shows the shared spinner on its tab. */
+const TerminalTabIcon: React.FC<{ iconName: IconName; active: boolean }> = ({ iconName, active }) => (
+    active ? <Spinner className="h-4 w-4 text-muted-foreground" /> : <Icon name={iconName} className="h-4 w-4" />
+);
+
 export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, onLastTabClosed }) => {
     const { t } = useI18n();
     const { terminal, runtime } = useRuntimeAPIs();
     const { currentTheme } = useThemeSystem();
+    const pageBackground = usePageColors().background;
     const terminalAppearanceRef = React.useRef<{ themeMode: 'light' | 'dark'; terminalBackground: string; terminalForeground: string }>({ themeMode: 'dark', terminalBackground: '', terminalForeground: '' });
-    terminalAppearanceRef.current = { themeMode: currentTheme.metadata.variant === 'light' ? 'light' : 'dark', terminalBackground: currentTheme.colors.surface.background, terminalForeground: currentTheme.colors.syntax.base.foreground };
+    terminalAppearanceRef.current = { themeMode: currentTheme.metadata.variant === 'light' ? 'light' : 'dark', terminalBackground: pageBackground, terminalForeground: currentTheme.colors.syntax.base.foreground };
     const { monoFont } = useFontPreferences();
     const terminalFontSize = useUIStore(state => state.terminalFontSize);
     const terminalShell = useUIStore(state => state.terminalShell);
@@ -167,22 +176,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
 
     const terminalTabItems = React.useMemo(() => {
         return (directoryTerminalState?.tabs ?? []).map((tab) => ({
-            icon: (() => {
-                const showProjectActionSpinner = tab.purpose.type === 'project-action'
-                    && ACTIVE_PROJECT_ACTION_LIFECYCLES.has(tab.lifecycle);
-                const tabIconName = showProjectActionSpinner
-                    ? 'loader-4'
-                    : resolveTabIconName(tab.iconKey);
-                return (
-                    <Icon
-                        name={tabIconName}
-                        className={cn(
-                            'h-4 w-4',
-                            showProjectActionSpinner && 'animate-spin text-muted-foreground motion-reduce:animate-none'
-                        )}
-                    />
-                );
-            })(),
+            icon: (
+                <TerminalTabIcon
+                    iconName={resolveTabIconName(tab.iconKey)}
+                    active={tab.purpose.type === 'project-action' && ACTIVE_PROJECT_ACTION_LIFECYCLES.has(tab.lifecycle)}
+                />
+            ),
             id: tab.id,
             label: tab.label,
             title: tab.label,
@@ -265,7 +264,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
     React.useEffect(() => {
         if (!terminalSessionId || !terminal.updateAppearance) return;
         void terminal.updateAppearance(terminalSessionId, terminalAppearanceRef.current, terminalDirectory).catch(() => {});
-    }, [currentTheme.colors.surface.background, currentTheme.colors.syntax.base.foreground, currentTheme.metadata.variant, terminal, terminalDirectory, terminalSessionId]);
+    }, [pageBackground, currentTheme.colors.syntax.base.foreground, currentTheme.metadata.variant, terminal, terminalDirectory, terminalSessionId]);
 
     React.useEffect(() => {
         activeTabIdRef.current = activeTabId;
@@ -689,8 +688,11 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
         terminalShell,
     ]);
 
+    // A zone opening around the terminal keeps it inert until the animation
+    // settles; focus taken before that is lost.
+    const zoneInteractive = useZoneInteractive();
     React.useEffect(() => {
-        if (!isTerminalVisible || useTouchTerminalInput) {
+        if (!isTerminalVisible || !zoneInteractive || useTouchTerminalInput) {
             return;
         }
 
@@ -706,7 +708,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
         return () => {
             window.cancelAnimationFrame(rafId);
         };
-    }, [activeTabId, focusTerminalWhenWindowActive, isTerminalVisible, useTouchTerminalInput]);
+    }, [activeTabId, focusTerminalWhenWindowActive, isTerminalVisible, useTouchTerminalInput, zoneInteractive]);
 
     const handleRestart = React.useCallback(async () => {
         if (!terminalDirectory) return;
@@ -1034,7 +1036,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ visible, directory, 
         return definition.stack ?? defaultStack;
     }, [monoFont]);
 
-    const xtermTheme = React.useMemo(() => convertThemeToXterm(currentTheme), [currentTheme]);
+    const xtermTheme = React.useMemo(() => convertThemeToXterm(currentTheme, pageBackground), [currentTheme, pageBackground]);
 
     // Viewport identity is the tab, not the PTY session. Including the session id
     // here tore down and rebuilt the Ghostty terminal (WASM VT + canvas + font

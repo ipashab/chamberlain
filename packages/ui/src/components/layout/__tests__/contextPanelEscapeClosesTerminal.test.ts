@@ -20,13 +20,13 @@ const mobileWorkspaceDrawerSource = readFileSync(
 );
 
 describe('issue #2644: Escape in terminal must not close the context panel', () => {
-  test('each zone captures Escape on its frame and on its keep-alive panes', () => {
+  test('the frame and its keep-alive panes each capture Escape', () => {
     expect(contextPanelSource).toContain('onKeyDownCapture={handlePanelKeyDownCapture}');
-    expect(contextPanelSource).toContain('closeZoneOnEscape(event, isOpen, handleClose)');
+    expect(contextPanelSource).toContain('closeZoneOnEscape(event, true, handleClose)');
     // The terminal is portalled in from ContextSurfacePanes, so its keys never
     // pass through the frame: its pane wrapper runs the same handler.
     expect(surfacePanesSource).toContain('onKeyDownCapture={handleKeyDownCapture}');
-    expect(surfacePanesSource).toContain('closeZoneOnEscape(event, isOpen, () => {');
+    expect(surfacePanesSource).toContain('closeZoneOnEscape(event, visible, () => {');
   });
 
   test('the capture handler skips closing when the event target is inside the terminal', () => {

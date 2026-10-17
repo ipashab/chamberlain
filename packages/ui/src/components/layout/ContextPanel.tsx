@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { SortableTabsStrip } from '@/components/ui/sortable-tabs-strip';
 import { PullRequestView } from '@/components/views/PullRequestView';
+import { TrackerItemView } from '@/components/views/TrackerItemView';
+import { trackerTargetOfUrl } from '@/components/sourceBoard/openTrackerItem';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
+import { getDisambiguatingFolders } from '@/lib/path-utils';
 
 // Heavy views stay on-demand (same as MainLayout): importing GitView or the
 // plan statically pulls their stacks into the eager startup graph even when
@@ -28,11 +31,15 @@ import { useGuestSurfaces } from '@/hooks/useGuestSurfaces';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { useBrowserFaviconStore } from '@/stores/useBrowserFaviconStore';
-import { useUIStore, type ContextPanelMode, type ContextPanelTab } from '@/stores/useUIStore';
+import { isTrackerBranchTab, useUIStore, type ContextPanelMode, type ContextPanelTab } from '@/stores/useUIStore';
+import { useGitStatus } from '@/stores/useGitStore';
 import { useChildStoreManager } from '@/sync/sync-context';
+import { useSessionTurnActivity } from '@/sync/global-session-status';
+import { SessionActivityIndicator } from '@/components/session/SessionActivityIndicator';
 import { ContextPanelContent } from './ContextSidebarTab';
 import { browserUrlLabel } from '@/lib/browser/url';
 import { Icon } from "@/components/icon/Icon";
+import type { IconName } from "@/components/icon/icons";
 import { GuestIcon } from './GuestRailIcon';
 import { useGuestsStore } from '@/lib/guests/store';
 import { FALLBACK_GUEST_ICON } from '@/lib/guests/icon';
@@ -171,8 +178,17 @@ const ContextGuestIcon: React.FC<{ mode: ContextPanelMode }> = ({ mode }) => {
   return <GuestIcon icon={surface?.icon ?? FALLBACK_GUEST_ICON} iconSrc={surface?.iconSrc} className="h-3.5 w-3.5" />;
 };
 
+// A chat tab shows its session's live activity in place of the chat icon, so a
+// strip of many subagent chats tells the running ones from the idle ones.
+const ChatTabIcon: React.FC<{ sessionId: string }> = ({ sessionId }) => {
+  const activity = useSessionTurnActivity(sessionId);
+  return activity
+    ? <SessionActivityIndicator state={activity} className="h-3.5 w-3.5" />
+    : <Icon name="chat-4" className="h-3.5 w-3.5" />;
+};
+
 const getTabIcon = (
-  tab: { mode: ContextPanelMode; targetPath: string | null },
+  tab: { mode: ContextPanelMode; targetPath: string | null; dedupeKey?: string },
   faviconByOrigin: Record<string, string> = {},
 ): React.ReactNode | undefined => {
   if (tab.mode === 'file') {
@@ -194,7 +210,7 @@ const getTabIcon = (
   }
 
   if (tab.mode === 'pr') {
-    return <Icon name="github" className="h-3.5 w-3.5" />;
+    return <Icon name={trackerTabIcon(tab.targetPath)} className="h-3.5 w-3.5" />;
   }
 
   if (tab.mode === 'notes') {
@@ -218,7 +234,10 @@ const getTabIcon = (
   }
 
   if (tab.mode === 'chat') {
-    return <Icon name="chat-4" className="h-3.5 w-3.5" />;
+    const sessionId = getSessionIDFromDedupeKey(tab.dedupeKey);
+    return sessionId
+      ? <ChatTabIcon sessionId={sessionId} />
+      : <Icon name="chat-4" className="h-3.5 w-3.5" />;
   }
 
   if (isPluginContextPanelMode(tab.mode)) {
@@ -235,6 +254,14 @@ const getTabIcon = (
   }
 
   return undefined;
+};
+
+// The branch's own tab, then what each item is.
+const trackerTabIcon = (url: string | null): IconName => {
+  const target = url ? trackerTargetOfUrl(url) : null;
+  if (!target) return 'git-branch';
+  if (target.source === 'linear') return 'linear';
+  return target.kind === 'pull' ? 'git-pull-request' : 'record-circle';
 };
 
 const browserFaviconFor = (url: string, faviconByOrigin: Record<string, string>): string => {
@@ -427,25 +454,39 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
   // The rail switches between surfaces (modes); the in-region strip only lists
   // instances of the active multi-instance surface (open files, split chats,
   // browser targets).
-  const isMultiInstanceMode = activeTab?.mode === 'file' || activeTab?.mode === 'chat' || activeTab?.mode === 'browser';
-  const activeModeTabs = React.useMemo(
-    () => (activeTab ? tabs.filter((tab) => tab.mode === activeTab.mode) : []),
-    [activeTab, tabs],
-  );
+  const isMultiInstanceMode = activeTab?.mode === 'file' || activeTab?.mode === 'chat' || activeTab?.mode === 'browser' || activeTab?.mode === 'pr';
+  const activeModeTabs = React.useMemo(() => {
+    if (!activeTab) return [];
+    const modeTabs = tabs.filter((tab) => tab.mode === activeTab.mode);
+    // The Tracker's branch tab always comes first.
+    return activeTab.mode === 'pr'
+      ? [...modeTabs.filter(isTrackerBranchTab), ...modeTabs.filter((tab) => !isTrackerBranchTab(tab))]
+      : modeTabs;
+  }, [activeTab, tabs]);
+  // The branch tab is named after the branch checked out here.
+  const trackerBranch = useGitStatus(activeTab?.mode === 'pr' && directoryKey ? directoryKey : null)?.current ?? null;
 
-  const tabItems = React.useMemo(() => activeModeTabs.map((tab) => {
-    const rawLabel = getTabLabel(tab, sessionTitleById, tabT);
-    const label = truncateTabLabel(rawLabel, CONTEXT_TAB_LABEL_MAX_CHARS);
-    const tabPathLabel = getRelativePathLabel(tab.targetPath, effectiveDirectory);
-    return {
-      id: tab.id,
-      label,
-      icon: getTabIcon(tab, faviconByOrigin),
-      title: tabPathLabel ? `${rawLabel}: ${tabPathLabel}` : rawLabel,
-      closeLabel: t('contextPanel.tab.closeTabAria', { label }),
-      preview: tab.preview,
-    };
-  }), [activeModeTabs, effectiveDirectory, faviconByOrigin, sessionTitleById, t, tabT]);
+  const tabItems = React.useMemo(() => {
+    const fileFolders = getDisambiguatingFolders(activeModeTabs
+      .filter((tab) => tab.mode === 'file')
+      .map((tab) => getRelativePathLabel(tab.targetPath, effectiveDirectory)));
+    return activeModeTabs.map((tab) => {
+      const branchTab = isTrackerBranchTab(tab);
+      const rawLabel = branchTab ? trackerBranch || t('contextPanel.tracker.branchTab') : getTabLabel(tab, sessionTitleById, tabT);
+      const label = truncateTabLabel(rawLabel, CONTEXT_TAB_LABEL_MAX_CHARS);
+      const tabPathLabel = getRelativePathLabel(tab.targetPath, effectiveDirectory);
+      return {
+        id: tab.id,
+        label,
+        labelFolder: tab.mode === 'file' ? fileFolders.get(tabPathLabel) : undefined,
+        icon: getTabIcon(tab, faviconByOrigin),
+        title: tabPathLabel ? `${rawLabel}: ${tabPathLabel}` : rawLabel,
+        closeLabel: t('contextPanel.tab.closeTabAria', { label }),
+        closable: !branchTab,
+        preview: tab.preview,
+      };
+    });
+  }, [activeModeTabs, effectiveDirectory, faviconByOrigin, sessionTitleById, t, tabT, trackerBranch]);
 
   // Injected by the panel on purpose: TeamBoardView importing ChatView
   // directly would close the ChatContainer → WorkStatusPanel → … →
@@ -463,7 +504,20 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
         : activeTab?.mode === 'git'
             ? <React.Suspense fallback={null}><ContextPanelHeaderSlotProvider value={headerSlotEl}><GitView isActive={isOpen} /></ContextPanelHeaderSlotProvider></React.Suspense>
             : activeTab?.mode === 'pr'
-                ? <PullRequestView />
+                ? (activeTab.targetPath
+                    ? (
+                      <TrackerItemView
+                        key={activeTab.id}
+                        url={activeTab.targetPath}
+                        // The folder as the views behind Changes and the walkthrough key it.
+                        directory={activeTab.targetDirectory ?? effectiveDirectory}
+                        panelDirectory={effectiveDirectory}
+                        tabId={activeTab.id}
+                        foreign={Boolean(activeTab.targetDirectory)}
+                        visible={isOpen}
+                      />
+                    )
+                    : <PullRequestView />)
             : activeTab?.mode === 'notes'
                 ? <ContextPanelHeaderSlotProvider value={headerSlotEl}><ProjectContextPanel visible={isOpen} /></ContextPanelHeaderSlotProvider>
             : activeTab?.mode === 'team'
@@ -576,10 +630,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
       ) : (
         <>
         <div className="flex min-w-0 flex-1 items-center gap-1.5 px-3 group-has-[[data-context-panel-toolbar]]/panel-header:hidden">
-          {/* A GitLab project's change requests are merge requests. */}
-          {activeTab?.mode === 'pr' && repositoryProvider === 'gitlab'
-            ? <Icon name="gitlab" className="h-3.5 w-3.5" />
-            : activeTab ? getTabIcon(activeTab, faviconByOrigin) : null}
+          {activeTab ? getTabIcon(activeTab, faviconByOrigin) : null}
           <span className="truncate typography-ui-label text-foreground">
             {activeTab?.mode === 'pr' && repositoryProvider === 'gitlab'
               ? t('contextPanel.mode.mr')
