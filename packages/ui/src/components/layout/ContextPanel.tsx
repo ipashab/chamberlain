@@ -10,6 +10,7 @@ import { PullRequestView } from '@/components/views/PullRequestView';
 import { TrackerItemView } from '@/components/views/TrackerItemView';
 import { trackerTargetOfUrl } from '@/components/sourceBoard/openTrackerItem';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { getDisambiguatingFolders } from '@/lib/path-utils';
 
 // Heavy views stay on-demand (same as MainLayout): importing GitView or the
@@ -30,6 +31,7 @@ import { useRepositoryReferenceProvider } from '@/components/references/referenc
 import { useGuestSurfaces } from '@/hooks/useGuestSurfaces';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
+import { toast } from '@/components/ui';
 import { useBrowserFaviconStore } from '@/stores/useBrowserFaviconStore';
 import { isTrackerBranchTab, useUIStore, type ContextPanelMode, type ContextPanelTab } from '@/stores/useUIStore';
 import { useGitStatus } from '@/stores/useGitStore';
@@ -97,6 +99,7 @@ const getModeLabel = (
   if (mode === 'pr') return t('contextPanel.mode.pr');
   if (mode === 'notes') return t('contextRail.surface.notes');
   if (mode === 'terminal') return t('layout.mainTab.terminal');
+  if (mode === 'debug') return t('contextPanel.mode.debug');
   if (mode === 'team') return t('contextPanel.mode.team');
   if (mode === 'pulls') return t('contextPanel.mode.pulls');
   if (mode === 'jira') return t('contextPanel.mode.jira');
@@ -547,6 +550,9 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
       const closeOthers = () => closeContextPanelTabs(directoryKey, allIds.filter((tabId) => tabId !== id));
       const closeAll = () => closeContextPanelTabs(directoryKey, allIds);
       const hasOthers = allIds.length > 1;
+      // A file tab's label is its basename; the full path it stands for is
+      // only copyable from here.
+      const filePath = panelState?.tabs.find((tab) => tab.id === id && tab.mode === 'file')?.targetPath ?? null;
       // Other regions this tab could move to, with the tab they show (an
       // empty region moves the tab alone; a filled one takes it as a tab).
       const otherLeaves = panelState ? leavesOf(panelState.layout).filter((entry) => entry.id !== leafId) : [];
@@ -560,6 +566,25 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
       };
       return (
         <>
+          {filePath != null ? (
+            <ContextMenuItem
+              onClick={() => {
+                void copyTextToClipboard(filePath).then((result) => {
+                  if (result.ok) {
+                    toast.success(t('sidebarFilesTree.toast.pathCopied'));
+                    return;
+                  }
+                  toast.error(t('sidebarFilesTree.toast.copyFailed'));
+                });
+              }}
+            >
+              <Icon name="file-copy" className="me-2 size-4" />
+              {t('sidebarFilesTree.menu.copyPath')}
+              <span className="ms-2 max-w-40 truncate text-muted-foreground" title={filePath}>
+                {filePath}
+              </span>
+            </ContextMenuItem>
+          ) : null}
           <ContextMenuItem onClick={close}>
             <Icon name="close" className="me-2 size-4" />
             {t('contextPanel.tab.menu.close')}
