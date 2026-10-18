@@ -15,7 +15,7 @@ Fork base: upstream `733fa61` (2026-10-07, upstream version `2.2.0`) at
 the start; since `2.4.0-fork1` the app itself ships as **Chamberlain**,
 its own name, appId and icon beside stock OpenChamber. The fork keeps
 upstream's version and adds a prerelease marker, `forkN`, bumping on
-each fork patch: currently `2.4.0-fork1` on upstream `2.4.0`.
+each fork patch: currently `2.4.0-fork2` on upstream `2.4.0`.
 
 Owning docs that move with the code:
 
@@ -193,6 +193,25 @@ reset to default. The app always appends the material and the answer
 contract on its own, so no edited text can edit the panel out of
 working; the analysis keeps one slot, `{{task_instruction}}`, filled
 from the pull title's task key.
+
+### A session folder picks the agent its new chats start on — `6d3ca3a7d`
+
+A review folder always opens with the reviewer, a support folder with
+the support agent: the folder's settings name the agent once, and every
+chat created inside starts on it.
+
+### Python debugging, in the editor itself — `063db634c`, `66df516de`
+
+A `.py` file's gutter takes a click for a breakpoint; top-level defs
+grow a run arrow that runs the script, or the test under pytest with
+its node id, the configured breakpoints riding along. The debug panel
+reads one server-owned debugpy DAP session: stack and frames, step
+over, into and out, continue and stop, a variables tree, an evaluate
+field, live output, and pytest per-test status folded into the run's
+exit log. A variable can be attached to the chat message with its
+dotted path, type and stop location. The interpreter is a setting;
+empty lets each project's own `.venv` win. A file tab's context menu
+copies the full path it stands for.
 
 ## Distribution
 

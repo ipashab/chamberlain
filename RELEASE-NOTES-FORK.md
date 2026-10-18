@@ -1,11 +1,45 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `0f57a76` (v2.3.1, 2026-10-13).
-The fork pins that base and numbers its own patches with the `forkN` marker.
-Each release's notes below carry only that release's changes; `fork1` was the
-fork's first release, so its section is the whole set that shipped then.
+**Base:** upstream `openchamber/openchamber` @ `6a10ee19a` (v2.4.0), merged
+whole in `3381adba9`. The fork numbers its own patches on top with the
+`forkN` marker. Each release's notes below carry only that release's
+changes; `fork1` was the fork's first release, so its section is the
+whole set that shipped then.
 
 ---
+
+## `2.4.0-fork2` — Python debugging, where the code already is
+
+Debugging a Python test used to mean leaving the app: PyCharm for
+breakpoints, or prints and a scroll of output. This release brings the
+debugger to the editor.
+
+**Breakpoints and run arrows in the gutter.** In a `.py` file the strip
+left of the line numbers takes a click: a breakpoint appears where you
+clicked. Top-level defs grow a run arrow; a script runs as itself, a
+test runs under pytest with its node id. The configured breakpoints ride
+along with every launch.
+
+**A debug panel that answers one DAP session.** The panel splits in
+beside the most recently touched tab. It shows the stack with the
+current frame, steps over, into and out, continues and stops. Variables
+are a tree with values, a copy action and a share action that attaches
+the variable to the chat, framed for the model with the dotted path,
+the adapter's type and where the debuggee stopped. An evaluate field
+runs an expression in the stopped frame. Output streams live, and a
+pytest reporter folds collected nodes, per-test status and tracebacks
+into the run's exit log.
+
+**The interpreter is a setting.** Settings → Python debug names the
+interpreter the panel launches with; empty lets each project's own
+`.venv` win. The run lives and dies with its process, and nothing
+persists between server starts.
+
+**One small thing beside it:** a file tab's context menu can copy the
+full path the tab stands for.
+
+All strings translated in every shipped locale. The server contract:
+`packages/web/server/lib/debugger/DOCUMENTATION.md`.
 
 ## Base move to upstream `2.3.1`
 
