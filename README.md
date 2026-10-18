@@ -5,6 +5,8 @@
 [![Discord](https://img.shields.io/badge/Discord-join.svg?style=flat&labelColor=100F0F&color=8B7EC8&logo=discord&logoColor=FFFCF0)](https://discord.gg/ZYRSdnwwKA)
 [![Support the project](https://img.shields.io/badge/Support-Project-black?style=flat&labelColor=100F0F&color=EC8B49&logo=patreon&logoColor=FFFCF0)](https://www.patreon.com/openchamber)
 
+**🌐 Languages: [English](README.md) · [Русский](README-RU.md)**
+
 <a href="https://www.blacksmith.sh/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/references/badges/blacksmith-dark.svg"><img src="docs/references/badges/blacksmith-light.svg" height="28" alt="CI powered by Blacksmith" /></picture></a>
 
 > [!NOTE]
@@ -21,6 +23,23 @@
 > - **Russian, whole.** The `ru` locale carries every key upstream ships.
 >
 > Fork release: [`2.4.0-fork2`](../../releases/tag/v2.4.0-fork2), based on upstream `2.4.0` — macOS builds attach to the release as `Chamberlain-*.dmg`. The app installs beside stock OpenChamber under its own name and icon. The full story, commit by commit: [README-FORK.md](README-FORK.md).
+
+## What the fork adds over upstream OpenChamber
+
+Every item links to its own article. [То же по-русски — в русском README](README-RU.md#что-форк-добавляет-поверх-официального-openchamber).
+
+- [Team Mode](docs/fork-features/team-mode.md) — a lead plus staffed teammates: shared task board with PR state, live roster, sub-teams, task evidence and deadlines, activity and chats faces.
+- [Missions](docs/fork-features/missions.md) — a Goals page where a prompt is filed into a paced queue and run as a session or a team, watched to completion.
+- [Contacts](docs/fork-features/contacts.md) — saved assistant personas, each keeping one continuing chat.
+- [Python debugging](docs/fork-features/python-debugging.md) — breakpoints in a `.py` file's gutter, a run arrow on top-level defs, a DAP debug panel with stack, variables, stepping and evaluate, and variables attachable to the chat.
+- [Pull analysis](docs/fork-features/pull-analysis.md) — dedicated sessions that judge a pull (comment footnotes, file verdicts, an overall verdict, readings that remember their predecessors) and the review board that answers «what needs me next»; the methodology is a Magic Prompts setting.
+- [Bitbucket Data Center](docs/fork-features/bitbucket.md) — pull requests read whole into tabs, read-only, with avatars and a line-quote handoff to the chat.
+- [Jira Data Center](docs/fork-features/jira.md) — issues healed from instance noise, spec cards composed from a task, prefix search.
+- [Confluence](docs/fork-features/confluence.md) — pages read and searched, askable from the composer, ridable along as a reading's brief.
+- [Engines as files](docs/fork-features/engines.md) — model engines registered by `engine.json` descriptors, probed and served without a host restart, with read-only registry endpoints.
+- [Session folders pick their agent](docs/fork-features/session-folder-agents.md) — a folder's settings name the agent its new chats start on.
+- [A workspace you arrange](docs/fork-features/workspace-regions.md) — the region layout tree rules every surface, and a debug run can split its own region beside the file.
+- [/compactnew](docs/fork-features/compactnew.md) — compact a long chat and continue in a fresh one seeded with the summary.
 
 ## Run agent work. Keep control. Ship from anywhere.
 

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 320" font-family="ui-sans-serif, system-ui, sans-serif">
+  <rect width="880" height="320" fill="#ffffff"/>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1c1b18"/>
+    </marker>
+    <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3d6b8e"/>
+    </marker>
+  </defs>
+
+  <!-- pull -->
+  <rect x="20" y="40" width="180" height="96" rx="10" fill="#f4efe6" stroke="#8a8075" stroke-width="1.5"/>
+  <text x="110" y="68" text-anchor="middle" font-size="14" font-weight="600" fill="#1c1b18">Pull request</text>
+  <text x="110" y="90" text-anchor="middle" font-size="11.5" fill="#57534b">comments · commits</text>
+  <text x="110" y="106" text-anchor="middle" font-size="11.5" fill="#57534b">changes · task key</text>
+  <text x="110" y="122" text-anchor="middle" font-size="11.5" fill="#57534b">in the title</text>
+
+  <!-- session -->
+  <rect x="270" y="20" width="230" height="136" rx="10" fill="#ede7db" stroke="#1c1b18" stroke-width="1.5"/>
+  <text x="385" y="48" text-anchor="middle" font-size="14" font-weight="600" fill="#1c1b18">Analysis session</text>
+  <text x="385" y="70" text-anchor="middle" font-size="11.5" fill="#57534b">dedicated chat, opened from</text>
+  <text x="385" y="86" text-anchor="middle" font-size="11.5" fill="#57534b">the pull header</text>
+  <rect x="292" y="100" width="186" height="36" rx="6" fill="#cfa76c" opacity="0.35" stroke="#a97f3d" stroke-width="1"/>
+  <text x="385" y="115" text-anchor="middle" font-size="11" font-weight="600" fill="#1c1b18">methodology: Magic Prompts</text>
+  <text x="385" y="129" text-anchor="middle" font-size="11" fill="#57534b">your text + fixed answer contract</text>
+
+  <!-- answer -->
+  <rect x="570" y="40" width="290" height="96" rx="10" fill="#f4efe6" stroke="#8a8075" stroke-width="1.5"/>
+  <text x="715" y="64" text-anchor="middle" font-size="14" font-weight="600" fill="#1c1b18">One answer, two parts</text>
+  <text x="715" y="86" text-anchor="middle" font-size="11.5" fill="#57534b">prose for the person, first</text>
+  <text x="715" y="102" text-anchor="middle" font-size="11.5" fill="#57534b">+ collapsed machine digest (fenced JSON):</text>
+  <text x="715" y="118" text-anchor="middle" font-size="11.5" fill="#57534b">comment &amp; file verdicts, overall judgement</text>
+
+  <!-- consumers -->
+  <rect x="180" y="230" width="190" height="60" rx="10" fill="#e9eef2" stroke="#3d6b8e" stroke-width="1.2"/>
+  <text x="275" y="255" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1c1b18">Pull surfaces</text>
+  <text x="275" y="274" text-anchor="middle" font-size="11" fill="#57534b">footnotes · verdict chips · readings list</text>
+
+  <rect x="420" y="230" width="200" height="60" rx="10" fill="#e9eef2" stroke="#3d6b8e" stroke-width="1.2"/>
+  <text x="520" y="255" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1c1b18">Review board</text>
+  <text x="520" y="274" text-anchor="middle" font-size="11" fill="#57534b">last verdict per open pull</text>
+
+  <rect x="670" y="230" width="190" height="60" rx="10" fill="#e9eef2" stroke="#3d6b8e" stroke-width="1.2"/>
+  <text x="765" y="255" text-anchor="middle" font-size="12.5" font-weight="600" fill="#1c1b18">Next reading</text>
+  <text x="765" y="274" text-anchor="middle" font-size="11" fill="#57534b">carries the digest as its past</text>
+
+  <!-- arrows -->
+  <line x1="202" y1="88" x2="266" y2="88" stroke="#1c1b18" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="234" y="80" text-anchor="middle" font-size="11" fill="#57534b">read whole</text>
+  <line x1="502" y1="88" x2="566" y2="88" stroke="#1c1b18" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <line x1="640" y1="140" x2="320" y2="228" stroke="#3d6b8e" stroke-width="1.3" marker-end="url(#arrB)"/>
+  <line x1="700" y1="140" x2="545" y2="228" stroke="#3d6b8e" stroke-width="1.3" marker-end="url(#arrB)"/>
+  <line x1="760" y1="140" x2="765" y2="226" stroke="#3d6b8e" stroke-width="1.3" marker-end="url(#arrB)"/>
+  <text x="806" y="185" text-anchor="middle" font-size="11" fill="#3d6b8e">digest</text>
+
+  <!-- repeat loop -->
+  <path d="M 765 292 C 620 330, 380 330, 300 160" fill="none" stroke="#8a8075" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+  <text x="520" y="318" text-anchor="middle" font-size="11" fill="#57534b">re-analysis: full re-judge by the same contract, never a patch on the old reading</text>
+</svg>

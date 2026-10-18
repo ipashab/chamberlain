@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 250" font-family="ui-sans-serif, system-ui, sans-serif">
+  <rect width="880" height="250" fill="#ffffff"/>
+  <!-- boxes -->
+  <rect x="20" y="70" width="200" height="80" rx="10" fill="#f4efe6" stroke="#8a8075" stroke-width="1.5"/>
+  <text x="120" y="103" text-anchor="middle" font-size="15" fill="#1c1b18" font-weight="600">Browser UI</text>
+  <text x="120" y="125" text-anchor="middle" font-size="12" fill="#57534b">Bitbucket / Jira / Confluence</text>
+  <text x="120" y="140" text-anchor="middle" font-size="12" fill="#57534b">surfaces</text>
+
+  <rect x="330" y="40" width="220" height="140" rx="10" fill="#ede7db" stroke="#1c1b18" stroke-width="1.5"/>
+  <text x="440" y="70" text-anchor="middle" font-size="15" fill="#1c1b18" font-weight="600">Chamberlain server</text>
+  <rect x="352" y="84" width="176" height="30" rx="6" fill="#cfa76c" opacity="0.35" stroke="#a97f3d" stroke-width="1"/>
+  <text x="440" y="104" text-anchor="middle" font-size="12" fill="#1c1b18" font-weight="600">PAT kept in server config</text>
+  <text x="440" y="136" text-anchor="middle" font-size="12" fill="#57534b">issues one GET per page:</text>
+  <text x="440" y="153" text-anchor="middle" font-size="12" fill="#57534b">activity, comments, diffs, avatars</text>
+
+  <rect x="660" y="70" width="200" height="80" rx="10" fill="#f4efe6" stroke="#8a8075" stroke-width="1.5"/>
+  <text x="760" y="103" text-anchor="middle" font-size="15" fill="#1c1b18" font-weight="600">Company instance</text>
+  <text x="760" y="125" text-anchor="middle" font-size="12" fill="#57534b">Bitbucket / Jira / Confluence</text>
+  <text x="760" y="140" text-anchor="middle" font-size="12" fill="#57534b">Data Center</text>
+
+  <!-- arrows -->
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1c1b18"/>
+    </marker>
+    <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a8075"/>
+    </marker>
+  </defs>
+  <line x1="222" y1="95" x2="326" y2="95" stroke="#1c1b18" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="274" y="86" text-anchor="middle" font-size="11" fill="#57534b">same-origin fetch</text>
+  <line x1="326" y1="130" x2="226" y2="130" stroke="#8a8075" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrR)"/>
+  <text x="274" y="146" text-anchor="middle" font-size="11" fill="#57534b">rendered pages, never the token</text>
+
+  <line x1="552" y1="95" x2="656" y2="95" stroke="#1c1b18" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="604" y="86" text-anchor="middle" font-size="11" fill="#57534b">HTTPS · GET only</text>
+  <line x1="656" y1="130" x2="556" y2="130" stroke="#8a8075" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrR)"/>
+  <text x="604" y="146" text-anchor="middle" font-size="11" fill="#57534b">JSON pages</text>
+
+  <!-- no-write note -->
+  <rect x="245" y="200" width="390" height="30" rx="15" fill="#eef3ea" stroke="#70875c" stroke-width="1"/>
+  <text x="440" y="220" text-anchor="middle" font-size="12" fill="#3f5230" font-weight="600">No write path: the fork never posts, comments or merges</text>
+</svg>
