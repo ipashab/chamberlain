@@ -203,6 +203,14 @@ const notificationPropertiesSchema = z.object({
   showWhenFocused: z.boolean().optional(),
 });
 
+/*
+ * The debug session moved: started, stopped at a breakpoint, resumed,
+ * produced output, or ended. The frame carries only that fact — the panel
+ * refetches the whole projection, so a frame that raced a second change
+ * cannot leave it rendering older state than it fetched.
+ */
+type DebuggerChangedEvent = { type: 'debugger-changed' };
+
 type OpenChamberEvent =
   | { type: 'notification'; payload: z.infer<typeof notificationPropertiesSchema> }
   /** `connectionId` names this connection on the server; absent from servers before tracked items. */
@@ -228,7 +236,8 @@ type OpenChamberEvent =
   | AgentMemoryChangedEvent
   | TeamChangedEvent
   | MissionChangedEvent
-  | AssistantChangedEvent;
+  | AssistantChangedEvent
+  | DebuggerChangedEvent;
 type Listener = (event: OpenChamberEvent) => void;
 
 const worktreeChangedPropertiesSchema = z.object({
@@ -535,6 +544,13 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
     }
     for (const listener of listeners) {
       listener({ type: 'assistant-changed', assistantId: parsed.data.assistantId });
+    }
+    return;
+  }
+
+  if (envelope.type.startsWith('openchamber:debugger-')) {
+    for (const listener of listeners) {
+      listener({ type: 'debugger-changed' });
     }
     return;
   }

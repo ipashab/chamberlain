@@ -1,4 +1,5 @@
 import { settingsDict } from './de.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -3459,6 +3460,8 @@ export const dict = {
   'chat.message.context.fileQuote': 'Auswahl aus {file}',
   'chat.chatInput.chatQuoteContext': 'Chat-Zitate',
   'chat.chatInput.chatQuoteContextRemove': 'Chat-Zitate entfernen',
+  'chat.message.context.debugVariable': 'Debug-Variable {name}',
+  'chat.chatInput.debugVariables': 'Debug-Variablen',
   'chat.chatInput.contextPreview.selectedLabel': 'Ausgewählter Text',
   'chat.chatInput.contextPreview.commentLabel': 'Nutzerkommentar',
   'chat.chatInput.contextPreview.edit': 'Kommentar bearbeiten',
@@ -4267,4 +4270,5 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': 'Diese Aufgabe läuft bereits',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Diese Aufgabe wartet bereits in der Warteschlange und läuft, sobald ein Platz frei wird',
   'chat.modelControls.agentFavoriteAdd': 'Zu Favoriten hinzufügen. Mit Favoriten wechselt Tab nur zwischen diesen',
+  ...debugPanelI18n.de,
 };

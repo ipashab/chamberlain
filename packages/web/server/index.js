@@ -155,6 +155,8 @@ import { createOpenChamberSessionService } from './lib/openchamber-sessions/rout
 import { createOpenCodeClient as createSessionScopedOpenCodeClient } from './lib/openchamber-sessions/opencode-client.js';
 import { createTeamService } from './lib/team/service.js';
 import { createMissionsService } from './lib/missions/service.js';
+import { createDebuggerService } from './lib/debugger/service.js';
+import { registerDebuggerRoutes } from './lib/debugger/routes.js';
 import { createEnginesRuntime } from './lib/engines/index.js';
 import { createAssistantsService } from './lib/assistants/service.js';
 import { createTeamPresetStore } from './lib/team/presets.js';
@@ -1774,6 +1776,11 @@ const missionsService = createMissionsService({
 });
 void missionsService.init().catch((error) =>
   console.warn('[missions] could not initialize mission state:', error?.message ?? error));
+// Python debugging: one debugpy DAP session behind the debug panel. The run
+// lives and dies with its process; nothing persists between server starts.
+const debuggerService = createDebuggerService({
+  broadcastUiEvent: broadcastOpenChamberUiEvent,
+});
 // Engines: descriptor-file registry ("add an engine = drop engine.json in
 // OC_ENGINES_DIR", no host restart). Descriptor-only snapshot for /health and
 // /api/openchamber/engines; one real probe for /api/openchamber/engines/active.
@@ -2641,6 +2648,7 @@ async function main(options = {}) {
     confluenceConfigStore,
     missionsService,
     assistantsService,
+    debuggerService,
     enginesRuntime,
     onGuestDeactivated: async (event) => {
       guestSurfaceRuntime?.endForGuest(event.guestId);

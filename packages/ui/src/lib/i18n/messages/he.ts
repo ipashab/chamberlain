@@ -1,4 +1,5 @@
 import { settingsDict } from './he.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -145,6 +146,8 @@ export const dict = {
   'chat.message.context.fileQuote': 'בחירה מתוך {file}',
   'chat.chatInput.chatQuoteContext': 'ציטוטים מהצ\'אט',
   'chat.chatInput.chatQuoteContextRemove': 'הסר ציטוטים מהצ\'אט',
+  'chat.message.context.debugVariable': 'משתנה ניפוי {name}',
+  'chat.chatInput.debugVariables': 'משתני ניפוי',
   'chat.chatInput.contextPreview.selectedLabel': 'טקסט שנבחר',
   'chat.chatInput.contextPreview.commentLabel': 'הערת משתמש',
   'chat.chatInput.contextPreview.edit': 'ערוך הערה',
@@ -4290,4 +4293,5 @@ export const dict = {
   'diffView.whitespace.shown': 'שינויי רווחים מוצגים',
   'session.newWorktree.trust.skip': 'דילוג',
   'chat.revertPopover.toast.restoreFailed': 'לא ניתן היה לשחזר את ההודעות שבוטלו',
+  ...debugPanelI18n.he,
 } as const;

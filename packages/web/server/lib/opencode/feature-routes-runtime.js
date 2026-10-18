@@ -40,6 +40,7 @@ import { registerTeamRoutes } from '../team/routes.js';
 import { createTeamPullStatus } from '../team/pull-status.js';
 import { registerMissionsRoutes } from '../missions/routes.js';
 import { registerAssistantsRoutes } from '../assistants/routes.js';
+import { registerDebuggerRoutes } from '../debugger/routes.js';
 import { registerOpenChamberControlRoutes } from '../openchamber-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
@@ -223,6 +224,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
       openchamberUserConfigRoot,
       managedChatsRoot,
       enginesRuntime,
+      debuggerService,
       normalizeDirectoryPath,
       resolveProjectDirectory,
       resolveOptionalProjectDirectory,
@@ -367,6 +369,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
 
     registerMissionsRoutes(app, { missionsService });
     registerAssistantsRoutes(app, { assistantsService });
+    registerDebuggerRoutes(app, { debuggerService });
     // Engines register themselves (and warm the /health snapshot as a side
     // effect) — one registration call, additive only, no existing route touched.
     enginesRuntime.registerRoutes(app);

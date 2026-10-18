@@ -1,5 +1,6 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './ko.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -171,6 +172,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.message.context.fileQuote': '{file}에서 선택한 부분',
   'chat.chatInput.chatQuoteContext': '채팅 인용',
   'chat.chatInput.chatQuoteContextRemove': '채팅 인용 제거',
+  'chat.message.context.debugVariable': '디버그 변수 {name}',
+  'chat.chatInput.debugVariables': '디버그 변수',
   'chat.chatInput.contextPreview.selectedLabel': '선택한 텍스트',
   'chat.chatInput.contextPreview.commentLabel': '사용자 댓글',
   'chat.chatInput.contextPreview.edit': '댓글 편집',
@@ -4269,4 +4272,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': '이 작업은 이미 실행 중입니다',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': '이 작업은 이미 대기열에 있으며 자리가 나면 실행됩니다',
   'chat.modelControls.agentFavoriteAdd': '즐겨찾기에 추가. 즐겨찾기가 있으면 Tab은 그 안에서만 전환합니다',
+  ...debugPanelI18n.ko,
 };

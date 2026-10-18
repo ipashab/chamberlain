@@ -1,5 +1,6 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './zh-TW.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -171,6 +172,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.message.context.fileQuote': '來自 {file} 的選取內容',
   'chat.chatInput.chatQuoteContext': '聊天引用',
   'chat.chatInput.chatQuoteContextRemove': '移除聊天引用',
+  'chat.message.context.debugVariable': '偵錯變數 {name}',
+  'chat.chatInput.debugVariables': '偵錯變數',
   'chat.chatInput.contextPreview.selectedLabel': '所選文字',
   'chat.chatInput.contextPreview.commentLabel': '使用者留言',
   'chat.chatInput.contextPreview.edit': '編輯留言',
@@ -4269,4 +4272,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': '此任務已有一次執行正在進行',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': '此任務已在佇列中等待，有空位時就會執行',
   'chat.modelControls.agentFavoriteAdd': '加入最愛。有最愛時，Tab 只在最愛之間切換',
+  ...debugPanelI18n['zh-TW'],
 };

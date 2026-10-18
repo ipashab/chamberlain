@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { TerminalView } from '@/components/views/TerminalView';
+import { DebugView } from '@/components/views/DebugView';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
 import { BrowserPane } from '@/components/browser/BrowserPane';
 import { ChatView } from '@/components/views/ChatView';
@@ -31,6 +32,7 @@ import { SidebarFilesTree } from './SidebarFilesTree';
 import { closeZoneOnEscape } from './zoneEscape';
 import { usePaneHostsStore } from './regionHosts';
 import { PauseClock } from '@/components/ui/pause-clock';
+import { useDebuggerSurfaceReveal } from '@/lib/debugger/useDebuggerSurfaceReveal';
 
 // Heavy views stay on-demand (same as MainLayout): importing DiffView/FilesView
 // or the walkthrough statically pulls the CodeMirror and @pierre/diffs stacks
@@ -258,6 +260,10 @@ export const ContextSurfacePanes: React.FC = () => {
     () => (effectiveDirectory ? normalizeContextPanelDirectoryKey(effectiveDirectory) : ''),
     [effectiveDirectory],
   );
+  // A debugger run started from outside the panel — a chat request — joins
+  // the layout here: ContextSurfacePanes is mounted once, whatever surface
+  // the project shows.
+  useDebuggerSurfaceReveal(directoryKey);
   const panelState = useUIStore((state) => (directoryKey ? state.contextPanelByDirectory[directoryKey] : undefined));
   const contextPanelByDirectory = useUIStore((state) => state.contextPanelByDirectory);
   const closeContextPanelTab = useUIStore((state) => state.closeContextPanelTab);
@@ -481,6 +487,10 @@ export const ContextSurfacePanes: React.FC = () => {
     () => tabs.find((tab) => tab.mode === 'terminal') ?? null,
     [tabs],
   );
+  const debugTab = React.useMemo(
+    () => tabs.find((tab) => tab.mode === 'debug') ?? null,
+    [tabs],
+  );
   // Keep-alive: the walkthrough holds reading progress and scroll position that
   // a remount would silently throw away.
   const hasWalkthroughTab = React.useMemo(() => tabs.some((tab) => tab.mode === 'walkthrough'), [tabs]);
@@ -632,6 +642,21 @@ export const ContextSurfacePanes: React.FC = () => {
               visible={shownInRegion(terminalTab.id)}
               directory={terminalTab.targetDirectory}
               onLastTabClosed={() => { if (directoryKey) closeContextPanelTab(directoryKey, terminalTab.id); }}
+            />
+          </ContextPanelHeaderSlotProvider>
+        </RegionPane>
+      ) : null}
+      {debugTab ? (
+        <RegionPane
+          hostKey={leafOfTab(debugTab.id)?.id ?? null}
+          visible={shownInRegion(debugTab.id)}
+          directoryKey={directoryKey}
+          className={cn('absolute inset-0', shownInRegion(debugTab.id) ? 'block' : 'hidden')}
+        >
+          <ContextPanelHeaderSlotProvider value={headerSlotFor(leafOfTab(debugTab.id)?.id ?? null, shownInRegion(debugTab.id))}>
+            <DebugView
+              visible={shownInRegion(debugTab.id)}
+              directory={debugTab.targetDirectory}
             />
           </ContextPanelHeaderSlotProvider>
         </RegionPane>

@@ -317,6 +317,8 @@ function ComposerContextChipsView({ draftTarget, colors, previewHost }: Composer
                 return t(draft.provider === 'gitlab' ? 'chat.message.context.mrCheck' : 'chat.message.context.prCheck', { label: draft.fileLabel });
             case 'chat-quote':
                 return t('chat.message.context.chatQuote');
+            case 'debug-variable':
+                return t('chat.message.context.debugVariable', { name: draft.debugVariable?.name ?? basename(draft.fileLabel) });
             case 'file-quote':
                 return draft.startLine > 0 && draft.endLine > 0
                     ? (draft.startLine === draft.endLine
@@ -367,6 +369,7 @@ function ComposerContextChipsView({ draftTarget, colors, previewHost }: Composer
         byKind('pr-comment', 'git-pull-request', t(allGitLab('pr-comment') ? 'chat.chatInput.mrCommentContext' : 'chat.chatInput.prCommentContext'), (draft) => draft.source === 'pr-comment');
         byKind('pr-check', 'close-circle', t(allGitLab('pr-check') ? 'chat.chatInput.mrCheckContext' : 'chat.chatInput.prCheckContext'), (draft) => draft.source === 'pr-check', 'text-[var(--status-error)]');
         byKind('chat-quote', 'chat-1', t('chat.chatInput.chatQuoteContext'), (draft) => draft.source === 'chat-quote');
+        byKind('debug-variable', 'bug', t('chat.chatInput.debugVariables'), (draft) => draft.source === 'debug-variable');
         byKind('annotation', 'global', t('chat.chatInput.previewAnnotations'), (draft) => draft.source === 'preview-annotation');
         return result;
     }, [drafts, t]);

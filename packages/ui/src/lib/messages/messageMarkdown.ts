@@ -46,6 +46,11 @@ function formatContext(payload: ContextPartPayload, originalText: string, fieldL
       return quoteContext(`${payload.provider === 'gitlab' ? 'GitLab merge request pipeline job' : 'GitHub PR check'}, ${payload.label}:`, payload.output, payload.text, fieldLimit, '');
     case 'terminal':
       return quoteContext(`Terminal ${payload.terminalLabel}, lines ${payload.startLine}-${payload.endLine}:`, payload.output, '', fieldLimit, '');
+    case 'debug-variable':
+      return quoteContext(
+        `Debug variable \`${payload.name}\`${payload.fileLabel != null && payload.line != null ? `, stopped at \`${payload.fileLabel}:${payload.line}\`` : ''}:`,
+        `${payload.name} = ${payload.value}`, payload.text, fieldLimit,
+      );
     case 'repository-issue':
     case 'change-request':
     case 'linear-issue':

@@ -1,4 +1,5 @@
 import { settingsDict } from './nl.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -170,6 +171,8 @@ export const dict = {
   'chat.message.context.fileQuote': 'Selectie uit {file}',
   'chat.chatInput.chatQuoteContext': 'Chatcitaties',
   'chat.chatInput.chatQuoteContextRemove': 'Chatcitaties verwijderen',
+  'chat.message.context.debugVariable': 'Debugvariabele {name}',
+  'chat.chatInput.debugVariables': 'Debugvariabelen',
   'chat.chatInput.contextPreview.selectedLabel': 'Geselecteerde tekst',
   'chat.chatInput.contextPreview.commentLabel': 'Reactie van gebruiker',
   'chat.chatInput.contextPreview.edit': 'Reactie bewerken',
@@ -4269,4 +4272,5 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': 'Deze taak heeft al een run bezig',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Deze taak staat al in de wachtrij en draait zodra er plek vrijkomt',
   'chat.modelControls.agentFavoriteAdd': 'Toevoegen aan favorieten. Met favorieten wisselt Tab alleen daartussen',
+  ...debugPanelI18n.nl,
 } as const;

@@ -12,6 +12,7 @@ type BuiltInContextSurfaceId =
   | 'diff'
   | 'walkthrough'
   | 'terminal'
+  | 'debug'
   | 'notes'
   | 'context'
   | 'browser'
@@ -123,6 +124,15 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     mode: 'terminal',
     icon: 'terminal-box',
     labelKey: 'layout.mainTab.terminal',
+    availability: 'always',
+  },
+  {
+    id: 'debug',
+    descriptionKey: 'contextRail.surface.debug.description',
+    width: 'wide',
+    mode: 'debug',
+    icon: 'bug',
+    labelKey: 'contextPanel.mode.debug',
     availability: 'always',
   },
   {

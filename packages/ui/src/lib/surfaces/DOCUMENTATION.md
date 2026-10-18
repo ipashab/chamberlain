@@ -92,6 +92,13 @@ collapses its divider, leaving its tabs in the strip.
   and intact until an open places it again. An Electron webview reloads
   whenever its element moves, so a browser tab reloads when its tab moves
   regions; nothing else moves it.
+- The debug surface is the one surface a running program can ask for: a run
+  that starts outside the panel (a chat request through the debugger API)
+  splits a column under the region of the most recently touched placed tab —
+  typically the run's file — and opens the debug tab into the new region
+  (`lib/debugger/useDebuggerSurfaceReveal.ts`, mounted in
+  `ContextSurfacePanes`). With nothing to sit beside, it opens by the rule
+  above like the rail's click.
 - Region sizes come from the enclosing split's fractions; dragging a divider
   rebalances the pair (`balanceLayoutSplit`). Pixels floors keep a region
   on screen while a drag passes through.

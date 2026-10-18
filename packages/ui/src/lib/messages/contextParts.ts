@@ -136,6 +136,19 @@ type GuestPrContext = {
     data?: JsonValue;
 };
 
+type DebugVariableContext = {
+    kind: 'debug-variable';
+    /** Dotted path for nested values, like `client.admin_client`. */
+    name: string;
+    value: string;
+    /** The adapter's type name, when it sent one. */
+    type: string | null;
+    /** Where the debuggee is stopped, when the frame is known. */
+    fileLabel: string | null;
+    line: number | null;
+    text: string;
+};
+
 export type ContextPartPayload =
     | CodeCommentContext
     | TerminalContextPayload
@@ -148,7 +161,8 @@ export type ContextPartPayload =
     | ChangeRequestContext
     | LinearIssueContext
     | GuestIssueContext
-    | GuestPrContext;
+    | GuestPrContext
+    | DebugVariableContext;
 
 type OpenCodeCommentMetadata = {
     path: string;
@@ -207,6 +221,13 @@ export function formatContextText(payload: ContextPartPayload): string {
         case 'chat-quote': {
             const quoted = payload.quote.split('\n').map((line) => `> ${line}`).join('\n');
             return `Comment on this fragment of an earlier message in this conversation:\n${quoted}${payload.text ? `\n\n${payload.text}` : ''}`;
+        }
+        case 'debug-variable': {
+            const at = payload.fileLabel
+                ? ` where the debuggee stopped, in \`${payload.fileLabel}${payload.line != null ? `:${payload.line}` : ''}\``
+                : '';
+            const typed = payload.type != null ? ` (${payload.type})` : '';
+            return `Debug variable \`${payload.name}\`${typed}${at}:\n\`\`\`\n${payload.name} = ${payload.value}\n\`\`\`${payload.text ? `\n\n${payload.text}` : ''}`;
         }
         case 'pr-check':
             return `Attached failed ${payload.provider === 'gitlab' ? 'GitLab merge request pipeline job' : 'GitHub PR check'} (${payload.label}):\n\`\`\`\n${payload.output}\n\`\`\`${payload.text ? `\n\n${payload.text}` : ''}`;
@@ -286,6 +307,17 @@ export function contextPayloadFromDraft(draft: InlineCommentDraft): ContextPartP
             if (draft.anchor) payload.anchor = draft.anchor;
             return payload;
         }
+        case 'debug-variable': {
+            return {
+                kind: 'debug-variable',
+                name: draft.debugVariable?.name ?? '',
+                value: draft.code,
+                type: draft.debugVariable?.type ?? null,
+                fileLabel: draft.fileLabel || null,
+                line: draft.startLine > 0 ? draft.startLine : null,
+                text: draft.text,
+            };
+        }
         case 'diff':
         case 'file':
         case 'plan': {
@@ -362,6 +394,15 @@ const canonicalContextPayloadSchema = z.discriminatedUnion('kind', [
         messageId: z.string().optional(),
         anchor: chatQuoteAnchorSchema.optional(),
         quote: z.string(),
+        text: z.string(),
+    }),
+    z.object({
+        kind: z.literal('debug-variable'),
+        name: z.string(),
+        value: z.string(),
+        type: z.string().nullable(),
+        fileLabel: z.string().nullable(),
+        line: z.number().nullable(),
         text: z.string(),
     }),
     z.object({
@@ -566,6 +607,17 @@ export function draftFromContextPayload(
                 language: '',
                 text: payload.text,
                 anchor: payload.anchor,
+            };
+        case 'debug-variable':
+            return {
+                source: 'debug-variable',
+                fileLabel: payload.fileLabel ?? '',
+                startLine: payload.line ?? 0,
+                endLine: payload.line ?? 0,
+                code: payload.value,
+                language: 'python',
+                text: payload.text,
+                debugVariable: { name: payload.name, type: payload.type },
             };
         case 'repository-issue':
         case 'change-request':

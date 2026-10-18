@@ -32,6 +32,23 @@ describe('model-facing text', () => {
             .toBe('Comment on `src/app.ts` lines 3-5 (modified):\n```ts\nconst x = 1;\n```\n\nfix this');
     });
 
+    test('debug variables name the stopped frame and the value', () => {
+        const payload = contextPayloadFromDraft(draft({
+            source: 'debug-variable',
+            fileLabel: 'tests/test_label_display.py',
+            startLine: 68,
+            endLine: 68,
+            code: "<Client url='http://localhost'>",
+            language: 'python',
+            text: '',
+            debugVariable: { name: 'client.admin_client', type: 'BaseClient' },
+        }));
+        expect(formatContextText(payload)).toBe(
+            'Debug variable `client.admin_client` (BaseClient) where the debuggee stopped, '
+            + 'in `tests/test_label_display.py:68`:\n```\nclient.admin_client = <Client url=\'http://localhost\'>\n```',
+        );
+    });
+
     test('file and plan comments omit the side', () => {
         expect(formatContextText(contextPayloadFromDraft(draft({ source: 'file', side: undefined }))))
             .toBe('Comment on `src/app.ts` lines 3-5:\n```ts\nconst x = 1;\n```\n\nfix this');
@@ -113,6 +130,16 @@ describe('round-trip through part metadata', () => {
             })),
             contextPayloadFromDraft(draft({ source: 'file-quote', startLine: 3, endLine: 5 })),
             contextPayloadFromDraft(draft({ source: 'file-quote', startLine: 0, endLine: 0 })),
+            contextPayloadFromDraft(draft({
+                source: 'debug-variable',
+                fileLabel: 'tests/test_label_display.py',
+                startLine: 68,
+                endLine: 68,
+                code: "'hello'",
+                language: 'python',
+                text: 'why',
+                debugVariable: { name: 'content', type: 'str' },
+            })),
         ];
         for (const payload of payloads) {
             expect(readContextPart(asPart(payload))).toEqual(payload);

@@ -1,4 +1,5 @@
 import { settingsDict } from './ar.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -145,6 +146,8 @@ export const dict = {
   'chat.message.context.fileQuote': 'تحديد من {file}',
   'chat.chatInput.chatQuoteContext': 'اقتباسات المحادثة',
   'chat.chatInput.chatQuoteContextRemove': 'إزالة اقتباسات المحادثة',
+  'chat.message.context.debugVariable': 'متغير التصحيح {name}',
+  'chat.chatInput.debugVariables': 'متغيرات التصحيح',
   'chat.chatInput.contextPreview.selectedLabel': 'النص المحدد',
   'chat.chatInput.contextPreview.commentLabel': 'تعليق المستخدم',
   'chat.chatInput.contextPreview.edit': 'تعديل التعليق',
@@ -4290,4 +4293,5 @@ export const dict = {
   'diffView.whitespace.shown': 'تغييرات المسافات ظاهرة',
   'session.newWorktree.trust.skip': 'تخطٍّ',
   'chat.revertPopover.toast.restoreFailed': 'تعذّرت استعادة الرسائل المتراجع عنها',
+  ...debugPanelI18n.ar,
 } as const;

@@ -1,5 +1,6 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './uk.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -181,6 +182,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.message.context.fileQuote': 'Виділене з {file}',
   'chat.chatInput.chatQuoteContext': 'Цитати з чату',
   'chat.chatInput.chatQuoteContextRemove': 'Прибрати цитати з чату',
+  'chat.message.context.debugVariable': 'Змінна налагодження {name}',
+  'chat.chatInput.debugVariables': 'Змінні налагодження',
   'chat.chatInput.contextPreview.selectedLabel': 'Виділений текст',
   'chat.chatInput.contextPreview.commentLabel': 'Коментар користувача',
   'chat.chatInput.contextPreview.edit': 'Редагувати коментар',
@@ -4270,4 +4273,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': 'Ця задача вже виконується',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Ця задача вже чекає в черзі й запуститься, щойно звільниться місце',
   'chat.modelControls.agentFavoriteAdd': 'Додати в обрані. Коли є обрані, Tab перемикає лише між ними',
+  ...debugPanelI18n.uk,
 };

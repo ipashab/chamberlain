@@ -1,5 +1,6 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './ru.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -173,6 +174,8 @@ export const dict = {
   'chat.message.context.fileQuote': 'Фрагмент из {file}',
   'chat.chatInput.chatQuoteContext': 'Цитаты из чата',
   'chat.chatInput.chatQuoteContextRemove': 'Убрать цитаты из чата',
+  'chat.message.context.debugVariable': 'Переменная отладки {name}',
+  'chat.chatInput.debugVariables': 'Переменные отладки',
   'chat.chatInput.contextPreview.selectedLabel': 'Выделенный текст',
   'chat.chatInput.contextPreview.commentLabel': 'Комментарий пользователя',
   'chat.chatInput.contextPreview.edit': 'Редактировать комментарий',
@@ -4281,4 +4284,5 @@ export const dict = {
   'diffView.nestedRepository.noChanges': "В этом репозитории изменений нет",
   'openCodeStatusDialog.actions.download': "Скачать лог",
   'openCodeStatusDialog.toast.collectFailed': "Не удалось собрать диагностику",
+  ...debugPanelI18n.ru,
 } satisfies Record<I18nKey, string>;

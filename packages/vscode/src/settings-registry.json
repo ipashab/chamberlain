@@ -34,6 +34,9 @@
     "opencodeBinary": {
       "scope": "instance"
     },
+    "pythonInterpreter": {
+      "scope": "instance"
+    },
     "projects": {
       "scope": "instance"
     },

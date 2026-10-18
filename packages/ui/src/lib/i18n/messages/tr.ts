@@ -1,4 +1,5 @@
 import { settingsDict } from './tr.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -3891,6 +3892,8 @@ export const dict = {
   'chat.message.context.fileQuote': '{file} dosyasından seçim',
   'chat.chatInput.chatQuoteContext': 'Sohbet alıntıları',
   'chat.chatInput.chatQuoteContextRemove': 'Sohbet alıntılarını kaldır',
+  'chat.message.context.debugVariable': 'Hata ayıklama değişkeni {name}',
+  'chat.chatInput.debugVariables': 'Hata ayıklama değişkenleri',
   'chat.chatInput.contextPreview.selectedLabel': 'Seçili metin',
   'chat.chatInput.contextPreview.commentLabel': 'Kullanıcı yorumu',
   'chat.chatInput.contextPreview.edit': 'Yorumu düzenle',
@@ -4267,4 +4270,5 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': 'Bu görevin bir çalıştırması zaten sürüyor',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Bu görev zaten kuyrukta bekliyor; yer açılınca çalışacak',
   'chat.modelControls.agentFavoriteAdd': 'Favorilere ekle. Favori varsa Tab yalnızca onlar arasında geçiş yapar',
+  ...debugPanelI18n.tr,
 };

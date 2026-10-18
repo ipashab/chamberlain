@@ -133,6 +133,9 @@ type CodeMirrorEditorProps = {
   value: string;
   onChange: (value: string) => void;
   extensions?: Extension[];
+  // Gutters placed to the left of the line numbers (debug markers); hosts
+  // that do not need them pass nothing.
+  leadingGutters?: Extension[];
   className?: string;
   readOnly?: boolean;
   lineNumbersConfig?: Parameters<typeof lineNumbers>[0];
@@ -156,6 +159,7 @@ type CodeMirrorEditorProps = {
 
 const gutterWidthMeasureKey = {};
 const lineNumbersCompartment = new Compartment();
+const leadingGuttersCompartment = new Compartment();
 const editableCompartment = new Compartment();
 const externalExtensionsCompartment = new Compartment();
 const highlightLinesCompartment = new Compartment();
@@ -268,6 +272,7 @@ export function CodeMirrorEditor({
   value,
   onChange,
   extensions,
+  leadingGutters,
   className,
   readOnly,
   lineNumbersConfig,
@@ -402,6 +407,7 @@ export function CodeMirrorEditor({
       extensions: [
         ...(cspNonce ? [EditorView.cspNonce.of(cspNonce)] : []),
         gutters({ fixed: true }),
+        leadingGuttersCompartment.of(leadingGutters ?? []),
         lineNumbersCompartment.of(lineNumbers(lineNumbersConfig)),
         history(),
         indentUnit.of('  '),
@@ -482,17 +488,20 @@ export function CodeMirrorEditor({
   // Only the compartments whose input changed are reconfigured: a reconfigure
   // rebuilds the gutters and re-measures the editor, and hosts may pass fresh
   // objects on every render. The creation effect applied the first values.
-  const appliedConfigRef = React.useRef({ lineNumbersConfig, readOnly, extensions, highlightLines, blockWidgets, enableSearch });
+  const appliedConfigRef = React.useRef({ lineNumbersConfig, readOnly, extensions, leadingGutters, highlightLines, blockWidgets, enableSearch });
   React.useEffect(() => {
     const view = viewRef.current;
     if (!view) {
       return;
     }
     const applied = appliedConfigRef.current;
-    appliedConfigRef.current = { lineNumbersConfig, readOnly, extensions, highlightLines, blockWidgets, enableSearch };
+    appliedConfigRef.current = { lineNumbersConfig, readOnly, extensions, leadingGutters, highlightLines, blockWidgets, enableSearch };
     const effects: StateEffect<unknown>[] = [];
     if (applied.lineNumbersConfig !== lineNumbersConfig) {
       effects.push(lineNumbersCompartment.reconfigure(lineNumbers(lineNumbersConfig)));
+    }
+    if (applied.leadingGutters !== leadingGutters) {
+      effects.push(leadingGuttersCompartment.reconfigure(leadingGutters ?? []));
     }
     if (applied.readOnly !== readOnly) {
       effects.push(editableCompartment.reconfigure(EditorView.editable.of(!readOnly)));
@@ -521,7 +530,7 @@ export function CodeMirrorEditor({
       syncEditorCssVars(view);
       syncPortalWidgets(blockWidgetsRef.current);
     });
-  }, [extensions, highlightLines, lineNumbersConfig, readOnly, blockWidgets, enableSearch, syncEditorCssVars, syncPortalWidgets]);
+  }, [extensions, leadingGutters, highlightLines, lineNumbersConfig, readOnly, blockWidgets, enableSearch, syncEditorCssVars, syncPortalWidgets]);
 
   // A layout effect, so the DOM leaves in the same commit that hides the host
   // and the browser never lays out or exposes the editor hidden in place.

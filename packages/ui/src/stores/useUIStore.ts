@@ -60,7 +60,7 @@ export type { ContextPanelMode };
 export const clampContextEditorTreeWidth = (width: number): number =>
   Math.min(480, Math.max(200, Math.round(width)));
 
-const contextPanelModeSchema = z.enum(['diff', 'walkthrough', 'file', 'context', 'chat', 'browser', 'git', 'pr', 'notes', 'terminal', 'pulls', 'jira', 'confluence', 'review']);
+const contextPanelModeSchema = z.enum(['diff', 'walkthrough', 'file', 'context', 'chat', 'browser', 'git', 'pr', 'notes', 'terminal', 'debug', 'pulls', 'jira', 'confluence', 'review']);
 // Older builds also stored `widthFractionByMode` (a share of the chat area);
 // it is ignored, and the pixel width the same resize stored is used.
 const persistedPanelWidthsSchema = z.object({
@@ -286,7 +286,7 @@ const normalizeContextTargetDirectory = (value: string | null | undefined): stri
 // the app moving to that project. Every other mode works in the panel's own
 // directory.
 const contextPanelModeKeepsTargetDirectory = (mode: ContextPanelMode): boolean => {
-  return mode === 'terminal' || mode === 'chat' || mode === 'pr' || mode === 'diff' || mode === 'walkthrough';
+  return mode === 'terminal' || mode === 'chat' || mode === 'pr' || mode === 'diff' || mode === 'walkthrough' || mode === 'debug';
 };
 
 /**
@@ -1271,9 +1271,10 @@ interface UIStore {
   /**
    * Splits one region of the layout in two: a layout leaf by its id, or
    * `'chat'` for the chat's region. The new region starts empty at
-   * `fraction` of the space.
+   * `fraction` of the space. Answers the new region's leaf id, or null
+   * when nothing was split.
    */
-  splitLayoutRegion: (directory: string, target: { leafId: string } | 'chat', axis: 'row' | 'column', fraction?: number) => void;
+  splitLayoutRegion: (directory: string, target: { leafId: string } | 'chat', axis: 'row' | 'column', fraction?: number) => string | null;
   /** Closes a region. Its tabs stay in the strip and re-enter a region the next time they open. */
   closeLayoutRegion: (directory: string, leafId: string) => void;
   /** Ends a divider drag: the trailing child of the pair takes `trailingShare` of the pair. */
@@ -2333,8 +2334,9 @@ export const useUIStore = create<UIStore>()(
         splitLayoutRegion: (directory, target, axis, fraction) => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           if (!normalizedDirectory) {
-            return;
+            return null;
           }
+          let newLeafId: string | null = null;
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
             const current = touchContextPanelState(prev, state.contextSurfaceZones);
@@ -2344,12 +2346,14 @@ export const useUIStore = create<UIStore>()(
             if (split === null) {
               return state;
             }
+            newLeafId = split.newLeaf.id;
             const byDirectory = {
               ...state.contextPanelByDirectory,
               [normalizedDirectory]: { ...current, layout: split.tree },
             };
             return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
           });
+          return newLeafId;
         },
 
         closeLayoutRegion: (directory, leafId) => {

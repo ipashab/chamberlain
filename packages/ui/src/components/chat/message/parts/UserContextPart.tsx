@@ -226,6 +226,18 @@ const UserContextPart: React.FC<{
                 />
             );
         }
+        case 'debug-variable':
+            return (
+                <ContextCard
+                    icon="bug"
+                    summary={t('chat.message.context.debugVariable', { name: payload.name })}
+                    title={`${payload.name} = ${payload.value}`}
+                    body={`${payload.name} = ${payload.value}`}
+                    text={payload.text}
+                    mono
+                    {...shared}
+                />
+            );
         case 'repository-issue':
         case 'change-request':
         case 'linear-issue':

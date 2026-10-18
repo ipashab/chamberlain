@@ -16,6 +16,8 @@ function contextPreview(payload: ContextPartPayload): string {
             return payload.text.trim() || payload.label.trim() || payload.output;
         case 'terminal':
             return payload.output.trim() || payload.terminalLabel;
+        case 'debug-variable':
+            return payload.text.trim() || `${payload.name} = ${payload.value}`;
         case 'repository-issue':
         case 'change-request':
         case 'linear-issue':

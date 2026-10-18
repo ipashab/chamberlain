@@ -1342,6 +1342,17 @@ describe('useUIStore workspace regions', () => {
     expect(leaves()).toHaveLength(1);
   });
 
+  test('splitting a region answers the new leaf id; a stale target answers null', () => {
+    const store = useUIStore.getState();
+    store.openContextSurface('/repo', 'git');
+
+    const newLeafId = store.splitLayoutRegion('/repo', { leafId: leaves()[0].id }, 'column', 0.5);
+
+    expect(newLeafId).not.toBeNull();
+    expect(leaves().find((leaf) => leaf.id === newLeafId)?.tabs).toHaveLength(0);
+    expect(store.splitLayoutRegion('/repo', { leafId: 'leaf-gone' }, 'column', 0.5)).toBeNull();
+  });
+
   test('closing the last file falls back to the file tree in its region', () => {
     const store = useUIStore.getState();
     store.openContextFile('/repo', '/repo/a.ts');

@@ -80,6 +80,10 @@ import { highlightSelectionMatches } from '@codemirror/search';
 import { codeFolding } from '@/lib/codemirror/codeFolding';
 import { bracketAids, multipleCursors } from '@/lib/codemirror/editingAids';
 import { gitChangeGutter, setGitChangeBaseline } from '@/lib/codemirror/gitChangeGutter';
+import { pythonDebugGutter, type PythonRunTarget } from '@/lib/codemirror/pythonDebugGutter';
+import { debuggerApi } from '@/lib/debugger/debugger-api';
+import { useDebuggerLiveState } from '@/lib/debugger/useDebuggerLiveState';
+import { loadDesktopSettings } from '@/lib/persistence';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
 import { useFilesViewTabsStore } from '@/stores/useFilesViewTabsStore';
@@ -3706,6 +3710,86 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     },
   }), []);
 
+  // The Python debug gutter, one strip left of the line numbers: a click
+  // toggles a breakpoint, the arrow on a top-level def launches it. It reads
+  // the same debugger projection the debug panel renders.
+  const debuggerLive = useDebuggerLiveState();
+  const debuggerLiveRef = React.useRef(debuggerLive);
+  debuggerLiveRef.current = debuggerLive;
+
+  const pythonDebugPath = /\.pyi?$/.test(selectedFilePath) && !selectedFileIsOutsideWorkspace
+    ? selectedFilePath
+    : null;
+
+  const pythonBreakpointLines = React.useMemo(() => (
+    pythonDebugPath == null
+      ? []
+      : debuggerLive?.breakpoints.find((entry) => entry.path === pythonDebugPath)?.lines ?? []
+  ), [pythonDebugPath, debuggerLive]);
+
+  const pythonExecutionLine = React.useMemo(() => {
+    if (pythonDebugPath == null) return null;
+    const debugSession = debuggerLive?.session;
+    if (debugSession?.status !== 'stopped') return null;
+    const frame = debugSession.stack[debugSession.currentFrameIndex ?? 0];
+    return frame?.path === pythonDebugPath ? frame.line : null;
+  }, [pythonDebugPath, debuggerLive]);
+
+  const togglePythonBreakpoint = React.useCallback((line: number) => {
+    if (pythonDebugPath == null) return;
+    const current = debuggerLiveRef.current?.breakpoints.find((entry) => entry.path === pythonDebugPath)?.lines ?? [];
+    const next = current.includes(line)
+      ? current.filter((candidate) => candidate !== line)
+      : [...current, line];
+    void debuggerApi.setBreakpoints(pythonDebugPath, [...new Set(next)].sort((a, b) => a - b))
+      .catch((error) => {
+        // A debugger failure must not hijack the file view: the quote error
+        // page would replace the editor. The toast says what broke.
+        toast.error(t('debug.breakpoints.error'), { description: String(error instanceof Error ? error.message : error) });
+      });
+  }, [pythonDebugPath, t]);
+
+  const runPythonTarget = React.useCallback((target: PythonRunTarget) => {
+    if (pythonDebugPath == null) return;
+    const filePath = pythonDebugPath;
+    const relativePath = filePath.startsWith(`${root}/`) ? filePath.slice(root.length + 1) : filePath;
+    void (async () => {
+      const settings = await loadDesktopSettings().catch(() => null);
+      await debuggerApi.start({
+        // The configured interpreter wins; `python3` lets the server try the
+        // project's venv before PATH.
+        pythonPath: settings?.pythonInterpreter?.trim() || 'python3',
+        cwd: root,
+        module: target.kind === 'test' ? 'pytest' : null,
+        program: target.kind === 'script' ? filePath : null,
+        args: target.kind === 'test' ? [`${relativePath}::${target.name}`] : [],
+        breakpoints: debuggerLiveRef.current?.breakpoints ?? [],
+      });
+      // A launch from the gutter should show the debug panel right away.
+      useUIStore.getState().openContextPanelTab(currentDirectory, { mode: 'debug' }, { reveal: true });
+    })().catch((error) => {
+      // The launch error surfaces as a toast (the debug panel keeps the run's
+      // exit log); the file view stays as it was.
+      toast.error(t('debug.launch.error'), { description: String(error instanceof Error ? error.message : error) });
+    });
+  }, [pythonDebugPath, root, currentDirectory, t]);
+
+  const pythonDebugGutters = React.useMemo(() => (
+    pythonDebugPath == null
+      ? []
+      : [pythonDebugGutter({
+        breakpointLines: pythonBreakpointLines,
+        executionLine: pythonExecutionLine,
+        onToggleBreakpoint: togglePythonBreakpoint,
+        onRun: (target) => runPythonTarget(target),
+        labels: {
+          breakpoint: t('debug.gutter.breakpoint'),
+          runTest: t('debug.gutter.runTest'),
+          runScript: t('debug.gutter.runScript'),
+        },
+      })]
+  ), [pythonDebugPath, pythonBreakpointLines, pythonExecutionLine, togglePythonBreakpoint, runPythonTarget, t]);
+
   const editorExtensions = React.useMemo(() => {
     if (!selectedFile?.path) {
       return [createFlexokiCodeMirrorTheme(currentTheme, { fontSize: editorFontSize })];
@@ -5230,6 +5314,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
                     }
                     : undefined}
                   lineNumbersConfig={lineNumbersConfig}
+                  leadingGutters={pythonDebugGutters}
                 />
               </div>
               {shouldMaskEditorForPendingNavigation && (

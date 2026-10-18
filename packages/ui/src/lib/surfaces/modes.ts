@@ -9,6 +9,7 @@ const BUILT_IN_CONTEXT_PANEL_MODES = [
   'pr',
   'notes',
   'terminal',
+  'debug',
   'team',
   'pulls',
   'jira',

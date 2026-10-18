@@ -79,6 +79,10 @@ export const createSettingsHelpers = (dependencies) => {
   } = dependencies;
 
   const PWA_APP_NAME_MAX_LENGTH = 64;
+  const PYTHON_INTERPRETER_MAX_LENGTH = 4096;
+  // A path the server itself will exec; trim it once here, at the I/O
+  // boundary, instead of narrowing the JSON again at every consumer.
+  const pythonInterpreterSchema = z.string().max(PYTHON_INTERPRETER_MAX_LENGTH).transform((value) => value.trim());
   const STT_SERVER_URL_MAX_LENGTH = 2048;
   const STT_MODEL_MAX_LENGTH = 256;
   const STT_LANGUAGE_MAX_LENGTH = 64;
@@ -257,6 +261,13 @@ export const createSettingsHelpers = (dependencies) => {
     if (typeof candidate.opencodeBinary === 'string') {
       const normalized = normalizeDirectoryPath(candidate.opencodeBinary).trim();
       result.opencodeBinary = normalized;
+    }
+    // The Python interpreter the debug panel launches with; the empty string
+    // clears it and lets each project's own .venv win. The server starts the
+    // interpreter itself, so only a real string ever lands here.
+    const pythonInterpreter = pythonInterpreterSchema.safeParse(candidate.pythonInterpreter);
+    if (pythonInterpreter.success) {
+      result.pythonInterpreter = pythonInterpreter.data;
     }
     if (typeof candidate.workStatusPanelEnabled === 'boolean') {
       result.workStatusPanelEnabled = candidate.workStatusPanelEnabled;

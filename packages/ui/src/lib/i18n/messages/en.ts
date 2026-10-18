@@ -1,4 +1,5 @@
 import { settingsDict } from './en.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -170,6 +171,8 @@ export const dict = {
   'chat.message.context.fileQuote': 'Selection from {file}',
   'chat.chatInput.chatQuoteContext': 'Chat quotes',
   'chat.chatInput.chatQuoteContextRemove': 'Remove chat quotes',
+  'chat.message.context.debugVariable': 'Debug variable {name}',
+  'chat.chatInput.debugVariables': 'Debug variables',
   'chat.chatInput.contextPreview.selectedLabel': 'Selected text',
   'chat.chatInput.contextPreview.commentLabel': 'User comment',
   'chat.chatInput.contextPreview.edit': 'Edit comment',
@@ -4269,6 +4272,7 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': 'This task already has a run in progress',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'This task is already waiting in the queue and will run when a slot frees up',
   'chat.modelControls.agentFavoriteAdd': 'Add to favorites. With favorites, Tab cycles through them only',
+  ...debugPanelI18n.en,
 } as const;
 
 export type I18nKey = keyof typeof dict;

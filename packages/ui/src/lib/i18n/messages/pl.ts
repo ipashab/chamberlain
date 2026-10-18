@@ -1,5 +1,6 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './pl.settings';
+import { debugPanelI18n } from './debug-panel.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -171,6 +172,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.message.context.fileQuote': 'Zaznaczenie z {file}',
   'chat.chatInput.chatQuoteContext': 'Cytaty z czatu',
   'chat.chatInput.chatQuoteContextRemove': 'Usuń cytaty z czatu',
+  'chat.message.context.debugVariable': 'Zmienna debugowania {name}',
+  'chat.chatInput.debugVariables': 'Zmienne debugowania',
   'chat.chatInput.contextPreview.selectedLabel': 'Zaznaczony tekst',
   'chat.chatInput.contextPreview.commentLabel': 'Komentarz użytkownika',
   'chat.chatInput.contextPreview.edit': 'Edytuj komentarz',
@@ -4274,4 +4277,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyRunning': 'To zadanie już trwa',
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'To zadanie już czeka w kolejce i uruchomi się, gdy zwolni się miejsce',
   'chat.modelControls.agentFavoriteAdd': 'Dodaj do ulubionych. Gdy są ulubione, Tab przełącza tylko między nimi',
+  ...debugPanelI18n.pl,
 } as const;

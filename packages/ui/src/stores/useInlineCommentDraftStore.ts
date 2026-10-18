@@ -7,7 +7,7 @@ import { normalizePath } from '@/lib/pathNormalization';
 import { createDeferredSafeJSONStorage } from './utils/safeStorage';
 import { chatQuoteAnchorSchema, type ChatQuoteAnchor } from '@/lib/chatQuoteAnchor';
 
-export type InlineCommentSource = 'diff' | 'plan' | 'file' | 'preview-annotation' | 'terminal' | 'pr-comment' | 'pr-check' | 'chat-quote' | 'file-quote';
+export type InlineCommentSource = 'diff' | 'plan' | 'file' | 'preview-annotation' | 'terminal' | 'pr-comment' | 'pr-check' | 'chat-quote' | 'file-quote' | 'debug-variable';
 
 export type InlineCommentDraftTarget = {
   directory: string;
@@ -31,6 +31,8 @@ export interface InlineCommentDraft {
   anchor?: ChatQuoteAnchor;
   /** Whose change request it came from; set only for `pr-comment` and `pr-check`, absent means GitHub. */
   provider?: SourceControlProvider;
+  /** The debug variable this value came from; set only for `source: 'debug-variable'`. */
+  debugVariable?: { name: string; type: string | null };
   createdAt: number;
 }
 
@@ -180,7 +182,7 @@ const EMPTY_PERSISTED_STATE: InlineCommentDraftState = { drafts: {}, touchedAt: 
 const persistedDraftSchema = z.object({
   id: z.string(),
   sessionKey: z.string(),
-  source: z.enum(['diff', 'plan', 'file', 'preview-annotation', 'terminal', 'pr-comment', 'pr-check', 'chat-quote', 'file-quote']),
+  source: z.enum(['diff', 'plan', 'file', 'preview-annotation', 'terminal', 'pr-comment', 'pr-check', 'chat-quote', 'file-quote', 'debug-variable']),
   fileLabel: z.string(),
   startLine: z.number(),
   endLine: z.number(),
@@ -191,6 +193,7 @@ const persistedDraftSchema = z.object({
   terminalId: z.string().optional(),
   anchor: chatQuoteAnchorSchema.optional(),
   provider: z.enum(['github', 'gitlab']).optional(),
+  debugVariable: z.object({ name: z.string(), type: z.string().nullable() }).optional(),
   createdAt: z.number(),
 });
 
