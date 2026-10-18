@@ -26,20 +26,56 @@
 
 ## What the fork adds over upstream OpenChamber
 
-Every item links to its own article. [То же по-русски — в русском README](README-RU.md#что-форк-добавляет-поверх-официального-openchamber).
+Every name links to its own article with screenshots; the sub-points enumerate what it ships. [То же по-русски — в русском README](README-RU.md#что-форк-добавляет-поверх-официального-openchamber).
 
-- [Team Mode](docs/fork-features/team-mode.md) — a lead plus staffed teammates: shared task board with PR state, live roster, sub-teams, task evidence and deadlines, activity and chats faces.
-- [Missions](docs/fork-features/missions.md) — a Goals page where a prompt is filed into a paced queue and run as a session or a team, watched to completion.
-- [Contacts](docs/fork-features/contacts.md) — saved assistant personas, each keeping one continuing chat.
-- [Python debugging](docs/fork-features/python-debugging.md) — breakpoints in a `.py` file's gutter, a run arrow on top-level defs, a DAP debug panel with stack, variables, stepping and evaluate, and variables attachable to the chat.
-- [Pull analysis](docs/fork-features/pull-analysis.md) — dedicated sessions that judge a pull (comment footnotes, file verdicts, an overall verdict, readings that remember their predecessors) and the review board that answers «what needs me next»; the methodology is a Magic Prompts setting.
-- [Bitbucket Data Center](docs/fork-features/bitbucket.md) — pull requests read whole into tabs, read-only, with avatars and a line-quote handoff to the chat.
-- [Jira Data Center](docs/fork-features/jira.md) — issues healed from instance noise, spec cards composed from a task, prefix search.
-- [Confluence](docs/fork-features/confluence.md) — pages read and searched, askable from the composer, ridable along as a reading's brief.
-- [Engines as files](docs/fork-features/engines.md) — model engines registered by `engine.json` descriptors, probed and served without a host restart, with read-only registry endpoints.
-- [Session folders pick their agent](docs/fork-features/session-folder-agents.md) — a folder's settings name the agent its new chats start on.
-- [A workspace you arrange](docs/fork-features/workspace-regions.md) — the region layout tree rules every surface, and a debug run can split its own region beside the file.
-- [/compactnew](docs/fork-features/compactnew.md) — compact a long chat and continue in a fresh one seeded with the summary.
+- [Team Mode](docs/fork-features/team-mode.md) — a lead you chat with plus staffed teammates.
+  - create-a-team dialog with built-in and saved presets; presets export and import as JSON, a live team exports as a recipe in one click;
+  - live roster with stable identity colors, editable while the team runs; sub-teams (analytics, development, review, QA), each with its own lead;
+  - one shared task board grouped by status, teammate or sub-team; quick-add, chat-selection → team task, pull-request state on tasks (draft, mergeability, CI verdict) refreshed through a 60-second cache;
+  - completed tasks must show evidence — a result or a linked pull request — or the completion is rejected; task deadlines with one-time breach notices; everything survives restarts;
+  - **Chats** and **Activity** faces: parallel read-only chat columns per member, one paged feed of the team's life.
+- [Missions](docs/fork-features/missions.md) — a **Goals** page that queues what you file.
+  - a goal prompt runs as a fresh single session or as the first task of a lead-led team;
+  - the paced queue: 1–16 concurrent lanes, a 1–1440-minute watch window, a settings card on the page; retry, cancel, delete, jump into the working session; survives restarts.
+- [Contacts](docs/fork-features/contacts.md) — saved assistant personas in the sidebar.
+  - a persona is name + description + prompt (+ model, + agent) on an address-book card;
+  - each contact keeps one continuing chat; if the chat was deleted, a fresh one starts seeded with the persona as its first message.
+- [Python debugging](docs/fork-features/python-debugging.md) — a real debugger in the editor that already has the code.
+  - a gutter click sets a breakpoint in any `.py` file; a run arrow grows on every top-level def — scripts launch as themselves, tests under pytest with their node id; the breakpoints you set ride along with every launch;
+  - the debug panel: call stack with the current frame, step over / into / out, continue, stop, a variables tree with copy-to-clipboard, evaluate any expression in the stopped frame, live stdout and stderr;
+  - a pytest reporter folds collected nodes, per-test statuses and tracebacks into the run log — one run answers both «did it pass» and «why not»;
+  - **a stopped frame's variable attaches to the chat** as a first-class context part: dotted path, value type, stop location and the value itself;
+  - one setting names the interpreter; leave it empty and each project's own `.venv` wins; the launch form is editable from the panel; translated in every shipped locale.
+- [Session folders pick their agent](docs/fork-features/session-folder-agents.md) — folders that know who should answer.
+  - the folder's settings name an agent once; every new chat created inside the folder starts on it;
+  - it stays a default, not a cage: any chat can still switch agents, and moving out of the folder frees a chat from the binding.
+- [Pull analysis](docs/fork-features/pull-analysis.md) — dedicated sessions that judge a pull, reading by reading.
+  - two readings from the pull's header: the comments analysis weighs each open thread against its line and file; the files analysis holds the diff against the task named in the title (key fetched from Jira);
+  - the answer: footnotes on open comments, verdict chips on files, an overall verdict — prose first, a collapsed machine digest for the panels in the tail;
+  - a repeated reading carries its predecessor's digest and re-judges in full; the overview tab lists every reading of the pull, each opening its own session;
+  - the judging methodology is an editable **Magic Prompts** setting with per-reading overrides and reset;
+  - the **review board** surface answers «what needs me next»: the account's open pulls sorted by last verdict, concerns first, with sprint Jira issues beside them.
+- [Bitbucket Data Center](docs/fork-features/bitbucket.md) — pull requests read whole, strictly read-only.
+  - paste a pull URL or pick from the open list; search by id, title, author or repo; a recently-read section;
+  - tabs: overview, comments with replies, commits, changes; the changes tab is an interactive diff whose ask button quotes a ±12-line window into the composer;
+  - people carry their real avatars, proxied server-side; the PAT never leaves the server and there is no write path anywhere.
+- [Jira Data Center](docs/fork-features/jira.md) — tasks, healed and asked about.
+  - issues surface with overview, description, comments, history, links and attachments; the instance noise is healed: sprint names instead of serialization, Development counts, hidden rank keys;
+  - descriptions render the way Jira drew them; **Ask** pins the issue to the composer; issue keys typed in chat turn into chips; prefix search with `assignee:`, `reporter:`, `status:`, `project:`;
+  - a **spec card** on the issue body: a session writes the development spec — essence, plan bound to your repository, acceptance, open questions, out of scope — following the answer live.
+- [Confluence](docs/fork-features/confluence.md) — pages beside the conversation.
+  - a pages surface reads and searches Confluence DC, with a recently-read rowlist; an **Ask about this page** chip pins the page's words to the composer;
+  - a page can ride along as the brief: the pull's analysis dialog and the issue's spec compose take a page picker, and the page joins the reading as its own section.
+- [Engines as files](docs/fork-features/engines.md) — model engines registered by descriptor.
+  - an `engine.json` dropped into a directory shows up in the registry in seconds — no code change, no host restart;
+  - a versioned capability vocabulary decides who serves the main chat and what degrades when a capability is missing, with reasons shown; read-only registry endpoints.
+- [A workspace you arrange](docs/fork-features/workspace-regions.md) — regions around the chat, not one panel column.
+  - every directory owns a layout tree: file, diff, terminal, debug, git, browser, team and review tabs sit in draggable, resizable regions;
+  - closed regions leave their tabs in the strip and a rail click places them again; the fork's surfaces join as remount panels with unified widths;
+  - a debug run started outside the panel splits its own region beside the file it runs.
+- [/compactnew](docs/fork-features/compactnew.md) — long chat, fresh start.
+  - `/compactnew` in the composer's slash menu compacts the chat and continues in a fresh one seeded with the summary; the old chat stays in the list as the archive.
+- **Russian, whole.** The `ru` locale carries every key the fork and upstream ship, across all 16 shipped locales' parity.
 
 ## Run agent work. Keep control. Ship from anywhere.
 
