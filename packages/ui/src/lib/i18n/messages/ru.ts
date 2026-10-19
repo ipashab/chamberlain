@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './ru.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4289,5 +4290,6 @@ export const dict = {
   'openCodeStatusDialog.actions.download': "Скачать лог",
   'openCodeStatusDialog.toast.collectFailed': "Не удалось собрать диагностику",
   ...debugPanelI18n.ru,
+...mcpConsoleI18n.ru,
   ...workspaceModesI18n.ru,
 } satisfies Record<I18nKey, string>;

@@ -208,6 +208,14 @@ chat/palette go through the `openContext*` actions in `useUIStore`.
   mounting the context rail's own panel in place, mounted as a keep-alive
   region pane (the board mode's main region, and any split beside the
   chat).
+  The `mcp-console` surface is the fork's own MCP console
+  (`components/mcp/McpConsolePane.tsx`): one keep-alive pane, always
+  openable from the rail, whose frames — servers, one server's tools, the
+  all-tools catalog, one tool's run — live in `useMcpConsoleStore`. The
+  palette's console and catalog commands and the Settings → MCP cards open
+  this surface (`openContextSurface`) and deep-link its frames through the
+  same store; the pane stays keep-alive so a switch keeps the run form's
+  answer.
 
 ## Workspace modes
 

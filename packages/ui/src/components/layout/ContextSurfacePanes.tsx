@@ -41,6 +41,7 @@ const WalkthroughView = lazyWithChunkRecovery(() => import('@/components/views/w
 const DiffView = lazyWithChunkRecovery(() => import('@/components/views/DiffView').then((m) => ({ default: m.DiffView })));
 const FilesView = lazyWithChunkRecovery(() => import('@/components/views/FilesView').then((m) => ({ default: m.FilesView })));
 const SourceBoardPane = lazyWithChunkRecovery(() => import('@/components/sourceBoard/SourceBoardView').then((m) => ({ default: m.SourceBoardPane })));
+const McpConsolePane = lazyWithChunkRecovery(() => import('@/components/mcp/McpConsolePane').then((m) => ({ default: m.McpConsolePane })));
 const PluginPane = React.lazy(() => import('./PluginPane').then((module) => ({ default: module.PluginPane })));
 const GuestSurfacePane = React.lazy(() => import('./GuestSurfacePane').then((module) => ({ default: module.GuestSurfacePane })));
 
@@ -496,6 +497,10 @@ export const ContextSurfacePanes: React.FC = () => {
     () => tabs.find((tab) => tab.mode === 'board') ?? null,
     [tabs],
   );
+  const mcpConsoleTab = React.useMemo(
+    () => tabs.find((tab) => tab.mode === 'mcp-console') ?? null,
+    [tabs],
+  );
   // Keep-alive: the walkthrough holds reading progress and scroll position that
   // a remount would silently throw away.
   const hasWalkthroughTab = React.useMemo(() => tabs.some((tab) => tab.mode === 'walkthrough'), [tabs]);
@@ -678,6 +683,20 @@ export const ContextSurfacePanes: React.FC = () => {
         >
           <React.Suspense fallback={null}>
             <SourceBoardPane visible={shownInRegion(boardTab.id)} />
+          </React.Suspense>
+        </RegionPane>
+      ) : null}
+      {mcpConsoleTab ? (
+        // The MCP console as a keep-alive region pane: a tool run's answer
+        // and the form that asked for it survive a switch to another tab.
+        <RegionPane
+          hostKey={leafOfTab(mcpConsoleTab.id)?.id ?? null}
+          visible={shownInRegion(mcpConsoleTab.id)}
+          directoryKey={directoryKey}
+          className={cn('absolute inset-0', shownInRegion(mcpConsoleTab.id) ? 'block' : 'hidden')}
+        >
+          <React.Suspense fallback={null}>
+            <McpConsolePane visible={shownInRegion(mcpConsoleTab.id)} />
           </React.Suspense>
         </RegionPane>
       ) : null}

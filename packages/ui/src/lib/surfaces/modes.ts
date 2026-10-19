@@ -16,6 +16,7 @@ const BUILT_IN_CONTEXT_PANEL_MODES = [
   'confluence',
   'review',
   'board',
+  'mcp-console',
 ] as const;
 
 type BuiltInContextPanelMode = (typeof BUILT_IN_CONTEXT_PANEL_MODES)[number];

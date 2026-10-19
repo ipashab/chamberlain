@@ -22,7 +22,8 @@ type BuiltInContextSurfaceId =
   | 'jira'
   | 'confluence'
   | 'review'
-  | 'board';
+  | 'board'
+  | 'mcp-console';
 
 export type ContextSurfaceId = BuiltInContextSurfaceId | `plugin:${string}`;
 
@@ -228,6 +229,19 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     mode: 'board',
     icon: 'clipboard',
     labelKey: 'contextPanel.mode.board',
+    availability: 'always',
+  },
+  {
+    // The MCP console as a surface: the servers of the scope, one server's
+    // tools, the all-tools catalog, and the run form. Entrances — palette
+    // commands and the Settings MCP cards — open this same tree tab and
+    // place its frames through the console store.
+    id: 'mcp-console',
+    descriptionKey: 'contextRail.surface.mcp-console.description',
+    width: 'regular',
+    mode: 'mcp-console',
+    icon: 'server',
+    labelKey: 'contextPanel.mode.mcp-console',
     availability: 'always',
   },
 ];

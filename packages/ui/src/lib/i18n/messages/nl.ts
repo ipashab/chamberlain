@@ -1,5 +1,6 @@
 import { settingsDict } from './nl.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4277,5 +4278,6 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Deze taak staat al in de wachtrij en draait zodra er plek vrijkomt',
   'chat.modelControls.agentFavoriteAdd': 'Toevoegen aan favorieten. Met favorieten wisselt Tab alleen daartussen',
   ...debugPanelI18n.nl,
+...mcpConsoleI18n.nl,
   ...workspaceModesI18n.nl,
 } as const;

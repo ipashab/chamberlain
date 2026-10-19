@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './ja.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4277,5 +4278,6 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'このタスクはすでにキューで待機中です。空きができ次第実行されます',
   'chat.modelControls.agentFavoriteAdd': 'お気に入りに追加。お気に入りがあると、Tab はその中だけを切り替えます',
   ...debugPanelI18n.ja,
+...mcpConsoleI18n.ja,
   ...workspaceModesI18n.ja,
 };

@@ -41,6 +41,8 @@ import { createTeamPullStatus } from '../team/pull-status.js';
 import { registerMissionsRoutes } from '../missions/routes.js';
 import { registerAssistantsRoutes } from '../assistants/routes.js';
 import { registerDebuggerRoutes } from '../debugger/routes.js';
+import { createMcpConsoleService } from '../mcp-console/service.js';
+import { registerMcpConsoleRoutes } from '../mcp-console/routes.js';
 import { registerOpenChamberControlRoutes } from '../openchamber-control/routes.js';
 import { registerMarkdownImageGrantRoutes } from '../markdown-image-grants/routes.js';
 import { registerSkillRoutes } from './skill-routes.js';
@@ -370,6 +372,11 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerMissionsRoutes(app, { missionsService });
     registerAssistantsRoutes(app, { assistantsService });
     registerDebuggerRoutes(app, { debuggerService });
+
+    // The MCP console adopts one connection per configured server on the
+    // user's command: catalogs and tool calls without an agent in between.
+    const mcpConsoleService = createMcpConsoleService();
+    registerMcpConsoleRoutes(app, { mcpConsoleService, resolveOptionalProjectDirectory });
     // Engines register themselves (and warm the /health snapshot as a side
     // effect) — one registration call, additive only, no existing route touched.
     enginesRuntime.registerRoutes(app);

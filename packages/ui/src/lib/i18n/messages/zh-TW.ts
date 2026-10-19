@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './zh-TW.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4277,5 +4278,6 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': '此任務已在佇列中等待，有空位時就會執行',
   'chat.modelControls.agentFavoriteAdd': '加入最愛。有最愛時，Tab 只在最愛之間切換',
   ...debugPanelI18n['zh-TW'],
+...mcpConsoleI18n['zh-TW'],
   ...workspaceModesI18n['zh-TW'],
 };

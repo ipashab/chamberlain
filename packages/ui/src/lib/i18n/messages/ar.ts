@@ -1,5 +1,6 @@
 import { settingsDict } from './ar.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4298,5 +4299,6 @@ export const dict = {
   'session.newWorktree.trust.skip': 'تخطٍّ',
   'chat.revertPopover.toast.restoreFailed': 'تعذّرت استعادة الرسائل المتراجع عنها',
   ...debugPanelI18n.ar,
+...mcpConsoleI18n.ar,
   ...workspaceModesI18n.ar,
 } as const;

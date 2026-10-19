@@ -1,5 +1,6 @@
 import { settingsDict } from './tr.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4275,5 +4276,6 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Bu görev zaten kuyrukta bekliyor; yer açılınca çalışacak',
   'chat.modelControls.agentFavoriteAdd': 'Favorilere ekle. Favori varsa Tab yalnızca onlar arasında geçiş yapar',
   ...debugPanelI18n.tr,
+...mcpConsoleI18n.tr,
   ...workspaceModesI18n.tr,
 };

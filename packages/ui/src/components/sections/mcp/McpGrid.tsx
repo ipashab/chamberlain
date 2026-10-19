@@ -24,9 +24,12 @@ import {
   type SettingsCardTone,
 } from '@/components/sections/shared/SettingsCards';
 import { useSettingsDirectory } from '@/hooks/useSettingsDirectory';
+import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { useI18n } from '@/lib/i18n';
 import { rankByQuery } from '@/lib/search/fuzzySearch';
 import { cn } from '@/lib/utils';
+import { useMcpConsoleStore } from '@/stores/useMcpConsoleStore';
+import { useUIStore } from '@/stores/useUIStore';
 import { selectMcpServersForDirectory, useMcpConfigStore, type McpDraft } from '@/stores/useMcpConfigStore';
 import { useMcpStore } from '@/stores/useMcpStore';
 import type { McpServerStatus } from '@/lib/opencode/model';
@@ -69,6 +72,7 @@ const StatusPill: React.FC<{
 export const McpGrid: React.FC = () => {
   const { t } = useI18n();
   const settingsDirectory = useSettingsDirectory();
+  const effectiveDirectory = useEffectiveDirectory();
   const { setSelectedMcp, setMcpDraft, loadMcpConfigs, deleteMcp } = useMcpConfigStore(useShallow((state) => ({
     setSelectedMcp: state.setSelectedMcp,
     setMcpDraft: state.setMcpDraft,
@@ -221,6 +225,16 @@ export const McpGrid: React.FC = () => {
               }}
               actionsLabel={t('settings.mcp.grid.actionsAria', { name: server.name })}
               actions={[{
+                label: t('settings.mcp.grid.actions.tools'),
+                icon: 'server',
+                // The surface opens in the panel the user is looking at; the
+                // store carries the directory the list was read for, so the
+                // tools stay the ones of the project Settings shows.
+                onSelect: () => {
+                  if (effectiveDirectory) useUIStore.getState().openContextSurface(effectiveDirectory, 'mcp-console');
+                  useMcpConsoleStore.getState().open({ server: server.name, directory: settingsDirectory });
+                },
+              }, {
                 label: t('settings.common.actions.delete'),
                 icon: 'delete-bin',
                 destructive: true,

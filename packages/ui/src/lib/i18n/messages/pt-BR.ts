@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './pt-BR.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4278,5 +4279,6 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Esta tarefa já está na fila e será executada quando houver uma vaga',
   'chat.modelControls.agentFavoriteAdd': 'Adicionar aos favoritos. Com favoritos, o Tab alterna só entre eles',
   ...debugPanelI18n['pt-BR'],
+...mcpConsoleI18n['pt-BR'],
   ...workspaceModesI18n['pt-BR'],
 };

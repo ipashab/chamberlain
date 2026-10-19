@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './ko.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4277,5 +4278,6 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': '이 작업은 이미 대기열에 있으며 자리가 나면 실행됩니다',
   'chat.modelControls.agentFavoriteAdd': '즐겨찾기에 추가. 즐겨찾기가 있으면 Tab은 그 안에서만 전환합니다',
   ...debugPanelI18n.ko,
+...mcpConsoleI18n.ko,
   ...workspaceModesI18n.ko,
 };

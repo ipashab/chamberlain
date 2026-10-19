@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useUIStore } from '@/stores/useUIStore';
+import { useMcpConsoleStore } from '@/stores/useMcpConsoleStore';
 import { useEnterpriseMode, useJevBlockedByEnterprise } from '@/stores/useEnterprisePolicyStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useGlobalSessionsStore, resolveGlobalSessionDirectory } from '@/stores/useGlobalSessionsStore';
@@ -265,6 +266,32 @@ export const CommandPalette: React.FC = () => {
         searchText: t('commandPalette.item.addProject'),
         onSelect: run(() => {
           sessionEvents.requestDirectoryDialog();
+        }),
+      },
+      {
+        id: 'mcp-console',
+        title: t('commandPalette.item.mcpConsole'),
+        icon: <Icon name="server" className="me-2 h-4 w-4" />,
+        searchText: t('commandPalette.item.mcpConsole'),
+        secondary: true,
+        onSelect: run(() => {
+          // The surface opens in the panel; the store puts its frames where
+          // the command's answer belongs (the server list). The directory is
+          // the one the rail itself opens surfaces against, so the console
+          // opens wherever the rail's icons do — including no project yet.
+          if (effectiveDirectory) openContextSurface(effectiveDirectory, 'mcp-console');
+          useMcpConsoleStore.getState().open();
+        }),
+      },
+      {
+        id: 'mcp-catalog',
+        title: t('commandPalette.item.mcpCatalog'),
+        icon: <Icon name="book-open" className="me-2 h-4 w-4" />,
+        searchText: t('commandPalette.item.mcpCatalog'),
+        secondary: true,
+        onSelect: run(() => {
+          if (effectiveDirectory) openContextSurface(effectiveDirectory, 'mcp-console');
+          useMcpConsoleStore.getState().openCatalog();
         }),
       },
       {
@@ -524,6 +551,7 @@ export const CommandPalette: React.FC = () => {
     toggleSidebar,
     openContextSurface,
     currentDirectory,
+    effectiveDirectory,
     openContextOverview,
     setSettingsDialogOpen,
     activeProject?.id,

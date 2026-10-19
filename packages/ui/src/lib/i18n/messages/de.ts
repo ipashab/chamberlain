@@ -1,5 +1,6 @@
 import { settingsDict } from './de.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { mcpConsoleI18n } from './mcp-console.i18n';
 import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
@@ -4275,5 +4276,6 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Diese Aufgabe wartet bereits in der Warteschlange und läuft, sobald ein Platz frei wird',
   'chat.modelControls.agentFavoriteAdd': 'Zu Favoriten hinzufügen. Mit Favoriten wechselt Tab nur zwischen diesen',
   ...debugPanelI18n.de,
+...mcpConsoleI18n.de,
   ...workspaceModesI18n.de,
 };
