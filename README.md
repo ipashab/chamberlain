@@ -58,11 +58,13 @@ Every name links to its own article with screenshots; the sub-points enumerate w
 - [Bitbucket Data Center](docs/fork-features/bitbucket.md) — pull requests read whole, strictly read-only.
   - paste a pull URL or pick from the open list; search by id, title, author or repo; a recently-read section;
   - tabs: overview, comments with replies, commits, changes; the changes tab is an interactive diff whose ask button quotes a ±12-line window into the composer;
+  - in changes a folder tree pins the left side — single-child folder chains fold, rows carry counts and state badges — and the picked file opens whole to its right, the diff scrolling while the tree stays; a narrow host keeps the tree inline;
   - people carry their real avatars, proxied server-side; the PAT never leaves the server and there is no write path anywhere.
 - [Jira Data Center](docs/fork-features/jira.md) — tasks, healed and asked about.
   - issues surface with overview, description, comments, history, links and attachments; the instance noise is healed: sprint names instead of serialization, Development counts, hidden rank keys;
   - descriptions render the way Jira drew them; **Ask** pins the issue to the composer; issue keys typed in chat turn into chips; prefix search with `assignee:`, `reporter:`, `status:`, `project:`;
   - a **spec card** on the issue body: a session writes the development spec — essence, plan bound to your repository, acceptance, open questions, out of scope — following the answer live.
+- **The team's board.** The day's work in one surface: the pulls this fork reviews in Bitbucket Data Center and the issues it tracks in Jira, two tabs over the same panels the rail shows — both entrances one source of truth, a row opening its own read where it is listed. The issues tab lands on the account's own unfinished work: a server-owned my query reads the token's open issues, newest first.
 - [Confluence](docs/fork-features/confluence.md) — pages beside the conversation.
   - a pages surface reads and searches Confluence DC, with a recently-read rowlist; an **Ask about this page** chip pins the page's words to the composer;
   - a page can ride along as the brief: the pull's analysis dialog and the issue's spec compose take a page picker, and the page joins the reading as its own section.
@@ -73,6 +75,10 @@ Every name links to its own article with screenshots; the sub-points enumerate w
   - every directory owns a layout tree: file, diff, terminal, debug, git, browser, team and review tabs sit in draggable, resizable regions;
   - closed regions leave their tabs in the strip and a rail click places them again; the fork's surfaces join as remount panels with unified widths;
   - a debug run started outside the panel splits its own region beside the file it runs.
+- **Workspace modes — Chat, Debug, Overview.** The header names the whole window's arrangement.
+  - every directory keeps a layout tree per mode, so switching never drops a tab; debug seats the editor above the debug panel, overview hands the main area to issues and pull requests with chat as a side column;
+  - entering a mode rebuilds the named regions it is answerable for — close the files area, leave, come back, and the files are where they were;
+  - a debug run started in chat and a tracker item opened there each offer their mode once as a card, and every mode takes a shortcut.
 - [/compactnew](docs/fork-features/compactnew.md) — long chat, fresh start.
   - `/compactnew` in the composer's slash menu compacts the chat and continues in a fresh one seeded with the summary; the old chat stays in the list as the archive.
 - **Russian, whole.** The `ru` locale carries every key the fork and upstream ship, across all 16 shipped locales' parity.
