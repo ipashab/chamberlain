@@ -1,5 +1,6 @@
 import { settingsDict } from './fr.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1263,6 +1264,8 @@ export const dict = {
   'jiraPanel.searchLoading': 'Recherche…',
   'jiraPanel.searchRetry': 'Réessayer',
   'jiraPanel.noMatch': 'Aucun ticket récent ne correspond. Collez le lien pour le lire quand même.',
+  'jiraPanel.mineTitle': 'Mes tickets ouverts',
+  'jiraPanel.mineEmpty': 'Rien ne vous est assigné et reste ouvert.',
   'jiraView.loading': 'Lecture du ticket…',
   'jiraView.retry': 'Lire à nouveau',
   'jiraView.error.bad-ref': 'Cette référence n’est ni un lien ni une clé de ticket Jira.',
@@ -2196,6 +2199,7 @@ export const dict = {
   'helpDialog.item.cycleTheme': 'Basculer le thème (clair → sombre → système)',
   'helpDialog.item.switchSessionTab': 'Basculer l’onglet de session',
   'helpDialog.item.switchContextSurface': 'Basculer la surface du panneau contextuel (touche numérique)',
+  'helpDialog.item.workspaceModes': 'Modes de travail (chat, débogage, aperçu)',
   'helpDialog.item.toggleServicesMenu': 'Basculer le menu des services',
   'helpDialog.item.openSettings': 'Ouvrir les paramètres',
   'helpDialog.keyCombiner.or': 'ou',
@@ -4272,4 +4276,5 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Cette tâche attend déjà dans la file et s’exécutera dès qu’une place se libère',
   'chat.modelControls.agentFavoriteAdd': 'Ajouter aux favoris. Avec des favoris, Tab ne passe que par eux',
   ...debugPanelI18n.fr,
+  ...workspaceModesI18n.fr,
 } as const;

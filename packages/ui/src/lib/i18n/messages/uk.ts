@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './uk.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1446,6 +1447,8 @@ export const dict: Record<I18nKey, string> = {
   "jiraPanel.searchLoading": "Пошук…",
   "jiraPanel.searchRetry": "Спробувати ще раз",
   "jiraPanel.noMatch": "Серед нещодавніх завдань немає збігів. Вставте посилання, щоб прочитати його попри це.",
+  "jiraPanel.mineTitle": "Мої відкриті завдання",
+  "jiraPanel.mineEmpty": "На вас не призначено жодного відкритого завдання.",
   "jiraView.loading": "Читаємо завдання…",
   "jiraView.retry": "Читати ще раз",
   "jiraView.error.bad-ref": "Це посилання не є ні URL-адресою, ні ключем завдання Jira.",
@@ -2426,6 +2429,7 @@ export const dict: Record<I18nKey, string> = {
   "helpDialog.item.cycleTheme": "Перемкнути тему (Світла → Темна → Системна)",
   "helpDialog.item.switchSessionTab": "Перемкнути вкладку сесії",
   "helpDialog.item.switchContextSurface": "Перемкнути поверхню панелі контексту (цифрова клавіша)",
+  'helpDialog.item.workspaceModes': 'Режими роботи (чат, зневадження, огляд)',
   "helpDialog.item.toggleServicesMenu": "Перемкнути меню сервісів",
   "helpDialog.item.openSettings": "Відкрити налаштування",
   "helpDialog.keyCombiner.or": "або",
@@ -4274,4 +4278,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Ця задача вже чекає в черзі й запуститься, щойно звільниться місце',
   'chat.modelControls.agentFavoriteAdd': 'Додати в обрані. Коли є обрані, Tab перемикає лише між ними',
   ...debugPanelI18n.uk,
+  ...workspaceModesI18n.uk,
 };

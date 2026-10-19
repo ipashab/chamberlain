@@ -39,6 +39,7 @@ import {
   balanceSplitAt,
   CHAT_NODE,
   closeLeaf,
+  findLeaf,
   leavesOf,
   moveTabToLeaf,
   openSurfaceInTree,
@@ -51,9 +52,24 @@ import {
   activateTab as activateTabInTree,
   type WorkspaceTree,
 } from '@/lib/workspace/layoutTree';
+import {
+  BOARD_DETAIL_LEAF_ID,
+  BOARD_DETAIL_MODES,
+  DEBUG_EDITOR_LEAF_ID,
+  DEBUG_EDITOR_MODES,
+  DEFAULT_WORKSPACE_MODE,
+  isWorkspaceMode,
+  restorePresetRegions,
+  workspaceModePreset,
+  type WorkspaceMode,
+  type WorkspaceModeLayouts,
+} from '@/lib/workspace/modePresets';
 import { sanitizeWorkStatusSectionOrder, type WorkStatusPanelSectionId } from '@/components/chat/work-status/sections';
 
 export type PendingDiffScope = 'working' | 'staged' | 'turn' | 'branch' | 'commit' | 'pr';
+
+/** What asked for a mode: a started debug run, or a tracker item opened from chat. */
+export type WorkspaceModeOfferReason = 'debug-run' | 'tracker-item';
 export type { ContextPanelMode };
 
 // The docked column and the tree-only panel share one pixel width.
@@ -146,6 +162,18 @@ type ContextPanelDirectoryState = {
    * until the renderer reads the tree alone.
    */
   layout: WorkspaceTree;
+  /**
+   * The project's active workspace mode (lib/workspace/modePresets.ts).
+   * 'chat' is the layout the app has always had; 'debug' and 'board' are
+   * named presets the first switch enters with. Persisted per directory.
+   */
+  workspaceMode: WorkspaceMode;
+  /**
+   * Saved region trees of the modes that are not active — the active mode's
+   * tree is `layout` itself, so switching modes saves the outgoing tree here
+   * and loads the incoming one without ever dropping a tab.
+   */
+  modeLayouts: WorkspaceModeLayouts;
   // The width the user resized each surface to, px. A surface without one
   // opens at its registry default (`getContextSurfaceDefaultWidth`).
   widthByMode: Partial<Record<ContextPanelMode, number>>;
@@ -514,17 +542,41 @@ const resolveActiveContextPanelTabID = (tabs: ContextPanelTab[], activeTabId: st
 // its tree reads as the chat alone and fills in through the normal open.
 const layoutOrChat = (layout: WorkspaceTree | undefined): WorkspaceTree => layout ?? CHAT_NODE;
 
+const sanitizeModeLayouts = (
+  modeLayouts: WorkspaceModeLayouts | null | undefined,
+  presentTabIds: ReadonlySet<string>,
+): WorkspaceModeLayouts => {
+  if (!modeLayouts) {
+    return {};
+  }
+  const next: WorkspaceModeLayouts = {};
+  for (const [mode, tree] of Object.entries(modeLayouts)) {
+    if (tree === undefined || !isWorkspaceMode(mode)) continue;
+    // Malformed persisted trees drop the slot: the mode rebuilds its preset
+    // loss-free on the next entry, and present tabs survive in the strip.
+    try {
+      next[mode] = sanitizeTree(storedTreeSchema.parse(tree), presentTabIds);
+    } catch {
+      // No slot beats a broken tree; the preset comes back on next entry.
+    }
+  }
+  return next;
+};
+
 const touchContextPanelState = (
   prev: ContextPanelDirectoryState | undefined,
   placement: ContextZonePlacement,
 ): ContextPanelDirectoryState => {
   if (prev) {
     const tabs = sanitizeContextPanelTabs(prev.tabs);
+    const presentTabIds = new Set(tabs.map((tab) => tab.id));
     return settleZones({
       ...prev,
       tabs,
-      layout: sanitizeTree(layoutOrChat(prev.layout), new Set(tabs.map((tab) => tab.id))),
-      zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(prev.zones), new Set(tabs.map((tab) => tab.id))),
+      workspaceMode: isWorkspaceMode(prev.workspaceMode) ? prev.workspaceMode : DEFAULT_WORKSPACE_MODE,
+      modeLayouts: sanitizeModeLayouts(prev.modeLayouts, presentTabIds),
+      layout: sanitizeTree(layoutOrChat(prev.layout), presentTabIds),
+      zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(prev.zones), presentTabIds),
       touchedAt: Date.now(),
     }, placement);
   }
@@ -536,6 +588,8 @@ const touchContextPanelState = (
     activeTabId: null,
     zones: { left: CLOSED_ZONE_VIEW, bottom: CLOSED_ZONE_VIEW },
     layout: CHAT_NODE,
+    modeLayouts: {},
+    workspaceMode: DEFAULT_WORKSPACE_MODE,
     widthByMode: {},
     heightByMode: {},
     touchedAt: Date.now(),
@@ -621,9 +675,32 @@ const upsertContextPanelTab = (
   // background open places nothing: the tab lives in the strip, its pane
   // alive in the layout's limbo, until an open reveals it.
   const sanitizedLayout = sanitizeTree(layoutOrChat(current.layout), new Set(clampedTabs.map((tab) => tab.id)));
-  const layout = reveal
+  let layout = reveal
     ? openSurfaceInTree(sanitizedLayout, clampedTabs, nextTab.id, nextTab.mode).tree
     : sanitizedLayout;
+
+  // Board mode keeps a named detail leaf beside the board for the Tracker's
+  // cards, diffs and walkthroughs: they open into it instead of stacking on
+  // the board's own region or splitting the chat. A user who closed the
+  // detail leaf falls back to the general placement rule above.
+  const boardDetailLeaf = current.workspaceMode === 'board' && BOARD_DETAIL_MODES.has(nextTab.mode)
+    ? findLeaf(layout, BOARD_DETAIL_LEAF_ID)
+    : null;
+  if (boardDetailLeaf && !boardDetailLeaf.tabs.includes(nextTab.id)) {
+    layout = moveTabToLeaf(layout, nextTab.id, BOARD_DETAIL_LEAF_ID);
+  }
+
+  // Debug mode keeps its editor leaf as the file region: a file or diff
+  // opened while the mode is on lands there, so the general rule cannot drop
+  // it into the debugger's leaf and empty the editor above it — the layout
+  // stays files-on-top, debugger-below across opens. A user who closed the
+  // editor leaf falls back to the general placement rule above.
+  const debugEditorLeaf = current.workspaceMode === 'debug' && DEBUG_EDITOR_MODES.has(nextTab.mode)
+    ? findLeaf(layout, DEBUG_EDITOR_LEAF_ID)
+    : null;
+  if (debugEditorLeaf && !debugEditorLeaf.tabs.includes(nextTab.id)) {
+    layout = moveTabToLeaf(layout, nextTab.id, DEBUG_EDITOR_LEAF_ID);
+  }
 
   return settleZones(withZoneView({
     ...current,
@@ -821,6 +898,8 @@ const sanitizeContextPanelByDirectory = (
       dedupeKey?: unknown;
       label?: unknown;
       layout?: unknown;
+      workspaceMode?: WorkspaceMode | null;
+      modeLayouts?: Partial<Record<WorkspaceMode, WorkspaceTree>> | null;
     };
 
     let tabs = sanitizeContextPanelTabs(candidate.tabs);
@@ -885,6 +964,10 @@ const sanitizeContextPanelByDirectory = (
       // here; touchContextPanelState settles them against the placement.
       zones: zoneViews,
       layout,
+      workspaceMode: candidate.workspaceMode ?? DEFAULT_WORKSPACE_MODE,
+      // Broken saved trees are dropped inside; those modes rebuild their
+      // presets on the next entry.
+      modeLayouts: sanitizeModeLayouts(candidate.modeLayouts, presentTabIds),
       widthByMode,
       heightByMode,
       touchedAt: typeof candidate.touchedAt === 'number' && Number.isFinite(candidate.touchedAt)
@@ -923,6 +1006,10 @@ interface UIStore {
   isSidebarOpen: boolean;
   sidebarWidth: number;
   contextPanelByDirectory: Record<string, ContextPanelDirectoryState>;
+  /** The one visible workspace-mode offer card, when something suggested a mode. Transient. */
+  workspaceModeOffer: { directory: string; mode: WorkspaceMode; reason: WorkspaceModeOfferReason } | null;
+  /** Offer reasons already declined this app run; they stay off until restart. Transient. */
+  workspaceModeOfferDismissed: WorkspaceModeOfferReason[];
   contextRailOrder: string[];
   /** Surface ids the user hid from the context rail; stored as the hidden set
       so surfaces added later appear for everyone. */
@@ -1294,6 +1381,22 @@ interface UIStore {
    * The leaf must already exist.
    */
   openContextPanelTabToLeaf: (directory: string, tab: ContextPanelTabDescriptor, leafId: string) => void;
+  /**
+   * Switches the directory's workspace mode (lib/workspace/modePresets.ts):
+   * saves the outgoing mode's tree, loads the incoming one — its saved tree,
+   * or its first-entry preset — and, for a fresh preset, opens its surfaces
+   * into their named leaves. Tabs and panes survive the switch; a chat region
+   * keeps its session.
+   */
+  switchWorkspaceMode: (directory: string, mode: WorkspaceMode) => void;
+  /**
+   * Shows the one mode-offer card: a run or an opened item may suggest a
+   * mode, never take the screen without the click that accepts. Suppressed
+   * for reasons already dismissed in this app run; transient, never persisted.
+   */
+  offerWorkspaceMode: (directory: string, mode: WorkspaceMode, reason: WorkspaceModeOfferReason) => void;
+  /** Hides the offer card without switching; the same reason stays off for this run. */
+  dismissWorkspaceModeOffer: () => void;
   /** Ids of every tab of one surface, the strip's whole `mode` group. */
   closeContextSurfaceTabs: (directory: string, mode: ContextPanelMode) => void;
   setWorkStatusSectionExpanded: (sectionId: string, expanded: boolean) => void;
@@ -1536,11 +1639,13 @@ export const useUIStore = create<UIStore>()(
         isSidebarOpen: true,
         sidebarWidth: LEFT_SIDEBAR_DEFAULT_WIDTH,
         contextPanelByDirectory: {},
+        workspaceModeOffer: null,
+        workspaceModeOfferDismissed: [],
         contextRailOrder: [],
         contextRailHiddenSurfaces: [],
         contextSurfaceZones: {},
         contextEditorTreeVisible: true,
-        fileTreeSide: 'right',
+        fileTreeSide: 'left',
         contextEditorVisible: true,
         contextEditorTreeWidth: 240,
         workStatusExpandedSections: {},
@@ -1875,6 +1980,12 @@ export const useUIStore = create<UIStore>()(
             // later tab in insertion order.
             tabsOfMode.reduce((best, tab) => (tab.touchedAt >= best.touchedAt ? tab : best))
           );
+          // The file surface comes with its list: opening it into a leaf,
+          // from the rail or from a mode switch, shows the docked tree even
+          // when the tab already exists and only its placement changes.
+          if (mode === 'file' && !state.contextEditorTreeVisible) {
+            set({ contextEditorTreeVisible: true });
+          }
           const existing = (panelState?.tabs ?? []).filter((tab) => tab.mode === mode);
           if (existing.length > 0) {
             // With an existing tab there is nothing to open — only its
@@ -1888,9 +1999,6 @@ export const useUIStore = create<UIStore>()(
           // have offered them either. 'file' opens an empty editor.
           if (mode === 'chat' || mode === 'team') {
             return;
-          }
-          if (mode === 'file' && !state.contextEditorTreeVisible) {
-            set({ contextEditorTreeVisible: true });
           }
           state.openContextPanelTab(normalizedDirectory, { mode });
           // The open just created the only tab of this mode; move that one.
@@ -1920,6 +2028,106 @@ export const useUIStore = create<UIStore>()(
           if (opened) {
             state.moveContextPanelTabToLeaf(normalizedDirectory, opened.id, leafId);
           }
+        },
+
+        switchWorkspaceMode: (directory, mode) => {
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory) {
+            return;
+          }
+          const state = get();
+          // Switching accepts any visible offer without another click.
+          if (state.workspaceModeOffer) {
+            set({ workspaceModeOffer: null });
+          }
+          const prev = touchContextPanelState(
+            state.contextPanelByDirectory[normalizedDirectory],
+            state.contextSurfaceZones,
+          );
+          // A full-page surface (the board page, scheduled tasks, usage)
+          // covers the chat; a mode shows the workspace itself, so those
+          // pages close first. The same-mode call stays to close them.
+          state.closeMainSurfaces();
+          if (prev.workspaceMode === mode) {
+            return;
+          }
+
+          // A mode never visited enters with its preset; a saved tree comes
+          // back as the user left it, with the mode's own regions rebuilt
+          // where they were closed. Either way the incoming tree repairs
+          // against the live strip, so tabs leave only leaves that hold them.
+          const preset = prev.modeLayouts[mode] ? null : workspaceModePreset(mode);
+          const incomingLayout = restorePresetRegions(
+            mode,
+            sanitizeTree(
+              prev.modeLayouts[mode] ?? preset?.tree ?? CHAT_NODE,
+              new Set(prev.tabs.map((tab) => tab.id)),
+            ),
+          );
+
+          set((state) => {
+            const current = touchContextPanelState(
+              state.contextPanelByDirectory[normalizedDirectory],
+              state.contextSurfaceZones,
+            );
+            const modeLayouts: WorkspaceModeLayouts = {
+              ...current.modeLayouts,
+              [current.workspaceMode]: current.layout,
+            };
+            delete modeLayouts[mode];
+            return {
+              contextPanelByDirectory: clampContextPanelRoots({
+                ...state.contextPanelByDirectory,
+                [normalizedDirectory]: {
+                  ...current,
+                  workspaceMode: mode,
+                  layout: incomingLayout,
+                  modeLayouts,
+                  touchedAt: Date.now(),
+                },
+              }, 20),
+            };
+          });
+
+          // An empty named leaf re-takes its surface on every entry, not
+          // only on the first one: the tab strip is shared, so closing the
+          // file tab in chat mode empties the debug editor leaf too, and a
+          // saved tree with nothing in it would leave the mode without its
+          // region and the user without a way back. A leaf holding any tab
+          // stays as the user arranged it; a region the mode is answerable
+          // for comes back through `restorePresetRegions` above.
+          for (const open of workspaceModePreset(mode).opens) {
+            const leaf = findLeaf(incomingLayout, open.leafId);
+            if (leaf && leaf.tabs.length === 0) {
+              state.openContextSurfaceInLeaf(normalizedDirectory, open.mode, open.leafId);
+            }
+          }
+        },
+
+        offerWorkspaceMode: (directory, mode, reason) => {
+          const state = get();
+          if (state.workspaceModeOffer || state.workspaceModeOfferDismissed.includes(reason)) {
+            return;
+          }
+          const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+          if (!normalizedDirectory || mode === 'chat') {
+            return;
+          }
+          // Only a project still in the chat default gets the card: a project
+          // already working in another mode has its arrangement on purpose.
+          if ((state.contextPanelByDirectory[normalizedDirectory]?.workspaceMode ?? DEFAULT_WORKSPACE_MODE) !== 'chat') {
+            return;
+          }
+          set({ workspaceModeOffer: { directory: normalizedDirectory, mode, reason } });
+        },
+
+        dismissWorkspaceModeOffer: () => {
+          set((state) => ({
+            workspaceModeOffer: null,
+            workspaceModeOfferDismissed: state.workspaceModeOffer
+              ? [...state.workspaceModeOfferDismissed, state.workspaceModeOffer.reason]
+              : state.workspaceModeOfferDismissed,
+          }));
         },
 
         openContextPanelTab: (directory, tab, options) => {
@@ -1984,6 +2192,9 @@ export const useUIStore = create<UIStore>()(
             };
             return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
           });
+          // A tracker item opened from chat is the board's own subject; the
+          // card suggests the mode once, never takes the screen itself.
+          get().offerWorkspaceMode(normalizedDirectory, 'board', 'tracker-item');
           return buildContextPanelTabID('pr', dedupeKey);
         },
 

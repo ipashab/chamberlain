@@ -433,12 +433,6 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
     if (reason === 'file') openFilesSurface();
   }, [closeSurface, openFilesSurface]);
 
-  // A session started from the board replaces the page: back to the chat.
-  const leaveSourceBoard = React.useCallback(() => {
-    closeSurface();
-    setSessionsSheetOpen(false);
-  }, [closeSurface]);
-
   // An opened archived session replaces the page: back to the chat, the same
   // way picking a session from the list gives the space back.
   const leaveArchive = React.useCallback(() => {
@@ -737,7 +731,7 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
             headerless
           >
             <ErrorBoundary>
-              <MobileSourceBoard onLeave={leaveSourceBoard} onClose={closeSurface} />
+              <MobileSourceBoard onClose={closeSurface} />
             </ErrorBoundary>
           </MobileFullscreenSurface>
         ) : null}

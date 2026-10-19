@@ -1,5 +1,6 @@
 import { settingsDict } from './he.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1427,6 +1428,8 @@ export const dict = {
   'jiraPanel.searchLoading': 'מחפש…',
   'jiraPanel.searchRetry': 'ניסיון חוזר',
   'jiraPanel.noMatch': 'אין בעיה אחרונה שתואמת. הדביקו את קישור הבעיה כדי לקרוא אותה בכל זאת.',
+  'jiraPanel.mineTitle': 'הבעיות הפתוחות שלי',
+  'jiraPanel.mineEmpty': 'אין בעיות פתוחות שמוקצות לך.',
   'jiraView.loading': 'קורא את הבעיה…',
   'jiraView.retry': 'קריאה חוזרת',
   'jiraView.error.bad-ref': 'ההפניה הזאת אינה קישור בעיית Jira ולא מזהה.',
@@ -2409,6 +2412,7 @@ export const dict = {
   'helpDialog.item.toggleTerminalExpanded': 'הרחב/כווץ את המסוף',
   'helpDialog.item.switchSessionTab': 'מעבר בין כרטיסיות הפעלה',
   'helpDialog.item.switchContextSurface': 'מעבר בין תצוגות חלונית ההקשר (מקש מספר)',
+  'helpDialog.item.workspaceModes': "מצבי עבודה (צ'אט, ניפוי שגיאות, סקירה)",
   'helpDialog.item.cycleTheme': 'מעבר בין ערכות נושא (בהירה → כהה → מערכת)',
   'helpDialog.item.toggleServicesMenu': 'הצג/הסתר את תפריט השירותים',
   'helpDialog.item.openSettings': 'פתח הגדרות',
@@ -4294,4 +4298,5 @@ export const dict = {
   'session.newWorktree.trust.skip': 'דילוג',
   'chat.revertPopover.toast.restoreFailed': 'לא ניתן היה לשחזר את ההודעות שבוטלו',
   ...debugPanelI18n.he,
+  ...workspaceModesI18n.he,
 } as const;

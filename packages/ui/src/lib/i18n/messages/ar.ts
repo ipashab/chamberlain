@@ -1,5 +1,6 @@
 import { settingsDict } from './ar.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1429,6 +1430,8 @@ export const dict = {
   'jiraPanel.searchLoading': 'جارٍ البحث…',
   'jiraPanel.searchRetry': 'حاول مجددًا',
   'jiraPanel.noMatch': 'لا مشكلة حديثة تطابق. الصق رابط المشكلة لقراءتها على أي حال.',
+  'jiraPanel.mineTitle': 'مشكلاتي المفتوحة',
+  'jiraPanel.mineEmpty': 'لا توجد مشكلات مفتوحة مسندة إليك.',
   'jiraView.loading': 'جارٍ قراءة المشكلة…',
   'jiraView.retry': 'إعادة القراءة',
   'jiraView.error.bad-ref': 'هذا المرجع ليس رابط مشكلة Jira ولا مفتاحها.',
@@ -2409,6 +2412,7 @@ export const dict = {
   'helpDialog.item.toggleTerminalExpanded': 'توسيع/تصغير الطرفية',
   'helpDialog.item.switchSessionTab': 'تبديل علامة تبويب الجلسة',
   'helpDialog.item.switchContextSurface': 'تبديل واجهة لوحة السياق (مفتاح رقمي)',
+  'helpDialog.item.workspaceModes': 'أوضاع العمل (الدردشة، التصحيح، نظرة عامة)',
   'helpDialog.item.cycleTheme': 'التبديل بين السمات (فاتح ← داكن ← النظام)',
   'helpDialog.item.toggleServicesMenu': 'إظهار/إخفاء قائمة الخدمات',
   'helpDialog.item.openSettings': 'فتح الإعدادات',
@@ -4294,4 +4298,5 @@ export const dict = {
   'session.newWorktree.trust.skip': 'تخطٍّ',
   'chat.revertPopover.toast.restoreFailed': 'تعذّرت استعادة الرسائل المتراجع عنها',
   ...debugPanelI18n.ar,
+  ...workspaceModesI18n.ar,
 } as const;

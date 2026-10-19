@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './ko.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1458,6 +1459,8 @@ export const dict: Record<I18nKey, string> = {
   'jiraPanel.searchLoading': '검색 중…',
   'jiraPanel.searchRetry': '다시 시도',
   'jiraPanel.noMatch': '일치하는 최근 이슈가 없습니다. 링크를 붙여넣으면 그대로 읽을 수 있습니다.',
+  'jiraPanel.mineTitle': '내 진행 중인 이슈',
+  'jiraPanel.mineEmpty': '배정되었고 진행 중인 이슈가 없습니다.',
   'jiraView.loading': '이슈를 읽는 중…',
   'jiraView.retry': '다시 읽기',
   'jiraView.error.bad-ref': '이 참조는 Jira 이슈 링크도 키도 아닙니다.',
@@ -2460,6 +2463,7 @@ export const dict: Record<I18nKey, string> = {
   'helpDialog.item.cycleTheme': '테마 순환(라이트 → 다크 → 시스템)',
   'helpDialog.item.switchSessionTab': '세션 탭 전환',
   'helpDialog.item.switchContextSurface': '컨텍스트 패널 서피스 전환(숫자 키)',
+  'helpDialog.item.workspaceModes': '작업 모드(채팅, 디버그, 개요)',
   'helpDialog.item.toggleServicesMenu': '서비스 메뉴 전환',
   'helpDialog.item.openSettings': '설정 열기',
   'helpDialog.keyCombiner.or': '또는',
@@ -4273,4 +4277,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': '이 작업은 이미 대기열에 있으며 자리가 나면 실행됩니다',
   'chat.modelControls.agentFavoriteAdd': '즐겨찾기에 추가. 즐겨찾기가 있으면 Tab은 그 안에서만 전환합니다',
   ...debugPanelI18n.ko,
+  ...workspaceModesI18n.ko,
 };

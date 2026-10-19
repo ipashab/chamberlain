@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './es.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1446,6 +1447,8 @@ export const dict: Record<I18nKey, string> = {
   "jiraPanel.searchLoading": "Buscando…",
   "jiraPanel.searchRetry": "Intentarlo de nuevo",
   "jiraPanel.noMatch": "Ninguna incidencia reciente coincide. Pega el enlace para leerla de todos modos.",
+  "jiraPanel.mineTitle": "Mis incidencias abiertas",
+  "jiraPanel.mineEmpty": "No tienes nada asignado que siga abierto.",
   "jiraView.loading": "Leyendo la incidencia…",
   "jiraView.retry": "Leer de nuevo",
   "jiraView.error.bad-ref": "Esa referencia no es un enlace ni una clave de incidencia de Jira.",
@@ -2426,6 +2429,7 @@ export const dict: Record<I18nKey, string> = {
   "helpDialog.item.cycleTheme": "Cambiar tema (Claro → Oscuro → Sistema)",
   "helpDialog.item.switchSessionTab": "Cambiar pestaña de sesión",
   "helpDialog.item.switchContextSurface": "Cambiar superficie del panel de contexto (tecla numérica)",
+  'helpDialog.item.workspaceModes': 'Modos de trabajo (chat, depuración, resumen)',
   "helpDialog.item.toggleServicesMenu": "Mostrar u ocultar menú de servicios",
   "helpDialog.item.openSettings": "Abrir configuración",
   "helpDialog.keyCombiner.or": "o",
@@ -4274,4 +4278,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Esta tarea ya está en la cola y se ejecutará cuando haya un hueco libre',
   'chat.modelControls.agentFavoriteAdd': 'Añadir a favoritos. Con favoritos, Tab alterna solo entre ellos',
   ...debugPanelI18n.es,
+  ...workspaceModesI18n.es,
 };

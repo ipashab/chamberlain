@@ -6,7 +6,11 @@ const locales = ['en', 'de', 'fr', 'nl', 'es', 'ja', 'pt-BR', 'uk', 'ru', 'ko', 
 
 // Words a language writes the same as English.
 const SAME_AS_ENGLISH = new Map<string, string[]>([
-  ['nl', ['sourceBoard.project.label']],
+  ['nl', ['sourceBoard.project.label', 'sourceBoard.tab.pulls', 'sourceBoard.tab.issues']],
+  // These languages keep the source-control words the English UI coined.
+  ['fr', ['sourceBoard.tab.pulls']],
+  ['es', ['sourceBoard.tab.pulls']],
+  ['pt-BR', ['sourceBoard.tab.pulls', 'sourceBoard.tab.issues']],
 ]);
 
 describe('issues and PRs board translations', () => {

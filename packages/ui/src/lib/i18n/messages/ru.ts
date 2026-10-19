@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './ru.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1457,6 +1458,8 @@ export const dict = {
   'jiraPanel.searchLoading': 'Поиск…',
   'jiraPanel.searchRetry': 'Попробовать снова',
   'jiraPanel.noMatch': 'Среди недавних задач совпадений нет. Вставьте ссылку на задачу, чтобы прочитать её всё равно.',
+  'jiraPanel.mineTitle': 'Мои открытые задачи',
+  'jiraPanel.mineEmpty': 'На вас нет открытых задач.',
   'jiraView.loading': 'Читаем задачу…',
   'jiraView.retry': 'Читать снова',
   'jiraView.error.bad-ref': 'Эта ссылка не является ссылкой или ключом задачи Jira.',
@@ -2450,6 +2453,7 @@ export const dict = {
   'helpDialog.item.toggleTerminalExpanded': 'Развернуть или свернуть терминал',
   'helpDialog.item.switchSessionTab': 'Переключить вкладку сессии',
   'helpDialog.item.switchContextSurface': 'Переключить панель контекста (цифровая клавиша)',
+  'helpDialog.item.workspaceModes': 'Режимы работы (чат, отладка, обзор)',
   'helpDialog.item.cycleTheme': 'Переключать тему (Светлая → Тёмная → Системная)',
   'helpDialog.item.toggleServicesMenu': 'Показать или скрыть меню сервисов',
   'helpDialog.item.openSettings': 'Открыть настройки',
@@ -4285,4 +4289,5 @@ export const dict = {
   'openCodeStatusDialog.actions.download': "Скачать лог",
   'openCodeStatusDialog.toast.collectFailed': "Не удалось собрать диагностику",
   ...debugPanelI18n.ru,
+  ...workspaceModesI18n.ru,
 } satisfies Record<I18nKey, string>;

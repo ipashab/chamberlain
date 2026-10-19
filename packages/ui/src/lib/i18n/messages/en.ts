@@ -1,5 +1,6 @@
 import { settingsDict } from './en.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1459,6 +1460,8 @@ export const dict = {
   'jiraPanel.searchLoading': 'Searching…',
   'jiraPanel.searchRetry': 'Try again',
   'jiraPanel.noMatch': 'No recent issue matches. Paste the issue link to read it anyway.',
+  'jiraPanel.mineTitle': 'My open issues',
+  'jiraPanel.mineEmpty': 'Nothing is assigned to you and still open.',
   'jiraView.loading': 'Reading the issue…',
   'jiraView.retry': 'Read again',
   'jiraView.error.bad-ref': 'That reference is not a Jira issue link or key.',
@@ -2459,6 +2462,7 @@ export const dict = {
   'helpDialog.item.toggleTerminalExpanded': 'Toggle Terminal Expanded',
   'helpDialog.item.switchSessionTab': 'Switch Session Tab',
   'helpDialog.item.switchContextSurface': 'Switch Context Panel Surface (number key)',
+  'helpDialog.item.workspaceModes': 'Workspace Modes (chat, debug, overview)',
   'helpDialog.item.cycleTheme': 'Cycle Theme (Light → Dark → System)',
   'helpDialog.item.toggleServicesMenu': 'Toggle Services Menu',
   'helpDialog.item.openSettings': 'Open Settings',
@@ -4273,6 +4277,7 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'This task is already waiting in the queue and will run when a slot frees up',
   'chat.modelControls.agentFavoriteAdd': 'Add to favorites. With favorites, Tab cycles through them only',
   ...debugPanelI18n.en,
+  ...workspaceModesI18n.en,
 } as const;
 
 export type I18nKey = keyof typeof dict;

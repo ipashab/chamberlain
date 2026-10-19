@@ -203,6 +203,23 @@ chat/palette go through the `openContext*` actions in `useUIStore`.
   pass through its frame.
 - Runtime scope: desktop/web `MainLayout` only. VS Code and the dedicated
   mobile shell have their own layouts and do not consume this registry.
-  Linear has no rail surface: its issues list on the issues and PRs board
-  (`components/sourceBoard`). A Linear tab persisted by an older version is
-  dropped on load, like any unknown mode.
+  The `board` surface is the fork's own board (`components/sourceBoard`):
+  two tabs — the Bitbucket Data Center pulls and the Jira issues — each
+  mounting the context rail's own panel in place, mounted as a keep-alive
+  region pane (the board mode's main region, and any split beside the
+  chat).
+
+## Workspace modes
+
+The rail stays available in every mode; workspace modes
+(`lib/workspace/modePresets.ts`) are named layout presets over the same
+region tree, not separate registries. The `board` surface exists for them: it
+is `'always'`-openable like git or notes, keep-alive in
+`ContextSurfacePanes.tsx` (mount `SourceBoardPane`, refresh gated on the
+region showing it), and shares its tab list with the full-page board — the
+page (`isSourceBoardOpen`) and the pane are two hosts of one surface, never
+both on screen: switching a mode closes the full pages. While the board mode
+is active, `pr`, `diff` and `walkthrough` tabs open into the preset's
+`leaf-mode-board-detail` region instead of stacking on the board's own leaf;
+the general placement rules apply in every other mode.
+

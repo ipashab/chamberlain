@@ -116,6 +116,16 @@ describe('workspace layout tree', () => {
     expect(columnNode.children[1]).toMatchObject({ id: 'l2', tabs: [] });
   });
 
+  test('newLeafFirst hands the fresh region the start of the pair', () => {
+    const tree = split('s1', 'row', [CHAT_NODE, leaf('l1', ['debug'])], [0.6, 0.4]);
+    const moved = splitLeaf(tree, 'l1', 'column', { newLeafId: 'l2', fraction: 0.58, newLeafFirst: true });
+    expect(moved).not.toBeNull();
+    const columnNode = asSplit(asSplit(moved?.tree ?? tree).children[1]);
+    expect(columnNode.children[0]).toMatchObject({ id: 'l2', tabs: [] });
+    expect(columnNode.children[1]).toMatchObject({ id: 'l1', tabs: ['debug'] });
+    expect(columnNode.fractions[0]).toBeGreaterThan(0.5);
+  });
+
   test('splitting an unknown leaf changes nothing', () => {
     const tree = split('s1', 'row', [CHAT_NODE, leaf('l1', ['git'])], [0.7, 0.3]);
     expect(splitLeaf(tree, 'nope', 'row')).toBeNull();

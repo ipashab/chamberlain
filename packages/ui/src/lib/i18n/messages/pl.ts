@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './pl.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1827,6 +1828,8 @@ export const dict: Record<I18nKey, string> = {
   'jiraPanel.searchLoading': 'Szukanie…',
   'jiraPanel.searchRetry': 'Spróbuj ponownie',
   'jiraPanel.noMatch': 'Żadne ostatnie zadanie nie pasuje. Wklej link, żeby przeczytać je mimo to.',
+  'jiraPanel.mineTitle': 'Moje otwarte zgłoszenia',
+  'jiraPanel.mineEmpty': 'Nie masz przypisanych otwartych zgłoszeń.',
   'jiraView.loading': 'Czytanie zadania…',
   'jiraView.retry': 'Czytaj ponownie',
   'jiraView.error.bad-ref': 'Ta referencja nie jest linkiem ani kluczem zadania Jira.',
@@ -3090,6 +3093,7 @@ export const dict: Record<I18nKey, string> = {
   'helpDialog.item.showKeyboardShortcuts': 'Pokaż skróty klawiaturowe (to okno)',
   'helpDialog.item.switchSessionTab': 'Przełącz kartę sesji',
   'helpDialog.item.switchContextSurface': 'Przełącz powierzchnię panelu kontekstu (klawisz liczbowy)',
+  'helpDialog.item.workspaceModes': 'Tryby pracy (czat, debugowanie, przegląd)',
   'helpDialog.item.toggleServicesMenu': 'Przełącz menu usług',
   'helpDialog.item.toggleSessionSidebar': 'Przełącz panel sesji',
   'helpDialog.item.addSelectionToChat': 'Dodaj zaznaczenie do czatu',
@@ -4278,4 +4282,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'To zadanie już czeka w kolejce i uruchomi się, gdy zwolni się miejsce',
   'chat.modelControls.agentFavoriteAdd': 'Dodaj do ulubionych. Gdy są ulubione, Tab przełącza tylko między nimi',
   ...debugPanelI18n.pl,
+  ...workspaceModesI18n.pl,
 } as const;

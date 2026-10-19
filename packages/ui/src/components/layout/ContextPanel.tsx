@@ -105,6 +105,7 @@ const getModeLabel = (
   if (mode === 'jira') return t('contextPanel.mode.jira');
   if (mode === 'confluence') return t('contextPanel.mode.confluence');
   if (mode === 'review') return t('contextPanel.mode.review');
+  if (mode === 'board') return t('contextPanel.mode.board');
   if (isPluginContextPanelMode(mode)) {
     const guest = useGuestsStore.getState().guests.find((entry) => entry.id === pluginIdFromMode(mode));
     return guest?.name ?? t('contextRail.surface.plugin');
@@ -222,6 +223,10 @@ const getTabIcon = (
 
   if (tab.mode === 'terminal') {
     return <Icon name="terminal-box" className="h-3.5 w-3.5" />;
+  }
+
+  if (tab.mode === 'board') {
+    return <Icon name="clipboard" className="h-3.5 w-3.5" />;
   }
 
   if (tab.mode === 'team') {

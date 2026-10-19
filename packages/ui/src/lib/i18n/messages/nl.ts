@@ -1,5 +1,6 @@
 import { settingsDict } from './nl.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1449,6 +1450,8 @@ export const dict = {
   'jiraPanel.searchLoading': 'Zoeken…',
   'jiraPanel.searchRetry': 'Opnieuw proberen',
   'jiraPanel.noMatch': 'Geen recent issue past erbij. Plak de link om het toch te lezen.',
+  'jiraPanel.mineTitle': 'Mijn open issues',
+  'jiraPanel.mineEmpty': 'Er is niets aan jou toegewezen en nog open.',
   'jiraView.loading': 'Issue wordt gelezen…',
   'jiraView.retry': 'Opnieuw lezen',
   'jiraView.error.bad-ref': 'Deze verwijzing is geen Jira-issue-link of -sleutel.',
@@ -2459,6 +2462,7 @@ export const dict = {
   'helpDialog.item.toggleTerminalExpanded': 'Uitgeklapte terminal in-/uitschakelen',
   'helpDialog.item.switchSessionTab': 'Sessietabblad wisselen',
   'helpDialog.item.switchContextSurface': 'Contextpaneel wisselen (cijfertoets)',
+  'helpDialog.item.workspaceModes': 'Werkmodi (chat, debuggen, overzicht)',
   'helpDialog.item.cycleTheme': 'Thema doorlopen (Licht → Donker → Systeem)',
   'helpDialog.item.toggleServicesMenu': 'Services-menu in-/uitschakelen',
   'helpDialog.item.openSettings': 'Instellingen openen',
@@ -4273,4 +4277,5 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Deze taak staat al in de wachtrij en draait zodra er plek vrijkomt',
   'chat.modelControls.agentFavoriteAdd': 'Toevoegen aan favorieten. Met favorieten wisselt Tab alleen daartussen',
   ...debugPanelI18n.nl,
+  ...workspaceModesI18n.nl,
 } as const;

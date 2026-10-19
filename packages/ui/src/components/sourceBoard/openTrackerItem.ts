@@ -11,7 +11,6 @@ import { parseIssueReference } from '@/lib/source-control/issueReference';
 import { openExternalUrl } from '@/lib/url';
 import { useLinearAuthStore } from '@/stores/useLinearAuthStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
-import { useSourceBoardStore } from '@/stores/useSourceBoardStore';
 import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 
@@ -111,10 +110,10 @@ export function useShowTrackerItem() {
             return true;
         }
 
-        const board = useSourceBoardStore.getState();
-        if (target.source === 'linear') board.focusLinearIssue(target.identifier);
-        // The link itself is the search: it finds that one item, in its own repository.
-        else if (project) board.focusRepositoryItem(project.id, target.kind, url);
+        // The board hosts the fork's own lists — Bitbucket pulls and Jira
+        // issues — and no longer previews an indexed repository or Linear
+        // item, so there is nothing to focus: the phone shows the board
+        // itself, the desktop opens its board page.
         if (mobile) mobile.openSourceBoard();
         else useUIStore.getState().setSourceBoardOpen(true);
         return true;

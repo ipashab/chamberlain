@@ -7,6 +7,7 @@ import { useLayoutAnimationMs } from '@/hooks/useLayoutAnimationMs';
 import { TitlebarLeftControls } from './TitlebarLeftControls';
 import { ContextSurfacePanes } from './ContextSurfacePanes';
 import { WorkspaceLayout } from './WorkspaceLayout';
+import { WorkspaceModeOffer } from './WorkspaceModeOffer';
 import { ContextPanelRail } from './ContextPanelRail';
 import { GuestHosts } from './GuestHosts';
 import { PluginPane } from './PluginPane';
@@ -206,6 +207,9 @@ export const MainLayout: React.FC = () => {
                         <div className="relative flex flex-1 min-h-0 overflow-hidden bg-background" data-page-scroll-lock="true">
                             <div className="relative flex flex-1 min-w-0 flex-col overflow-hidden bg-background" data-page-scroll-lock="true">
                                 <div className="relative flex flex-1 min-h-0 overflow-hidden" data-page-scroll-lock="true">
+                                    {/* The mode-offer card floats over the whole workspace row,
+                                        above every region: it concerns the layout itself. */}
+                                    <WorkspaceModeOffer />
                                     <WorkspaceLayout>
                                         {/* The chat region: what the layout tree places wherever
                                             the chat node sits. The work-status panel measures the

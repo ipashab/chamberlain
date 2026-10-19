@@ -21,7 +21,8 @@ type BuiltInContextSurfaceId =
   | 'pulls'
   | 'jira'
   | 'confluence'
-  | 'review';
+  | 'review'
+  | 'board';
 
 export type ContextSurfaceId = BuiltInContextSurfaceId | `plugin:${string}`;
 
@@ -215,6 +216,18 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     mode: 'review',
     icon: 'list-check-2',
     labelKey: 'contextPanel.mode.review',
+    availability: 'always',
+  },
+  {
+    // The issues-and-PRs board as a surface: the same list the sidebar's
+    // board page shows, alive as a region the board mode presets and any
+    // split can host.
+    id: 'board',
+    descriptionKey: 'contextRail.surface.board.description',
+    width: 'wide',
+    mode: 'board',
+    icon: 'clipboard',
+    labelKey: 'contextPanel.mode.board',
     availability: 'always',
   },
 ];

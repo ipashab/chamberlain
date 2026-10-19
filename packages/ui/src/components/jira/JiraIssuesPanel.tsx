@@ -7,6 +7,7 @@ import { useI18n } from '@/lib/i18n';
 import { formatDateTimeForPreference } from '@/lib/timeFormat';
 import type { ViewErrorKind } from '@/lib/jira/issue-view-api';
 import { fetchJiraIssueSearch, type JiraIssueHit } from '@/lib/jira/issue-search-api';
+import { fetchMyJiraIssues } from '@/lib/jira/issue-mine-api';
 import { issueKeyOf, looksLikeUrl, matchesIssueQuery } from '@/lib/jira/issueRef';
 import { useUIStore } from '@/stores/useUIStore';
 import { useJiraIssuesStore } from '@/stores/useJiraIssuesStore';
@@ -14,15 +15,16 @@ import { useIssueView } from './useIssueView';
 import { JiraIssueBody } from './JiraIssueBody';
 
 /**
- * The dedicated Jira issue surface — the context panel's tab for reading
- * any issue of the configured Data Center instance. The landing state is
- * the recently viewed beside the field; the input reads a pasted link,
- * an issue key, or searches the instance for the words. A read issue
- * renders the shared body, whose "Ask about this issue" pins the
- * material to the session's next message. Read-only by construction:
- * everything here consumes the GETs the server already owns.
+ * The dedicated Jira issue surface — the context panel's tab and the
+ * board's issues tab, one component for both hosts. The board host also
+ * asks for the landing list of the account's own open issues; the context
+ * panel keeps its old landing state. The input reads a pasted link, an
+ * issue key, or searches the instance for the words. A read issue renders
+ * the shared body, whose "Ask about this issue" pins the material to the
+ * session's next message. Read-only by construction: everything here
+ * consumes the GETs the server already owns.
  */
-export const JiraIssuesPanel: React.FC = () => {
+export const JiraIssuesPanel: React.FC<{ showMine?: boolean; reloadKey?: number }> = ({ showMine = false, reloadKey = 0 }) => {
     const { t } = useI18n();
     const timeFormatPreference = useUIStore((state) => state.timeFormatPreference);
     const recents = useJiraIssuesStore((state) => state.recents);
@@ -38,6 +40,31 @@ export const JiraIssuesPanel: React.FC = () => {
         | { state: 'error'; kind: ViewErrorKind }
         | { state: 'ready'; issues: JiraIssueHit[] }
     >({ state: 'idle' });
+
+    // The landing list: the account's own open issues, read when the
+    // board host asks for it and again when that host asks for a newer
+    // read — the board bumps the key when it comes back on screen. The
+    // context panel host never asks, and its landing state stays what it
+    // was.
+    const [mineRequest, setMineRequest] = React.useState(0);
+    const [mineState, setMineState] = React.useState<
+        | { state: 'idle' }
+        | { state: 'loading' }
+        | { state: 'error'; kind: ViewErrorKind }
+        | { state: 'ready'; issues: JiraIssueHit[] }
+    >({ state: 'idle' });
+    React.useEffect(() => {
+        if (!showMine) return undefined;
+        let cancelled = false;
+        setMineState({ state: 'loading' });
+        void fetchMyJiraIssues().then((result) => {
+            if (cancelled) return;
+            setMineState(result.ok ? { state: 'ready', issues: result.issues } : { state: 'error', kind: result.kind });
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [showMine, reloadKey, mineRequest]);
 
     const view = useIssueView(selected, readToken);
 
@@ -139,6 +166,62 @@ export const JiraIssuesPanel: React.FC = () => {
             </p>
 
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pe-0.5">
+                {showMine ? (
+                    <section className="space-y-1.5" aria-label={t('jiraPanel.mineTitle')}>
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                            {t('jiraPanel.mineTitle')}
+                        </span>
+                        {mineState.state === 'loading' ? (
+                            <p className="text-[13px] text-muted-foreground">{t('jiraPanel.searchLoading')}</p>
+                        ) : null}
+                        {mineState.state === 'error' ? (
+                            <div className="flex items-center gap-2">
+                                <p role="alert" className="text-[13px]" style={{ color: 'var(--status-error)' }}>
+                                    {errorWords(mineState.kind)}
+                                </p>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setMineRequest((request) => request + 1)}
+                                >
+                                    {t('jiraPanel.searchRetry')}
+                                </Button>
+                            </div>
+                        ) : null}
+                        {mineState.state === 'ready' ? (
+                            <div className="space-y-1">
+                                {mineState.issues.length === 0 ? (
+                                    <p className="text-[12px] text-muted-foreground">{t('jiraPanel.mineEmpty')}</p>
+                                ) : null}
+                                {mineState.issues.map((hit) => (
+                                    <button
+                                        key={hit.key}
+                                        type="button"
+                                        className="flex w-full items-start gap-2 rounded-lg border border-border px-2 py-1.5 text-start"
+                                        onClick={() => openIssue(hit.url)}
+                                    >
+                                        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{hit.key}</span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-[12px]">{hit.summary}</span>
+                                            {hit.statusName ? (
+                                                <span className="block truncate text-[11px] text-muted-foreground">
+                                                    {hit.statusName}
+                                                </span>
+                                            ) : null}
+                                        </span>
+                                        {hit.updated ? (
+                                            <span className="mt-0.5 shrink-0 text-[10px] text-muted-foreground">
+                                                {formatStamp(hit.updated)}
+                                            </span>
+                                        ) : null}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : null}
+                    </section>
+                ) : null}
+
                 {searchState.state === 'loading' ? (
                     <p className="text-[13px] text-muted-foreground">{t('jiraPanel.searchLoading')}</p>
                 ) : null}

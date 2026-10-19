@@ -1,5 +1,6 @@
 import { settingsDict } from './tr.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1337,6 +1338,8 @@ export const dict = {
   'jiraPanel.searchLoading': 'Aranıyor…',
   'jiraPanel.searchRetry': 'Yeniden dene',
   'jiraPanel.noMatch': 'Uyan son görüntülenen iş yok. Yine de okumak için bağlantıyı yapıştırın.',
+  'jiraPanel.mineTitle': 'Açık konularım',
+  'jiraPanel.mineEmpty': 'Size atanmış ve hâlâ açık bir konu yok.',
   'jiraView.loading': 'İş okunuyor…',
   'jiraView.retry': 'Yeniden oku',
   'jiraView.error.bad-ref': 'Bu referans bir Jira işi bağlantısı ya da anahtarı değil.',
@@ -2319,6 +2322,7 @@ export const dict = {
   'helpDialog.item.toggleTerminalDock': 'Terminal dock\'unu aç/kapat',
   'helpDialog.item.toggleTerminalExpanded': 'Terminali genişlet/daralt',
   'helpDialog.item.switchContextSurface': 'Bağlam paneli yüzeyini değiştir (sayı tuşu)',
+  'helpDialog.item.workspaceModes': 'Çalışma modları (sohbet, hata ayıklama, genel bakış)',
   'helpDialog.item.cycleTheme': 'Temayı değiştir (Açık → Koyu → Sistem)',
   'helpDialog.item.toggleServicesMenu': 'Hizmetler menüsünü aç/kapat',
   'helpDialog.item.openSettings': 'Ayarları aç',
@@ -4271,4 +4275,5 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Bu görev zaten kuyrukta bekliyor; yer açılınca çalışacak',
   'chat.modelControls.agentFavoriteAdd': 'Favorilere ekle. Favori varsa Tab yalnızca onlar arasında geçiş yapar',
   ...debugPanelI18n.tr,
+  ...workspaceModesI18n.tr,
 };

@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './zh-TW.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1477,6 +1478,8 @@ export const dict: Record<I18nKey, string> = {
   'jiraPanel.searchLoading': '搜尋中…',
   'jiraPanel.searchRetry': '再試一次',
   'jiraPanel.noMatch': '最近檢視的事項中沒有相符項目。貼上連結仍可直接讀取。',
+  'jiraPanel.mineTitle': '我的未解決議題',
+  'jiraPanel.mineEmpty': '沒有分派給你且未解決的議題。',
   'jiraView.loading': '正在讀取事項…',
   'jiraView.retry': '再次讀取',
   'jiraView.error.bad-ref': '這個參照既不是 Jira 事項連結，也不是索引鍵。',
@@ -2435,6 +2438,7 @@ export const dict: Record<I18nKey, string> = {
   'helpDialog.item.cycleTheme': '循環切換主題（淺色 → 深色 → 跟隨系統）',
   'helpDialog.item.switchSessionTab': '切換工作階段分頁',
   'helpDialog.item.switchContextSurface': '切換上下文面板介面（數字鍵）',
+  'helpDialog.item.workspaceModes': '工作模式（聊天、偵錯、總覽）',
   'helpDialog.item.toggleServicesMenu': '切換服務選單',
   'helpDialog.item.openSettings': '開啟設定',
   'helpDialog.keyCombiner.or': '或',
@@ -4273,4 +4277,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': '此任務已在佇列中等待，有空位時就會執行',
   'chat.modelControls.agentFavoriteAdd': '加入最愛。有最愛時，Tab 只在最愛之間切換',
   ...debugPanelI18n['zh-TW'],
+  ...workspaceModesI18n['zh-TW'],
 };

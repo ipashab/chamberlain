@@ -184,6 +184,13 @@ export const HelpDialog: React.FC = () => {
           icon: "layout-right",
         },
         {
+          keys: (['switch_workspace_chat', 'switch_workspace_debug', 'switch_workspace_board'] as const).map(
+            (actionId) => formatShortcutForDisplay(getEffectiveShortcutCombo(actionId, shortcutOverrides)),
+          ),
+          descriptionKey: "helpDialog.item.workspaceModes",
+          icon: "layout-right",
+        },
+        {
           keys: [`${formatShortcutForDisplay(getEffectiveShortcutPrefix('switch_session_tab', shortcutOverrides))} + 1...9`],
           descriptionKey: "helpDialog.item.switchSessionTab",
           icon: "layout-right",

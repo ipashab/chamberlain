@@ -1,9 +1,10 @@
 # Jira Data Center (self-hosted)
 
 The fork's own read-only client for a self-hosted Jira Data Center
-instance. It exists for one consumer today — the issue viewer the context
-panel's Jira surface renders — and grows toward the ask flow and the
-issue analysis along the same REST surface.
+instance. It exists for the surfaces that read issues — the viewer the
+context panel's Jira surface renders, the quick finder beside it, and the
+board's landing list of the account's own open issues — and grows toward
+the ask flow and the issue analysis along the same REST surface.
 
 It mirrors the Bitbucket DC module beside it: the same connection shape,
 the same card, the same routes' grammar, the same per-instance TLS policy.
@@ -59,6 +60,12 @@ State persists as `jira.json` beside bitbucket.json and the rest:
   `project:` prefixes becoming equality clauses. The query is sanitized
   at the search boundary — JQL's metacharacters never reach the instance.
   The same error kinds as the view answer failures.
+- `GET /api/openchamber/jira/issues/my` — the board's landing list: the
+  token's own account's open issues, the not-done ones, newest by update,
+  capped at `limit` (1..50, default 50). No query is accepted: the JQL is
+  the route's own fixed words, so nothing of the caller reaches the
+  instance. The rows are the search's own shape, and the same error kinds
+  answer failures.
 - `GET /api/openchamber/jira/issues/view?ref=<browse URL | issue key>` —
   the issue viewer's read: the issue's whole view, assembled by
   `issue-view.js` from the issue GET, the watchers page, and the epic's

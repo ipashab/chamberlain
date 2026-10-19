@@ -14,8 +14,9 @@ const ISSUE_SEARCH_ROUTE = '/api/openchamber/jira/issues/search';
 
 export type JiraIssueHit = z.infer<typeof issueHitSchema>;
 
-/** One search row: the coordinates a click needs, nothing more. */
-const issueHitSchema = z.object({
+/** One search row: the coordinates a click needs, nothing more. The same
+ * row shape the board's own list reads, so the one schema owns it. */
+export const issueHitSchema = z.object({
     key: z.string(),
     url: z.string(),
     summary: z.string(),

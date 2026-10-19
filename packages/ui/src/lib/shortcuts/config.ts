@@ -269,6 +269,26 @@ const SHORTCUT_GROUPS = {
       customizable: true,
       settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.open_document_symbols.label',
     },
+    {
+      // Workspace modes (lib/workspace/modePresets.ts): mod+shift keeps the
+      // bare mod digits free for the session-tab chord.
+      id: 'switch_workspace_chat',
+      defaultBinding: 'mod+shift+1',
+      customizable: true,
+      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.switch_workspace_chat.label',
+    },
+    {
+      id: 'switch_workspace_debug',
+      defaultBinding: 'mod+shift+2',
+      customizable: true,
+      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.switch_workspace_debug.label',
+    },
+    {
+      id: 'switch_workspace_board',
+      defaultBinding: 'mod+shift+3',
+      customizable: true,
+      settingsLabelKey: 'settings.openchamber.keyboardShortcuts.action.switch_workspace_board.label',
+    },
   ],
   application: [
     {

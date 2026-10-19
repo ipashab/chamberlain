@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { useUIStore } from '@/stores/useUIStore';
+import { WorkspaceModeSwitcher } from './WorkspaceModeSwitcher';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSessionWorktreeStore } from '@/sync/session-worktree-store';
 import { formatSessionWorktreeBadge } from '@/sync/session-worktree-contract';
@@ -1309,6 +1310,11 @@ export const Header: React.FC = () => {
             </SessionTabsStrip>
           </div>
         )}
+
+        {/* The mode tabs read as part of the header's own navigation: they
+            follow the title area and ride the header's full height, so the
+            active underline lands on its bottom edge. */}
+        <WorkspaceModeSwitcher />
 
         {activeSurfaceHeader || isVSCode || !sessionTabsEnabled ? <div className="flex-1" /> : null}
 

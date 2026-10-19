@@ -15,16 +15,17 @@ import { BitbucketPullBody } from './BitbucketPullBody';
 import { BitbucketAvatar } from './BitbucketAvatar';
 
 /**
- * The dedicated Bitbucket pull surface — the context panel's tab for reading
- * any pull request of the configured Data Center instance, with or without a
- * team board. The landing state is the token's own open pulls, preloaded,
- * beside the recently read ones; the input reads a pasted link, jumps to a
- * number those lists know, or filters them in place. A read pull renders the
+ * The dedicated Bitbucket pull surface — the context panel's tab and the
+ * board's pulls tab, one component for both hosts — for reading any pull
+ * request of the configured Data Center instance, with or without a team
+ * board. The landing state is the token's own open pulls, preloaded, beside
+ * the recently read ones; the input reads a pasted link, jumps to a number
+ * those lists know, or filters them in place. A read pull renders the
  * shared body, whose "Ask about this pull request" pins the material to the
  * session's next message. Read-only by construction: everything here
  * consumes the two GETs the server already owns.
  */
-export const BitbucketPullsPanel: React.FC = () => {
+export const BitbucketPullsPanel: React.FC<{ reloadKey?: number }> = ({ reloadKey = 0 }) => {
     const { t } = useI18n();
     const timeFormatPreference = useUIStore((state) => state.timeFormatPreference);
     const recents = useBitbucketPullsStore((state) => state.recents);
@@ -47,7 +48,9 @@ export const BitbucketPullsPanel: React.FC = () => {
     const view = usePullView(selected, readToken);
 
     // The list is a read, not a cache: it happens when the surface
-    // opens, again on retry, and a superseded answer never lands.
+    // opens, again on retry, again when the host asks for a newer read —
+    // the board bumps its key when it comes back on screen — and a
+    // superseded answer never lands.
     React.useEffect(() => {
         let cancelled = false;
         setOpenPullsState({ state: 'loading' });
@@ -58,7 +61,7 @@ export const BitbucketPullsPanel: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [listToken]);
+    }, [listToken, reloadKey]);
 
     // Opening a pull folds both lists behind their headers instead of
     // hiding the memory: the read deserves the room, and the way back stays

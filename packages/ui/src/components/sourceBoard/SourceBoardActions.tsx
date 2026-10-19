@@ -29,8 +29,8 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSession } from '@/sync/sync-context';
 import { newMutationKey } from './mutationKey';
 
-/** A project the board acts in: its id and root folder. */
-export type SourceBoardProject = { id: string; path: string };
+/** A project an item's action acts in: its id and root folder. */
+type SourceBoardProject = { id: string; path: string };
 
 const MERGE_METHOD_LABELS = {
     squash: 'gitView.pr.mergeMethod.squash',

@@ -267,18 +267,24 @@ interface SplitOutcome {
 
 /**
  * Splits a leaf's region in two. The existing leaf keeps its tabs on its
- * side of the divider; a fresh empty leaf takes the other side.
+ * side of the divider; a fresh empty leaf takes the other side — the end of
+ * the pair, or its start with `newLeafFirst`.
  */
 export const splitLeaf = (
   tree: WorkspaceTree,
   leafId: string,
   axis: SplitAxis,
-  options: { newLeafId?: string; fraction?: number } = {},
+  options: { newLeafId?: string; fraction?: number; newLeafFirst?: boolean } = {},
 ): SplitOutcome | null => {
   const newLeaf: LeafNode = { kind: 'leaf', id: options.newLeafId ?? newId('leaf'), tabs: [], activeTabId: null };
+  const fraction = clampFraction(options.fraction ?? 0.5);
   const splitAt = (node: WorkspaceNode): WorkspaceNode => {
     if (isLeaf(node) && node.id === leafId) {
-      return makeSplit(axis, [node, newLeaf], [1 - clampFraction(options.fraction ?? 0.5), clampFraction(options.fraction ?? 0.5)]);
+      // The fresh region takes the end unless the caller wants it at the
+      // start — a mode rebuilding the region ABOVE its anchor does.
+      return options.newLeafFirst
+        ? makeSplit(axis, [newLeaf, node], [fraction, 1 - fraction])
+        : makeSplit(axis, [node, newLeaf], [1 - fraction, fraction]);
     }
     if (!isSplit(node)) return node;
     const children = node.children.map(splitAt);
@@ -290,17 +296,21 @@ export const splitLeaf = (
 
 /**
  * Splits the chat's region: the chat keeps its side, a fresh empty leaf
- * takes the other. Replaces the chat in place, so other regions keep
- * their sizes and positions.
+ * takes the other. `chatLast: true` puts the fresh region first and the chat
+ * last in the row — the workspace mode presets dock the chat as the right
+ * column that way. Replaces the chat in place, so other regions keep their
+ * sizes and positions.
  */
 export const splitChat = (
   tree: WorkspaceTree,
   axis: SplitAxis,
-  options: { newLeafId?: string; fraction?: number } = {},
+  options: { newLeafId?: string; fraction?: number; chatLast?: boolean } = {},
 ): SplitOutcome => {
   const fraction = clampFraction(options.fraction ?? 0.5);
   const newLeaf: LeafNode = { kind: 'leaf', id: options.newLeafId ?? newId('leaf'), tabs: [], activeTabId: null };
-  const wrapper = makeSplit(axis, [CHAT_NODE, newLeaf], [1 - fraction, fraction]);
+  const wrapper = options.chatLast
+    ? makeSplit(axis, [newLeaf, CHAT_NODE], [fraction, 1 - fraction])
+    : makeSplit(axis, [CHAT_NODE, newLeaf], [1 - fraction, fraction]);
   const splitAt = (node: WorkspaceNode): WorkspaceNode =>
     node.kind === 'chat' ? wrapper : isSplit(node) ? { ...node, children: node.children.map(splitAt) } : node;
   return { tree: splitAt(tree), newLeaf };

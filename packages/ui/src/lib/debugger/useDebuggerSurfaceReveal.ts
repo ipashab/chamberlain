@@ -74,6 +74,10 @@ export const useDebuggerSurfaceReveal = (directoryKey: string): void => {
         lastStartedAt = startedAt;
         if (startedAt != null && startedAt !== previous) {
           revealDebugSurface(directoryKey);
+          // In the chat default a started run meets its user through the
+          // split; a card also suggests the debug mode once, and only a
+          // click takes the screen.
+          useUIStore.getState().offerWorkspaceMode(directoryKey, 'debug', 'debug-run');
         }
       }).catch(() => {
         // A server without the debugger leaves the panel layout alone.

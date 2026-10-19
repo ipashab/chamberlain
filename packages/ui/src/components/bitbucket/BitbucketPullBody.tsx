@@ -32,8 +32,17 @@ import {
 import type { AnalysisScope, CommentAnalysis } from './pullAnalysis';
 import { clickedLine, draggedOverLine, emptySpan, type SpanState } from './pullSpan';
 import { usePullAnalysis } from './usePullAnalysis';
+import { buildPullFileTree, type PullFileRow } from './pullFileTree';
 
 type PullTab = 'overview' | 'activity' | 'commits' | 'changes';
+
+/**
+ * From this width up, the changes tab pins its file tree on the left with
+ * the picked file beside it; narrower — the board's list column among
+ * others — the tree stays the inline list, where a diff folds into the row
+ * it belongs to.
+ */
+const ChangesSplitWidth = 520;
 
 /**
  * The read view of one Bitbucket pull request, drawn close to the
@@ -41,7 +50,9 @@ type PullTab = 'overview' | 'activity' | 'commits' | 'changes';
  * DC falls back to, the state and checks chips, the branch line — then
  * the Overview, Activity, Commits and Changes tabs over what the server
  * already read: description, reviewers, comments, commits and files with
- * their unified diffs, and the actions — "Ask about this pull request"
+ * their unified diffs — the changed files walking the folders their paths
+ * carry, wide as a pinned tree with the picked file beside it, narrow as
+ * the inline list — and the actions — "Ask about this pull request"
  * and the external link. One component behind the two doors that open
  * it: the task details dialog and the context panel's dedicated surface.
  * Read-only everywhere: it renders what the server fetched and writes
@@ -163,6 +174,47 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
         });
     };
 
+    // The changes tab walks a folder tree built from the changed paths; the
+    // folders it shows are open unless the reader folded them.
+    const [foldedFolders, setFoldedFolders] = React.useState<ReadonlySet<string>>(new Set());
+    const fileTree = React.useMemo(() => buildPullFileTree(view.files), [view.files]);
+
+    const toggleFolder = (path: string) => {
+        setFoldedFolders((previous) => {
+            const next = new Set(previous);
+            if (next.has(path)) next.delete(path);
+            else next.add(path);
+            return next;
+        });
+    };
+
+    // Wide, the changes tab splits: the tree pinned on the left, the file
+    // the reader picked beside it. The board's list column is too narrow
+    // for that, so under the threshold the tree stays the inline list it
+    // always was, a diff folding into the row it belongs to.
+    const [changesWide, setChangesWide] = React.useState(false);
+    const changesRef = React.useRef<HTMLDivElement | null>(null);
+    React.useEffect(() => {
+        // The node exists once the changes tab paints, so the observer binds
+        // on the switch to it and not on the component's first render.
+        if (tab !== 'changes') return;
+        const node = changesRef.current;
+        if (!node) return;
+        const observer = new ResizeObserver((entries) => {
+            const entry = entries.at(-1);
+            const width = entry?.borderBoxSize?.[0]?.inlineSize ?? entry?.contentRect.width ?? 0;
+            const next = width >= ChangesSplitWidth;
+            setChangesWide((previous) => (previous === next ? previous : next));
+        });
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [tab]);
+
+    // The file the reader is looking at; the strip's first file until they
+    // pick one, and the first again whenever a refresh drops the picked path.
+    const [selectedPath, setSelectedPath] = React.useState<string | null>(null);
+    const selectedFile = view.files.find((file) => file.path === selectedPath) ?? view.files[0] ?? null;
+
     const pull = view.pull;
 
     const tabs: Array<{ id: PullTab; label: string }> = [
@@ -171,6 +223,168 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
         { id: 'commits', label: t('chat.workStatus.teamBoard.pullView.commits', { count: view.commits.length }) },
         { id: 'changes', label: t('chat.workStatus.teamBoard.pullView.tabChanges', { count: view.files.length }) },
     ];
+
+    // One changed file: the row that opens its diff, with the reading's
+    // verdict beside it and the ask that pins the file to the next message.
+    const fileCard = (file: BitbucketPullView['files'][number]) => {
+        const fileAnalysis = reading.analysis?.files.get(file.path);
+        return (
+            <div className="rounded-lg border border-border">
+                <div className="flex items-center gap-1.5 px-2 py-1.5 text-[12px]">
+                    <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
+                        onClick={() => toggleFile(file.path)}
+                        aria-expanded={expanded.has(file.path)}
+                    >
+                        <Icon
+                            name={expanded.has(file.path) ? 'arrow-down-s' : 'arrow-right-s'}
+                            className="size-3.5 shrink-0 text-muted-foreground"
+                        />
+                        <span className="min-w-0 flex-1 truncate font-mono text-[11px]">{file.path}</span>
+                        <span
+                            className="shrink-0 rounded-full px-1.5 text-[10px] font-medium"
+                            style={{ color: 'var(--muted-foreground)', backgroundColor: 'color-mix(in srgb, var(--muted-foreground) 12%, transparent)' }}
+                        >
+                            {t(`chat.workStatus.teamBoard.pullView.change.${file.changeType}`)}
+                        </span>
+                    </button>
+                    {fileAnalysis ? (
+                        <span
+                            className="shrink-0 rounded-full px-1.5 text-[10px] font-medium leading-4"
+                            style={{
+                                color: verdictColor(fileAnalysis.verdict),
+                                backgroundColor: `color-mix(in srgb, ${verdictColor(fileAnalysis.verdict)} 12%, transparent)`,
+                            }}
+                            title={fileAnalysis.notes || undefined}
+                        >
+                            {verdictLabel(fileAnalysis.verdict)}
+                        </span>
+                    ) : null}
+                    <button
+                        type="button"
+                        className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label={t('chat.workStatus.teamBoard.pullView.fileAskAria', { file: file.path })}
+                        title={t('chat.workStatus.teamBoard.pullView.askAboutFile')}
+                        onClick={() => askFile(file)}
+                    >
+                        <Icon name="question" className="size-3.5" />
+                    </button>
+                </div>
+                {fileAnalysis?.notes && expanded.has(file.path) ? (
+                    <div className="px-2 pb-1.5 text-[11px] leading-4 text-muted-foreground">
+                        <SimpleMarkdownRenderer content={fileAnalysis.notes} disableLinkSafety variant="tool" enableFileReferences={false} />
+                    </div>
+                ) : null}
+                {expanded.has(file.path) ? (
+                    <PullDiffText view={view} file={file} reportAsk={reportAsk} />
+                ) : null}
+            </div>
+        );
+    };
+
+    // The wide arrangement's right pane: the picked file's card — its path,
+    // the reading's verdict, the ask that pins it to the next message, over
+    // the diff itself, all without the tree beside it repeating anything.
+    const selectedFileCard = (file: BitbucketPullView['files'][number]) => {
+        const fileAnalysis = reading.analysis?.files.get(file.path);
+        return (
+            <div className="rounded-lg border border-border">
+                <div className="flex items-center gap-1.5 px-2 py-1.5 text-[12px]">
+                    <span title={file.path} className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                        {file.path}
+                    </span>
+                    <span
+                        className="shrink-0 rounded-full px-1.5 text-[10px] font-medium"
+                        style={{ color: 'var(--muted-foreground)', backgroundColor: 'color-mix(in srgb, var(--muted-foreground) 12%, transparent)' }}
+                    >
+                        {t(`chat.workStatus.teamBoard.pullView.change.${file.changeType}`)}
+                    </span>
+                    {fileAnalysis ? (
+                        <span
+                            className="shrink-0 rounded-full px-1.5 text-[10px] font-medium leading-4"
+                            style={{
+                                color: verdictColor(fileAnalysis.verdict),
+                                backgroundColor: `color-mix(in srgb, ${verdictColor(fileAnalysis.verdict)} 12%, transparent)`,
+                            }}
+                            title={fileAnalysis.notes || undefined}
+                        >
+                            {verdictLabel(fileAnalysis.verdict)}
+                        </span>
+                    ) : null}
+                    <button
+                        type="button"
+                        className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label={t('chat.workStatus.teamBoard.pullView.fileAskAria', { file: file.path })}
+                        title={t('chat.workStatus.teamBoard.pullView.askAboutFile')}
+                        onClick={() => askFile(file)}
+                    >
+                        <Icon name="question" className="size-3.5" />
+                    </button>
+                </div>
+                {fileAnalysis?.notes ? (
+                    <div className="px-2 pb-1.5 text-[11px] leading-4 text-muted-foreground">
+                        <SimpleMarkdownRenderer content={fileAnalysis.notes} disableLinkSafety variant="tool" enableFileReferences={false} />
+                    </div>
+                ) : null}
+                <PullDiffText view={view} file={file} reportAsk={reportAsk} />
+            </div>
+        );
+    };
+
+    // The changed files as their folder tree. A folder is a flat row above
+    // what it holds, its subtree indented beside the chevron that opened
+    // it. Narrow, the files carry their framed card and the diff folds into
+    // it; wide, a file is a click-to-pick row and the card lives beside the
+    // tree for whichever file the reader picked.
+    const fileRows = (rows: readonly PullFileRow[], wide: boolean): React.ReactNode[] => rows.map((row) => {
+        if (row.kind === 'file') {
+            if (wide) {
+                const picked = selectedFile?.path === row.file.path;
+                return (
+                    <button
+                        key={`pick:${row.file.path}`}
+                        type="button"
+                        aria-current={picked ? 'true' : undefined}
+                        className={`flex w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-start text-[12px] transition-colors ${
+                            picked ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                        style={picked ? { backgroundColor: 'color-mix(in srgb, var(--foreground) 6%, transparent)' } : undefined}
+                        onClick={() => setSelectedPath(row.file.path)}
+                    >
+                        <span title={row.file.path} className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                            {row.file.path.split('/').at(-1) ?? row.file.path}
+                        </span>
+                        <span
+                            className="shrink-0 rounded-full px-1.5 text-[10px] font-medium"
+                            style={{ color: 'var(--muted-foreground)', backgroundColor: 'color-mix(in srgb, var(--muted-foreground) 12%, transparent)' }}
+                        >
+                            {t(`chat.workStatus.teamBoard.pullView.change.${row.file.changeType}`)}
+                        </span>
+                    </button>
+                );
+            }
+            return <React.Fragment key={row.file.path}>{fileCard(row.file)}</React.Fragment>;
+        }
+        const folded = foldedFolders.has(row.path);
+        return (
+            <div key={`folder:${row.path}`} className="space-y-1">
+                <button
+                    type="button"
+                    className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1 text-start text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() => toggleFolder(row.path)}
+                    aria-expanded={!folded}
+                >
+                    <Icon name={folded ? 'arrow-right-s' : 'arrow-down-s'} className="size-3.5 shrink-0" />
+                    <span title={row.label} className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                        {row.label}/
+                    </span>
+                    <span className="shrink-0 text-[10px] tabular-nums">{row.fileCount}</span>
+                </button>
+                {folded ? null : <div className="ps-3 space-y-1">{fileRows(row.children, wide)}</div>}
+            </div>
+        );
+    });
 
     return (
         <div className="space-y-4">
@@ -538,63 +752,21 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                             {t('chat.workStatus.teamBoard.pullView.emptyChanges')}
                         </p>
                     ) : (
-                        <div className="space-y-1">
-                            {view.files.map((file, index) => {
-                                const fileAnalysis = reading.analysis?.files.get(file.path);
-                                return (
-                                    <div key={`${file.path}-${index}`} className="rounded-lg border border-border">
-                                        <div className="flex items-center gap-1.5 px-2 py-1.5 text-[12px]">
-                                            <button
-                                                type="button"
-                                                className="flex min-w-0 flex-1 items-center gap-1.5 text-start"
-                                                onClick={() => toggleFile(file.path)}
-                                                aria-expanded={expanded.has(file.path)}
-                                            >
-                                                <Icon
-                                                    name={expanded.has(file.path) ? 'arrow-down-s' : 'arrow-right-s'}
-                                                    className="size-3.5 shrink-0 text-muted-foreground"
-                                                />
-                                                <span className="min-w-0 flex-1 truncate font-mono text-[11px]">{file.path}</span>
-                                                <span
-                                                    className="shrink-0 rounded-full px-1.5 text-[10px] font-medium"
-                                                    style={{ color: 'var(--muted-foreground)', backgroundColor: 'color-mix(in srgb, var(--muted-foreground) 12%, transparent)' }}
-                                                >
-                                                    {t(`chat.workStatus.teamBoard.pullView.change.${file.changeType}`)}
-                                                </span>
-                                            </button>
-                                            {fileAnalysis ? (
-                                                <span
-                                                    className="shrink-0 rounded-full px-1.5 text-[10px] font-medium leading-4"
-                                                    style={{
-                                                        color: verdictColor(fileAnalysis.verdict),
-                                                        backgroundColor: `color-mix(in srgb, ${verdictColor(fileAnalysis.verdict)} 12%, transparent)`,
-                                                    }}
-                                                    title={fileAnalysis.notes || undefined}
-                                                >
-                                                    {verdictLabel(fileAnalysis.verdict)}
-                                                </span>
-                                            ) : null}
-                                            <button
-                                                type="button"
-                                                className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground"
-                                                aria-label={t('chat.workStatus.teamBoard.pullView.fileAskAria', { file: file.path })}
-                                                title={t('chat.workStatus.teamBoard.pullView.askAboutFile')}
-                                                onClick={() => askFile(file)}
-                                            >
-                                                <Icon name="question" className="size-3.5" />
-                                            </button>
-                                        </div>
-                                        {fileAnalysis?.notes && expanded.has(file.path) ? (
-                                            <div className="px-2 pb-1.5 text-[11px] leading-4 text-muted-foreground">
-                                                <SimpleMarkdownRenderer content={fileAnalysis.notes} disableLinkSafety variant="tool" enableFileReferences={false} />
-                                            </div>
-                                        ) : null}
-                                        {expanded.has(file.path) ? (
-                                            <PullDiffText view={view} file={file} reportAsk={reportAsk} />
-                                        ) : null}
+                        <div ref={changesRef}>
+                            {changesWide && selectedFile ? (
+                                <div className="flex min-w-0 gap-3">
+                                    <div className="w-[260px] shrink-0 space-y-1">
+                                        {fileRows(fileTree, true)}
                                     </div>
-                                );
-                            })}
+                                    <div className="min-w-0 flex-1">
+                                        {selectedFileCard(selectedFile)}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    {fileRows(fileTree, false)}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -15,6 +15,7 @@ const BUILT_IN_CONTEXT_PANEL_MODES = [
   'jira',
   'confluence',
   'review',
+  'board',
 ] as const;
 
 type BuiltInContextPanelMode = (typeof BUILT_IN_CONTEXT_PANEL_MODES)[number];

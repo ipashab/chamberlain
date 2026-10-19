@@ -1,6 +1,7 @@
 import type { I18nKey } from './en';
 import { settingsDict } from './ja.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1454,6 +1455,8 @@ export const dict: Record<I18nKey, string> = {
   'jiraPanel.searchLoading': '検索中…',
   'jiraPanel.searchRetry': '再試行',
   'jiraPanel.noMatch': '最近の課題で一致するものはありません。リンクを貼り付ければそのまま読めます。',
+  'jiraPanel.mineTitle': '自分の未完了の課題',
+  'jiraPanel.mineEmpty': '担当で未完了の課題はありません。',
   'jiraView.loading': '課題を読み込んでいます…',
   'jiraView.retry': 'もう一度読む',
   'jiraView.error.bad-ref': 'この参照は Jira 課題のリンクでもキーでもありません。',
@@ -2456,6 +2459,7 @@ export const dict: Record<I18nKey, string> = {
   'helpDialog.item.cycleTheme': 'テーマ切り替え（ライト→ダーク→システム）',
   'helpDialog.item.switchSessionTab': 'セッションタブを切り替え',
   'helpDialog.item.switchContextSurface': 'コンテキストパネルのサーフェスを切り替え（数字キー）',
+  'helpDialog.item.workspaceModes': '作業モード（チャット・デバッグ・概要）',
   'helpDialog.item.toggleServicesMenu': 'サービスの切り替え',
   'helpDialog.item.openSettings': '設定を開く',
   'helpDialog.keyCombiner.or': 'または',
@@ -4273,4 +4277,5 @@ export const dict: Record<I18nKey, string> = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'このタスクはすでにキューで待機中です。空きができ次第実行されます',
   'chat.modelControls.agentFavoriteAdd': 'お気に入りに追加。お気に入りがあると、Tab はその中だけを切り替えます',
   ...debugPanelI18n.ja,
+  ...workspaceModesI18n.ja,
 };

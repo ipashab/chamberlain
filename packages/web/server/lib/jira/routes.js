@@ -30,6 +30,7 @@ import express from 'express';
 import { z } from 'zod';
 
 import { JiraError, createJiraAvatarRequest, createJiraRequest } from './client.js';
+import { readMyJiraIssues } from './issue-mine.js';
 import { readJiraIssueSearch } from './issue-search.js';
 import { readJiraIssueView } from './issue-view.js';
 import { parseJiraIssueRef } from './url.js';
@@ -160,6 +161,41 @@ export const registerJiraRoutes = (app, dependencies) => {
       }
       console.error('[jira] issue search failed:', error?.message ?? error);
       return res.status(500).json({ error: 'Failed to search Jira issues.' });
+    }
+  });
+
+  /**
+   * The account's own open issues: the board's landing list. No query —
+   * the JQL is the server's own fixed words, the limit is clamped
+   * server-side (1..50) — and the errors are the kinds the panel words
+   * itself, the same kinds the search answers.
+   */
+  app.get('/api/openchamber/jira/issues/my', async (req, res) => {
+    const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+    const parsedLimit = Number.parseInt(String(rawLimit ?? ''), 10);
+    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 50) : 50;
+    try {
+      const state = await jiraConfigStore.read();
+      const instance = state?.instance;
+      if (!instance?.origin || !instance?.token) {
+        return viewError(res, 409, 'unconfigured', 'No Jira connection is configured.');
+      }
+      const request = (createRequest ?? createJiraRequest)();
+      const list = await readMyJiraIssues({
+        request,
+        config: { origin: instance.origin, token: instance.token, verifySsl: instance.verifySsl },
+        limit,
+      });
+      return res.json(list);
+    } catch (error) {
+      if (error instanceof JiraError) {
+        if (error.kind === 'unauthorized') return viewError(res, 502, 'unauthorized', 'The personal access token was rejected.');
+        if (error.kind === 'not-found' || error.kind === 'unreachable' || error.kind === 'server-error') {
+          return viewError(res, 502, 'unreachable', 'Jira did not answer.');
+        }
+      }
+      console.error('[jira] my issues read failed:', error?.message ?? error);
+      return res.status(500).json({ error: 'Failed to read the account\'s Jira issues.' });
     }
   });
 

@@ -1,5 +1,6 @@
 import { settingsDict } from './de.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
+import { workspaceModesI18n } from './workspace-modes.i18n';
 import { linearIssuePickerI18n } from './linear-issue-picker.i18n';
 import { referencePickerI18n } from './reference-picker.i18n';
 import { sessionMenuHintsI18n } from './session-menu-hints.i18n';
@@ -1351,6 +1352,8 @@ export const dict = {
   'jiraPanel.searchLoading': 'Suche läuft…',
   'jiraPanel.searchRetry': 'Erneut versuchen',
   'jiraPanel.noMatch': 'Kein kürzlich angesehener Vorgang passt. Füge den Link ein, um ihn dennoch zu lesen.',
+  'jiraPanel.mineTitle': 'Meine offenen Vorgänge',
+  'jiraPanel.mineEmpty': 'Nichts ist Ihnen zugewiesen und noch offen.',
   'jiraView.loading': 'Vorgang wird gelesen…',
   'jiraView.retry': 'Erneut lesen',
   'jiraView.error.bad-ref': 'Diese Referenz ist weder ein Jira-Link noch ein Vorgangsschlüssel.',
@@ -2204,6 +2207,7 @@ export const dict = {
   'helpDialog.item.cycleTheme': 'Thema wechseln (Hell → Dunkel → System)',
   'helpDialog.item.switchSessionTab': 'Sitzungs-Tab wechseln',
   'helpDialog.item.switchContextSurface': 'Kontextpanel-Oberfläche wechseln (Zahlentaste)',
+  'helpDialog.item.workspaceModes': 'Arbeitsmodi (Chat, Debuggen, Übersicht)',
   'helpDialog.item.toggleServicesMenu': 'Dienstemenü umschalten',
   'helpDialog.item.openSettings': 'Einstellungen öffnen',
   'helpDialog.keyCombiner.or': 'oder',
@@ -4271,4 +4275,5 @@ export const dict = {
   'sessions.scheduledTasks.dialog.toast.alreadyQueued': 'Diese Aufgabe wartet bereits in der Warteschlange und läuft, sobald ein Platz frei wird',
   'chat.modelControls.agentFavoriteAdd': 'Zu Favoriten hinzufügen. Mit Favoriten wechselt Tab nur zwischen diesen',
   ...debugPanelI18n.de,
+  ...workspaceModesI18n.de,
 };

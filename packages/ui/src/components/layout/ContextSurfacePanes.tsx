@@ -40,6 +40,7 @@ import { useDebuggerSurfaceReveal } from '@/lib/debugger/useDebuggerSurfaceRevea
 const WalkthroughView = lazyWithChunkRecovery(() => import('@/components/views/walkthrough/WalkthroughView').then((m) => ({ default: m.WalkthroughView })));
 const DiffView = lazyWithChunkRecovery(() => import('@/components/views/DiffView').then((m) => ({ default: m.DiffView })));
 const FilesView = lazyWithChunkRecovery(() => import('@/components/views/FilesView').then((m) => ({ default: m.FilesView })));
+const SourceBoardPane = lazyWithChunkRecovery(() => import('@/components/sourceBoard/SourceBoardView').then((m) => ({ default: m.SourceBoardPane })));
 const PluginPane = React.lazy(() => import('./PluginPane').then((module) => ({ default: module.PluginPane })));
 const GuestSurfacePane = React.lazy(() => import('./GuestSurfacePane').then((module) => ({ default: module.GuestSurfacePane })));
 
@@ -87,7 +88,7 @@ type PanelBrowserTab = {
 };
 
 // The editor surface's file-tree column: docked on the side the user picked
-// (`fileTreeSide`, right by default), resizable from the edge that faces the
+// (`fileTreeSide`, left by default), resizable from the edge that faces the
 // editor, and animated open/closed like the app sidebars. In tree-only mode
 // (`fill`), the panel collapses around this fixed-width column, aligned to
 // its side.
@@ -491,6 +492,10 @@ export const ContextSurfacePanes: React.FC = () => {
     () => tabs.find((tab) => tab.mode === 'debug') ?? null,
     [tabs],
   );
+  const boardTab = React.useMemo(
+    () => tabs.find((tab) => tab.mode === 'board') ?? null,
+    [tabs],
+  );
   // Keep-alive: the walkthrough holds reading progress and scroll position that
   // a remount would silently throw away.
   const hasWalkthroughTab = React.useMemo(() => tabs.some((tab) => tab.mode === 'walkthrough'), [tabs]);
@@ -659,6 +664,21 @@ export const ContextSurfacePanes: React.FC = () => {
               directory={debugTab.targetDirectory}
             />
           </ContextPanelHeaderSlotProvider>
+        </RegionPane>
+      ) : null}
+      {boardTab ? (
+        // The board as a keep-alive region pane: its scroll and preview
+        // choice survive a switch, and its data refreshes only while a
+        // region shows it.
+        <RegionPane
+          hostKey={leafOfTab(boardTab.id)?.id ?? null}
+          visible={shownInRegion(boardTab.id)}
+          directoryKey={directoryKey}
+          className={cn('absolute inset-0', shownInRegion(boardTab.id) ? 'block' : 'hidden')}
+        >
+          <React.Suspense fallback={null}>
+            <SourceBoardPane visible={shownInRegion(boardTab.id)} />
+          </React.Suspense>
         </RegionPane>
       ) : null}
       {hasWalkthroughTab ? (

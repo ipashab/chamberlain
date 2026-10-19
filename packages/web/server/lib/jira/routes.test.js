@@ -259,6 +259,59 @@ describe('registerJiraRoutes', () => {
     });
   });
 
+  describe('my issues', () => {
+    it('refuses to list without a connection', async () => {
+      const store = await makeStore();
+      const app = makeApp();
+      registerJiraRoutes(app, { jiraConfigStore: store });
+      const res = await callRoute(app, 'GET', '/api/openchamber/jira/issues/my', { query: {} });
+      expect(res.statusCode).toBe(409);
+      expect(res.body.kind).toBe('unconfigured');
+    });
+
+    it('answers the account\'s own open issues with the fixed query', async () => {
+      const store = await connectedStore();
+      const app = makeApp();
+      const request = vi.fn(async () => ({
+        issues: [{ key: 'DEMO-100', fields: { summary: 'allure', updated: '2026-10-12T10:00:00.000+0300', status: { name: 'В работе' }, issuetype: { name: 'История' } } }],
+      }));
+      registerJiraRoutes(app, { jiraConfigStore: store, createRequest: () => request });
+      const res = await callRoute(app, 'GET', '/api/openchamber/jira/issues/my', { query: { limit: '30' } });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.issues).toEqual([
+        {
+          key: 'DEMO-100',
+          url: 'https://jira.example.com/browse/DEMO-100',
+          summary: 'allure',
+          updated: '2026-10-12T10:00:00.000+0300',
+          statusName: 'В работе',
+          typeName: 'История',
+        },
+      ]);
+      expect(decodeURIComponent(request.mock.calls[0][0].search)).toContain('assignee = currentUser() AND statusCategory != Done');
+      expect(request.mock.calls[0][0].search).toContain('maxResults=30');
+    });
+
+    it('clamps the limit it does not understand back to its own cap', async () => {
+      const store = await connectedStore();
+      const app = makeApp();
+      const request = vi.fn(async () => ({ issues: [] }));
+      registerJiraRoutes(app, { jiraConfigStore: store, createRequest: () => request });
+      await callRoute(app, 'GET', '/api/openchamber/jira/issues/my', { query: { limit: '500' } });
+      expect(request.mock.calls[0][0].search).toContain('maxResults=50');
+    });
+
+    it('answers an unreachable kind when the instance does not answer', async () => {
+      const store = await connectedStore();
+      const app = makeApp();
+      const request = vi.fn(async () => { throw new JiraError('unreachable', 'no', null); });
+      registerJiraRoutes(app, { jiraConfigStore: store, createRequest: () => request });
+      const res = await callRoute(app, 'GET', '/api/openchamber/jira/issues/my', { query: {} });
+      expect(res.statusCode).toBe(502);
+      expect(res.body.kind).toBe('unreachable');
+    });
+  });
+
   describe('issue search', () => {
     it('refuses to search without a connection', async () => {
       const store = await makeStore();
