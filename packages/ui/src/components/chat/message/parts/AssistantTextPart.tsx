@@ -4,7 +4,8 @@ import { MarkdownRenderer } from '../../MarkdownRenderer';
 import { useI18n } from '@/lib/i18n';
 import type { StreamPhase, ToolPopupContent } from '../types';
 import { useStreamingTextThrottle } from '../../hooks/useStreamingTextThrottle';
-import { resolveAssistantDisplayText, resolveAssistantTextStreaming, shouldRenderAssistantText } from './assistantTextVisibility';
+import { resolveAssistantDisplayText, resolveAssistantTextStreaming } from './assistantTextVisibility';
+import { isInvisibleText } from '@/lib/invisibleText';
 import { streamPerfCount, streamPerfObserve } from '@/stores/utils/streamDebug';
 import { GeneratedJsonResultCard } from './GeneratedJsonResultCard';
 import { parseGeneratedJsonResult } from './generatedJsonResult';
@@ -73,10 +74,7 @@ const AssistantTextPart: React.FC<AssistantTextPartProps> = ({
         return null;
     }
 
-    if (!shouldRenderAssistantText({
-        displayTextContent,
-        isFinalized,
-    })) {
+    if (isInvisibleText(displayTextContent)) {
         return null;
     }
 

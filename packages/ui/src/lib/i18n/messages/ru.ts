@@ -14,6 +14,8 @@ import { surfacePanelI18n } from './surface-panel.i18n';
 import { fileArtifactsI18n } from './file-artifacts.i18n';
 import { fileContentSearchI18n } from './file-content-search.i18n';
 import { htmlRenderI18n } from './html-render.i18n';
+import { sessionNoticesI18n } from './session-notices.i18n';
+import { sessionWarmingI18n } from './session-warming.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -25,6 +27,7 @@ import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { gitIdentityEditorI18n } from './git-identity-editor.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
+import { diffFindI18n } from './diff-find.i18n';
 import { settingsLayoutI18n } from './settings-layout.i18n';
 
 export const dict = {
@@ -4289,6 +4292,36 @@ export const dict = {
   'diffView.nestedRepository.noChanges': "В этом репозитории изменений нет",
   'openCodeStatusDialog.actions.download': "Скачать лог",
   'openCodeStatusDialog.toast.collectFailed': "Не удалось собрать диагностику",
+  'terminalView.toast.pasteFailedTouch': "Не удалось прочитать буфер обмена.",
+  'sessions.sidebar.header.listGrouping.label': "Сессии",
+  'sessions.sidebar.header.listGrouping.project': "По проектам",
+  'sessions.sidebar.header.listGrouping.time': "По времени",
+  'sessions.sidebar.activity.projectsTitle': "Проекты",
+  'walkthrough.toc.jumpAria': "Перейти к шагу",
+  'walkthrough.options.title': "Параметры разбора",
+  'walkthrough.options.moreAria': "Другие параметры разбора",
+  'walkthrough.options.model': "Модель",
+  'walkthrough.options.language': "Язык",
+  'filesView.editor.htmlAnnotate.intro': "Это аннотированный фрагмент предпросмотра HTML-файла.",
+  'diffView.layout.sideBySide': "Двухколоночный вид",
+  'diffView.actions.wrapLines': "Переносить строки",
+  'diffView.actions.moreActions': "Ещё действия",
+  'session.newWorktree.toast.startFolderMissing': "В этом ворктри нет папки «{folder}», поэтому OpenCode запустился в корне ворктри.",
+  'session.newWorktree.toast.startFolderUnverified': "Не удалось проверить папку «{folder}», поэтому OpenCode запустился в корне ворктри.",
+  'session.newWorktree.toast.startFolderUnknown': "Не удалось определить, какую папку репозитория открывает этот проект, поэтому OpenCode запустился в корне ворктри.",
+  'chat.queuedMessage.goal': "При отправке начнётся цель",
+  'chat.chatInput.toast.imagesSaving': "Сохраняю {files}…",
+  'chat.chatInput.toast.imagesSavedForTextModel': "{model} не читает изображения. {files} сохранены в {folder}.",
+  'chat.chatInput.toast.imageSaveFailed': "Не удалось сохранить {files}. Оставлено вложением.",
+  'chat.chatInput.toast.imagesSaved': "{files} сохранены в {folder}.",
+  'chat.chatInput.toast.imageCopySaveFailed': "Не удалось сохранить {files}.",
+  'chat.modelControls.inheritedVariantTooltip': "Размышление: {variant} — вариант по умолчанию этой модели",
+  'quota.window.keyLimit': "Лимит ключей",
+  'desktopSafeStart.title': "OpenChamber продолжал падать",
+  'desktopSafeStart.description': "Панели закрыты, папки свёрнуты.",
+  ...sessionNoticesI18n.ru,
+  ...sessionWarmingI18n.ru,
+  ...diffFindI18n.ru,
   ...debugPanelI18n.ru,
 ...mcpConsoleI18n.ru,
   ...workspaceModesI18n.ru,

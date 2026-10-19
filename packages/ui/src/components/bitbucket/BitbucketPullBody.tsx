@@ -493,7 +493,7 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
 
             {reading.entry && reading.analyzing ? (
                 <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-                    <Icon name="sparkling" className="size-3.5 shrink-0 animate-pulse" />
+                    <Icon name="sparkling" className="size-3.5 shrink-0" />
                     <span className="min-w-0 flex-1">{t('chat.workStatus.teamBoard.pullView.analyzing')}</span>
                     <button
                         type="button"

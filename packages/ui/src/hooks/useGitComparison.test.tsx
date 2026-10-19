@@ -30,7 +30,7 @@ test('comparison reads preserve scope, report failures, retry, and stop while hi
     const url = new URL(input instanceof Request ? input.url : String(input), 'http://localhost');
     // Hold unrelated app-store bootstrap outside this fixture. Only explicitly
     // resolved comparison requests should publish data during these transitions.
-    if (url.pathname === '/api/fs/home' || url.pathname === '/api/session-folders') {
+    if (url.pathname === '/api/fs/home' || url.pathname === '/api/session-folders' || url.pathname === '/api/openchamber/session-group-presets') {
       return new Promise<Response>(() => {});
     }
     return new Promise<Response>((resolve) => { requests.push({ url, resolve }); });

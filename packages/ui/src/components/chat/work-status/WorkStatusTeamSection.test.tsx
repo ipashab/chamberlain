@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Window } from 'happy-dom';
@@ -7,6 +7,9 @@ import { useUIStore } from '@/stores/useUIStore';
 import { I18nProvider } from '@/lib/i18n';
 import { SyncProvider } from '@/sync/sync-context';
 import type { TeamBoard } from '@/lib/team/team-board-api';
+
+// Bun cannot load Vite's `?worker&url` import that the markdown worker makes.
+mock.module('@/components/chat/markdown/markdown-shiki.worker.ts?worker&url', () => ({ default: 'blob:test-shiki-worker' }));
 
 let WorkStatusTeamSection: typeof import('./WorkStatusTeamSection').WorkStatusTeamSection;
 

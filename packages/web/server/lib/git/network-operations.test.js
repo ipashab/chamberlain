@@ -33,7 +33,12 @@ const temporaryDirectories = [];
 const execFileAsync = promisify(execFile);
 
 const createLocalRepository = async () => {
-  const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-local-integration-'));
+  // Apple Git does not canonicalize `safe.directory` entries, and macOS serves
+  // the temp directory through a /var -> /private/var symlink: a fixture under
+  // os.tmpdir() reports itself as /private/var/... while the config entry
+  // stays /var/..., and the ownership check refuses. The canonical path serves
+  // both Apple Git and Homebrew Git.
+  const parent = await fs.mkdtemp(path.join(fsSync.realpathSync(os.tmpdir()), 'openchamber-local-integration-'));
   temporaryDirectories.push(parent);
   const directory = path.join(parent, 'repository');
   const env = { ...process.env, HOME: parent, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_LFS_SKIP_SMUDGE: '1' };

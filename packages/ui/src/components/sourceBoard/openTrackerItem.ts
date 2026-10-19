@@ -40,6 +40,14 @@ const repositoryItemOfUrl = (url: string): string | null => {
     return `${reference.identity?.instance ?? ''}/${reference.project.owner}/${reference.project.name}${kind}${reference.number}`.toLowerCase();
 };
 
+/** The repository a link to an issue or PR points into, as `https://host/owner/name` in lowercase; null for anything else. */
+export const repositoryUrlOfItemLink = (url: string): string | null => {
+    const changeRequest = parseChangeRequestReference(url);
+    const reference = changeRequest?.project ? changeRequest : parseIssueReference(url);
+    if (!reference?.project) return null;
+    return `${new URL(url.trim()).origin}/${reference.project.owner}/${reference.project.name}`.toLowerCase();
+};
+
 /** Whether two links name the same issue or PR, whatever page of it each opens. */
 export const isSameRepositoryItemLink = (left: string, right: string): boolean => {
     const item = repositoryItemOfUrl(left);
@@ -118,6 +126,22 @@ export function useShowTrackerItem() {
         else useUIStore.getState().setSourceBoardOpen(true);
         return true;
     }, [linear, mobile]);
+}
+
+/**
+ * Opens the issues and PRs board from a project's row; null in VS Code,
+ * where there is no board. The board lists the account's own pulls and
+ * issues rather than one project's repository, so the row's project does
+ * not narrow it: the board opens as the user last left it.
+ */
+export function useOpenProjectOnBoard(): ((projectId: string) => void) | null {
+    const mobile = useMobileAppActions();
+
+    const openProjectOnBoard = React.useCallback(() => {
+        if (mobile) mobile.openSourceBoard();
+        else useUIStore.getState().setSourceBoardOpen(true);
+    }, [mobile]);
+    return isVSCodeRuntime() ? null : openProjectOnBoard;
 }
 
 /**

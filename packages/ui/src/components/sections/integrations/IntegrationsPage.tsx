@@ -8,6 +8,7 @@ import { GuestIntegrationCard, GuestIntegrationsSection } from './GuestIntegrati
 import { useGuestsStore } from '@/lib/guests/store';
 import { isGuestActive } from '@/lib/guests/capabilities';
 import { isMobileSurfaceRuntime } from '@/lib/runtimeSurface';
+import { useEnterpriseMode } from '@/stores/useEnterprisePolicyStore';
 import { GitHubIntegration } from './GitHubIntegration';
 import { GitLabSettings } from '@/components/sections/openchamber/GitLabSettings';
 import { BitbucketSettings } from '@/components/sections/openchamber/BitbucketSettings';
@@ -34,6 +35,10 @@ export const IntegrationsPage: React.FC = () => {
     ? guests.filter((guest) => guest.source === 'bundled' && guest.integration && isGuestActive(guest))
     : [];
   const hasBuiltIn = hasGitHub || hasGitLab || hasBitbucket || hasJira || hasConfluence || hasLinear || builtInGuests.length > 0;
+  // Each card here installs a plugin that adds a model provider. In enterprise
+  // mode providers come from the administrator's OpenCode config, whose
+  // `provider.use` policy also governs plugin providers, so none is offered.
+  const hasThirdParty = !useEnterpriseMode();
 
   return (
     <SettingsPageLayout
@@ -58,8 +63,8 @@ export const IntegrationsPage: React.FC = () => {
           {builtInGuests.map((guest) => <GuestIntegrationCard key={`${runtimeKey}:${guest.id}`} guest={guest} />)}
         </SettingsSection>
       ) : null}
-      <ThirdPartyIntegrationsSection divider={hasBuiltIn} />
-      <CatalogExtensionsSection />
+      {hasThirdParty ? <ThirdPartyIntegrationsSection divider={hasBuiltIn} /> : null}
+      <CatalogExtensionsSection divider={hasBuiltIn || hasThirdParty} />
       <GuestIntegrationsSection />
     </SettingsPageLayout>
   );

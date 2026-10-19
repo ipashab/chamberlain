@@ -89,6 +89,7 @@ import { createOpenCodeWatcherRuntime } from './lib/opencode/watcher.js';
 import { createSessionAssistRuntime } from './lib/session-assist/runtime.js';
 import { createSessionGoalRuntime } from './lib/session-goal/runtime.js';
 import { createContextObligatoryRuntime } from './lib/context-obligatory/runtime.js';
+import { createSessionWarmingRuntime } from './lib/session-warming/runtime.js';
 import { createLinearSessionStatusRuntime } from './lib/linear/status-runtime.js';
 import { createSessionKnowledgeRuntime } from './lib/session-knowledge/runtime.js';
 import { createMessageSearchRuntime } from './lib/message-search/runtime.js';
@@ -129,6 +130,7 @@ import { isAgentMemoryFeatureAvailable } from './lib/agent-memory/feature-flag.j
 import { createSpacesHost } from './lib/spaces/host.js';
 import { createSpaceArchive } from './lib/spaces/space-archive.js';
 import { readIdleStopSetting, startIdleStop } from './lib/spaces/idle-stop.js';
+import { permissionDefaultOf, readSpacePermissionDefault } from './lib/spaces/space-permission-default.js';
 import { dockerHostOf } from './lib/spaces/places/ssh-host.js';
 import { SPACE_IDLE_EXIT_CODE } from './lib/spaces/layout.js';
 import { createSwitchController, registerSpaceRoutes } from './lib/spaces/routes.js';
@@ -151,6 +153,7 @@ import { createDevServerScanner } from './lib/dev-servers/routes.js';
 import { createDevTunnelRuntime } from './lib/dev-tunnel/runtime.js';
 import { registerBrowserControlRoutes } from './lib/browser-control/routes.js';
 import { createManagedConfigRuntime } from './lib/opencode/managed-config-file.js';
+import { prepareInstanceDir } from './lib/opencode/instance-dir.js';
 import { createOpenChamberSessionService } from './lib/openchamber-sessions/routes.js';
 import { createOpenCodeClient as createSessionScopedOpenCodeClient } from './lib/openchamber-sessions/opencode-client.js';
 import { createTeamService } from './lib/team/service.js';
@@ -460,6 +463,14 @@ const settingsRuntime = createSettingsRuntime({
   // Declared further down; settings are only saved once the server serves requests.
   onMessageSearchEnabledChanged: (enabled) => messageSearchRuntime.setEnabled(enabled),
   onMessageSearchReasoningChanged: (enabled) => messageSearchRuntime.setReasoningEnabled(enabled),
+  // Running spaces hear the new default at once; the save does not wait for them.
+  onPermissionDefaultModeChanged: (mode) => {
+    void spacesHost?.journey.changePermissionDefault(mode).catch((error) => {
+      console.warn(`[spaces] the default permission mode did not reach the running spaces: ${error?.code ?? error?.message ?? error}`);
+    });
+  },
+  // Declared further down; settings are only saved once the server serves requests.
+  onLastDirectoryChanged: (directory) => openCodeLifecycleRuntime.noteCurrentDirectory(directory),
 });
 
 const readSettingsFromDiskMigrated = (...args) => settingsRuntime.readSettingsFromDiskMigrated(...args);
@@ -942,6 +953,8 @@ notificationTemplateRuntime = createNotificationTemplateRuntime({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
   resolveGitBinaryForSpawn,
+  resolvePrimaryWorktreeRoot,
+  chatRoots: [path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'chats'), OPENCHAMBER_CHATS_DIR],
 });
 
 const notificationTriggerRuntime = createNotificationTriggerRuntime({
@@ -982,6 +995,11 @@ const sessionAssistRuntime = createSessionAssistRuntime({
   // Declared further down; only ever called after startup.
   evaluateTurn: (input) => sessionWorkRuntime.evaluateTurnEnd(input),
   lineage: sessionLineage,
+  // Clients hold a left chat's OpenCode location until its assist is done.
+  onPendingChange: ({ sessionId, directory, pending }) => broadcastOpenChamberUiEvent({
+    type: 'openchamber:session-assist',
+    properties: { sessionID: sessionId, directory: directory || null, pending },
+  }),
 });
 
 const sessionGoalRuntime = createSessionGoalRuntime({
@@ -1078,6 +1096,16 @@ const contextObligatoryRuntime = createContextObligatoryRuntime({
   persistContextCursor: (sessionID, directory, patch) => persistSessionMetadataPatch(sessionID, patch, { directory }),
 });
 
+// Keeps the prompt cache of the sessions the user picked warm while they sit
+// idle; the per-session counterpart of OpenCode's `warming` config.
+const sessionWarmingRuntime = createSessionWarmingRuntime({
+  dataDir: OPENCHAMBER_DATA_DIR,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  broadcast: broadcastOpenChamberUiEvent,
+});
+sessionWarmingRuntime.start();
+
 const linearSessionStatusRuntime = createLinearSessionStatusRuntime();
 
 const globalMessageStreamHub = createGlobalMessageStreamHub({
@@ -1094,6 +1122,7 @@ const routingRuntime = createRoutingRuntime({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
   broadcastGlobalUiEvent: broadcastOpenChamberUiEvent,
+  isSessionWarm: (sessionId, cacheLifetimeMs) => sessionWarmingRuntime.isSessionWarm(sessionId, cacheLifetimeMs),
 });
 
 // "In work": Jev opens a session when real work starts in it and hints when a
@@ -1120,6 +1149,10 @@ const permissionAutoAcceptRuntime = createPermissionAutoAcceptRuntime({
   evaluatePermission: (permission, directory) => routingRuntime.evaluatePermission(permission, directory),
   onPermissionReplied: (permissionId) => routingRuntime.forgetPermission(permissionId),
   resolveLegacyEnabledMode: async () => ((await routingRuntime.legacySafetyNetEnabled()) ? 'safety' : 'auto'),
+  // Only a space's environment names this file: the host writes the user's default there.
+  readDefaultMode: process.env.OPENCHAMBER_SPACE_PERMISSION_DEFAULT_FILE
+    ? () => readSpacePermissionDefault(process.env.OPENCHAMBER_SPACE_PERMISSION_DEFAULT_FILE)
+    : undefined,
 });
 permissionAutoAcceptRuntime.start();
 // A request the safety net held still needs the user, so only one that was
@@ -1139,6 +1172,8 @@ const messageQueueRuntime = createMessageQueueRuntime({
   // shared control stream for SSE clients and the existing WS fan-out.
   broadcastGlobalUiEvent: broadcastOpenChamberUiEvent,
   resolveAutoSelection: (send) => routingRuntime.resolveAutoSelection(send),
+  persistSessionGoal: (sessionID, directory, goal) =>
+    persistSessionMetadataPatch(sessionID, { openchamber: { goal } }, { directory }),
   onPromptSent: (sessionId) => sessionRuntime.markUserMessageSent(sessionId),
   beforeScheduledTaskSend: (...args) => scheduledTasksRuntime.beforeScheduledTaskSend(...args),
   validateScheduledTaskTarget: (...args) => scheduledTasksRuntime.validateTarget(...args),
@@ -1207,6 +1242,7 @@ globalMessageStreamHub.subscribeEvent((event) => {
     sessionWorkRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     sessionGoalRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     contextObligatoryRuntime.processPayload(payload, directory || payload.properties?.directory || '');
+    sessionWarmingRuntime.processPayload(payload);
     linearSessionStatusRuntime.processPayload(payload);
     // Team Mode orchestration: member turn ends, failures and deletions. One
     // Map lookup per event; non-team sessions return immediately.
@@ -1723,6 +1759,7 @@ const openChamberSessionService = createOpenChamberSessionService({
   dataDir: OPENCHAMBER_DATA_DIR,
   sessionMetadataStore,
   persistSessionMetadata: persistSessionMetadataPatch,
+  updateSessionMetadata: updateSessionMetadataWith,
   broadcastGlobalUiEvent: broadcastOpenChamberUiEvent,
   resolveAutoSelection: (input) => routingRuntime.resolveAutoSelection(input),
   isAutoReady: async () => (await routingRuntime.describe()).autoReady,
@@ -2027,6 +2064,7 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
   sessionWorkRuntime,
   sessionGoalRuntime,
   contextObligatoryRuntime,
+  sessionWarmingRuntime,
   messageQueueRuntime,
   dispatchResultsRuntime,
   messageSearchRuntime,
@@ -2083,11 +2121,12 @@ async function main(options = {}) {
     || (typeof process.env.OPENCHAMBER_HOST === 'string' && process.env.OPENCHAMBER_HOST.trim().length > 0
       ? process.env.OPENCHAMBER_HOST.trim()
       : '127.0.0.1');
+  const instanceDir = await prepareInstanceDir({ fsPromises, path, dataDir: OPENCHAMBER_DATA_DIR });
   agentToolRuntime = createAgentToolRuntime({
     crypto,
     fsPromises,
     path,
-    dataDir: OPENCHAMBER_DATA_DIR,
+    instanceDir,
     env: process.env,
     executeAction: (...args) => openChamberControlService.execute(...args),
     executeTeamAction: (action, input, sessionID, options) =>
@@ -2104,7 +2143,7 @@ async function main(options = {}) {
   managedConfigRuntime = createManagedConfigRuntime({
     fsPromises,
     path,
-    dataDir: OPENCHAMBER_DATA_DIR,
+    instanceDir,
     env: process.env,
     agentToolRuntime,
     readSettings: () => readSettingsFromDiskMigrated(),
@@ -2297,6 +2336,7 @@ async function main(options = {}) {
     },
     readIdleStop: async () => readIdleStopSetting((await readSettingsFromDiskMigrated())?.isolatedSpacesIdleStop),
     saveIdleStop: (setting) => persistSettings({ isolatedSpacesIdleStop: setting }),
+    readPermissionDefault: async () => permissionDefaultOf((await readSettingsFromDiskMigrated())?.permissionDefaultMode),
     archive: spaceArchive,
     // What the host says to the login issuer when it renews a browser login for a space.
     userAgent: `OpenChamber/${OPENCHAMBER_VERSION}`,
@@ -2631,6 +2671,7 @@ async function main(options = {}) {
     environmentRuntime,
     listConfiguredProjects,
     messageSearchRuntime,
+    sessionWarmingRuntime,
     crypto,
     fs,
     os,
