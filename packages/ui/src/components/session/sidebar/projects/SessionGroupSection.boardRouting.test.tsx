@@ -162,9 +162,7 @@ describe('SessionGroupSection chip routing', () => {
     const originalWorktrees = useSessionUIStore.getState().availableWorktreesByProject;
     useProjectsStore.setState({ projects: [PROJECT] });
     useSessionUIStore.setState({ availableWorktreesByProject: new Map() });
-    useUIStore.setState({
-      setSourceBoardOpen: (open: boolean) => { boardOpens.push(open); },
-    } as never);
+    useUIStore.setState({ setSourceBoardOpen: (open: boolean) => { boardOpens.push(open); } });
 
     const host = document.createElement('div');
     document.body.append(host);
