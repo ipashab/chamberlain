@@ -1,10 +1,50 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `6a10ee19a` (v2.4.0), merged
-whole in `3381adba9`. The fork numbers its own patches on top with the
+**Base:** upstream `openchamber/openchamber` @ `ad73d11a6` (v2.5.0), merged
+whole in `594d0d09f`. The fork numbers its own patches on top with the
 `forkN` marker. Each release's notes below carry only that release's
 changes; `fork1` was the fork's first release, so its section is the
-whole set that shipped then.
+whole set that shipped then. Upstream's own notes for `2.5.0` live whole
+in `changelog/2.5.0.md`; the `2.5.0-fork1` section below names their
+highlights and carries the fork's own work on top.
+
+---
+
+## `2.5.0-fork1` — the MCP console, and upstream's warm sessions
+
+**Every MCP server's tools, one console.** A new surface in the right
+rail lists the scope's MCP servers, one server's tools, and a catalog of
+every tool across servers with a filter. The run form shows a tool's
+schema, its result and how long the call took, and it is keep-alive, so
+switching tabs keeps an answer on screen. It opens from the rail, from
+the two palette commands, and from the MCP cards in Settings, which
+deep-link to the server's tools. The server side connects each
+configured server once and marks only a dead server's own catalog line,
+and its SSE reader normalizes the CRLF framing uvicorn emits. Contract
+in `packages/web/server/lib/mcp-console/`.
+
+**The tray reaches the web UI.** The loopback server picks a fresh port
+on every run, so the browser cannot hold a bookmark to it; the tray
+carries an item that opens today's port in the system browser, and is
+skipped silently before one exists.
+
+**A debug run's children join it.** debugpy offers each spawned child as
+a `debugpyAttach` event; the service adopts it as a second DAP session
+over the adapter's client socket and attaches by `subProcessId`.
+Breakpoints mirror to every live channel, the child's output folds into
+the same tail, and a stop from any channel routes the panel's control
+commands to that channel. A child's exit closes only its channel; the
+verdict stays with the root process.
+
+**Upstream `2.5.0` whole**: find-in-changes over the whole changeset,
+"Annotate page" on pages a chat agent shows, sessions kept warm after a
+reply, the crash-in-a-row recovery that reloads without the saved
+layout, a chat that stays responsive across hours of work, and Electron
+44 with macOS 13 as the floor. The full list is `changelog/2.5.0.md`.
+
+The fork's sixteenth locale (Russian) carries every new string of the
+merge: the chat and settings keys, find-in-changes, session notices and
+session warming, all in the fork's parity tests.
 
 ---
 
