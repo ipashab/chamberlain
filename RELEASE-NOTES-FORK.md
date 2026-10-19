@@ -10,6 +10,39 @@ highlights and carries the fork's own work on top.
 
 ---
 
+## `2.5.0-fork2` — the advisor, turn checkpoints, the tracker, the debug tool
+
+**A turn's work, reviewed where it lands.** After a turn that changed
+files, the server re-reads what the turn edited, checks the diff against
+its own rules and asks the small model what it finds; the findings
+render under the answer, in the chat itself. A settings row switches
+the advisor off entirely. Contract in
+`packages/web/server/lib/advisor/`.
+
+**Put a turn's files back.** A session that turns busy pins its whole
+worktree as one tree through a throwaway index; when the turn touched
+files, the registry records which. Each user row then offers to put
+those files back to how they stood before the turn — the conversation
+stays where it is — and a second action undoes the restore. Ignored
+files are never deleted, evicted entries hand their refs back, and one
+level of undo is the honest limit. Contract in
+`packages/web/server/lib/checkpoints/`.
+
+**Acting on pulls and issues, from the chat.** `openchamber_tracker`,
+a managed tool grammar for the connected Bitbucket pulls and Jira
+issues: comment, reply to review threads, transition, merge, with read
+shapes widened to match. Contract in
+`packages/web/server/lib/tracker/`.
+
+**Debug runs as the agent's own tool.** Driving a debugpy run is a
+distinct intent with its own vocabulary (`agentDebuggerToolEnabled`):
+start, wait for the stop or the exit, read the state, set breakpoints,
+continue, stop. The panel and the agent share the single session, so a
+watched panel shows the agent's run live. Actions in
+`packages/web/server/lib/openchamber-control/debugger-actions.js`.
+
+---
+
 ## `2.5.0-fork1` — the MCP console, and upstream's warm sessions
 
 **Every MCP server's tools, one console.** A new surface in the right
