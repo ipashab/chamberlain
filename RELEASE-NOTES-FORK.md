@@ -8,6 +8,38 @@ whole set that shipped then.
 
 ---
 
+## `2.4.0-fork3` — three ways to sit down to the work
+
+**The window has a mode switcher now.** The header names one of three
+arrangements: **Chat** holds the main area with surfaces beside it,
+**Debug** seats the editor above the debug panel, **Overview** hands the
+main area to issues and pull requests and keeps the chat a side column.
+Every project remembers a layout tree per mode — switching modes never
+drops a tab — and entering a mode rebuilds the named regions it is
+answerable for: close the files area, leave debug, come back, and the
+editor is where you left it. A debug run started from chat, and a
+tracker item opened there, each offer their mode once as a dismissible
+card; every mode takes a shortcut.
+
+**The team's board answers with the fork's own tools.** The board is two
+tabs over the real Bitbucket and Jira panels — one board, two whole
+surfaces, both entrances drawing one source of truth. The issues tab
+lands on the account's own unfinished work: a server-owned my query
+(`/api/openchamber/jira/issues/my`) reads the token's open issues,
+newest first — the board opens on what needs you, not on a search box.
+
+**A pull's changes read like the files view.** In a host wide enough the
+folder tree pins the left side — single-child folder chains fold, rows
+carry counts and state badges — and the picked file opens whole to its
+right, the diff scrolling while the tree stays. Picking another file
+moves the reading pane, not the tree. A narrow host keeps the inline
+tree as before.
+
+All strings ship in every locale the app carries. The mode layouts are
+documented in `packages/ui/src/lib/workspace/DOCUMENTATION.md`, the
+surfaces they route in `lib/surfaces`, and the new route in the Jira
+server contract.
+
 ## `2.4.0-fork2` — Python debugging, where the code already is
 
 Debugging a Python test used to mean leaving the app: PyCharm for

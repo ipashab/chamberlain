@@ -15,7 +15,7 @@ Fork base: upstream `733fa61` (2026-10-07, upstream version `2.2.0`) at
 the start; since `2.4.0-fork1` the app itself ships as **Chamberlain**,
 its own name, appId and icon beside stock OpenChamber. The fork keeps
 upstream's version and adds a prerelease marker, `forkN`, bumping on
-each fork patch: currently `2.4.0-fork2` on upstream `2.4.0`.
+each fork patch: currently `2.4.0-fork3` on upstream `2.4.0`.
 
 Owning docs that move with the code:
 
@@ -212,6 +212,34 @@ exit log. A variable can be attached to the chat message with its
 dotted path, type and stop location. The interpreter is a setting;
 empty lets each project's own `.venv` win. A file tab's context menu
 copies the full path it stands for.
+
+### Three arrangements of the workspace — chat, debug, overview — `3a802e206`
+
+The header names the whole window's arrangement: chat holds the main
+area, debug seats the editor above the debug panel, overview hands the
+main area to issues and pull requests with chat as a side column. Every
+directory saves a layout tree per mode — switching never drops a tab —
+and entering a mode rebuilds the named regions it is answerable for, so
+a closed files area comes back on the next entry. A debug run or a
+tracker item started in chat offers its mode once as a card; every mode
+takes a shortcut. Contract in `packages/ui/src/lib/workspace/DOCUMENTATION.md`.
+
+### The team's board: two tabs over the fork's own panels — `3a802e206`
+
+The board is one surface with two tabs — the pulls this fork reviews in
+Bitbucket Data Center and the issues it tracks in Jira — hosting the
+same panels the rail shows, so both entrances draw one source of truth
+and a row opens its own read where it is listed. The issues tab lands on
+the account's own open work: `/api/openchamber/jira/issues/my` reads the
+token's unfinished issues, newest first, from a query the server owns.
+
+### A pull's changes read with a pinned file tree — `3a802e206`
+
+In a host wide enough the changes tab pins a folder tree to the left —
+single-child folder chains fold, rows carry counts and state badges —
+and the picked file opens whole to its right, the diff scrolling while
+the tree stays put. Picking another file moves the reading pane, not the
+tree; a narrow host keeps the inline tree as before.
 
 ## Distribution
 
