@@ -17,6 +17,21 @@ const submenuLabels = (snapshot, id) => buildTrayMenuTemplate(snapshot, { onActi
   .filter((row) => Array.isArray(row.submenu) && String(row.label).includes(id))
   .flatMap((row) => row.submenu.filter((item) => item.label).map((item) => item.label));
 
+describe('tray web interface command', () => {
+  test('offers opening the web UI, and the click carries the tray action for it', () => {
+    const actions = [];
+    const template = buildTrayMenuTemplate(snapshotWith(), {
+      onAction: (action) => actions.push(action),
+      statusIcons: {},
+    });
+
+    const item = template.find((row) => row.label === 'Open Web Interface');
+    expect(item).toBeDefined();
+    item.click();
+    expect(actions).toEqual([{ type: 'open-web-interface' }]);
+  });
+});
+
 describe('tray approval submenu', () => {
   test('offers "Allow always" only when the request can be remembered', () => {
     const snapshot = snapshotWith(permission('savable', true), permission('one-off', false));

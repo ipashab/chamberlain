@@ -6104,7 +6104,7 @@ ipcMain.handle('openchamber:file:grant-existing', async (event, filePath) => {
 // Tray lives on macOS, Windows, and Linux. The renderer streams a compact state
 // snapshot via the `desktop_tray_update` IPC command (see the command switch).
 // Tray clicks flow back through dispatchTrayAction → renderer (focus/respond) or
-// native handlers (show / hide / toggle / quit).
+// native handlers (show / hide / toggle / open web interface / quit).
 
 // Icon assets: a calm outline (idle), a statically filled cube (a finished
 // session left unread), and an eased sequence the busy state breathes through.
@@ -6264,6 +6264,20 @@ const dispatchTrayAction = async (action) => {
       ? state.mainWindow
       : await revealMainWindow();
     emitToWindow(target, 'openchamber:tray-action', action);
+    return;
+  }
+
+  // Open the web UI in the system browser. The loopback server picks a fresh
+  // port on every run, so the browser cannot hold a bookmark to it; main is
+  // the only place that knows today's URL. Skipped silently when no server
+  // origin is known yet (early startup, external mode without one).
+  if (action.type === 'open-web-interface') {
+    const url = state.localOrigin || state.sidecarUrl || '';
+    if (!url) {
+      log.warn('[electron] tray open-web-interface with no server origin known');
+      return;
+    }
+    void shell.openExternal(url).catch(() => {});
     return;
   }
 

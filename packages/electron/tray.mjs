@@ -7,7 +7,8 @@
 //  2. pending approvals (permission + question requests) that block agents,
 //     with inline Allow/Deny actions;
 //  3. the list of active sessions with status + branch, click to focus;
-//  4. quick actions (new session, show window, quit).
+//  4. quick actions (new session, open the web UI in a browser, show window,
+//     quit).
 //
 // The live state lives in the renderer (Zustand). It is pushed here over the
 // existing IPC bridge via the `desktop_tray_update` command; this module owns

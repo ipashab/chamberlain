@@ -140,6 +140,9 @@ export const buildTrayMenuTemplate = (snapshot, { onAction, statusIcons }) => {
     { type: 'separator' },
     { label: 'New Session', click: () => onAction({ type: 'new-session' }) },
     { label: 'New Mini Chat', click: () => onAction({ type: 'new-mini-chat' }) },
+    // The loopback server's port changes between runs, so this is the only
+    // reliable way to reach the web UI in a browser; main holds the URL.
+    { label: 'Open Web Interface', click: () => onAction({ type: 'open-web-interface' }) },
   );
 
   if (isLinux || process.platform === 'win32') {
