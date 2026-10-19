@@ -9,6 +9,12 @@
  * and variables, and evaluate on the stopped frame. Program stdout/stderr is
  * collected from DAP `output` events into a bounded tail.
  *
+ * Multiprocess debuggees are part of one run: pydevd blocks each spawned
+ * child until a client session adopts it, so every `debugpyAttach` event is
+ * answered with a fresh DAP session whose breakpoints, output and stops feed
+ * the same panel; control commands ride the channel the current stop came
+ * from.
+ *
  * State changes are broadcast as `openchamber:debugger-changed` events; the
  * panel refetches `state()` on each one. No polling anywhere else.
  *
@@ -190,6 +196,12 @@ export const createDebuggerService = (dependencies = {}) => {
     if (!session) return;
     const closed = session;
     session = null;
+    // Adopted subprocess channels go down with the run; their pending
+    // requests share its fate without touching the bookkeeping of whatever
+    // run starts next.
+    closed.subprocesses.forEach((entry) => {
+      if (closed.subprocesses.get(entry.pid) === entry) closeSubprocessChannel(closed, entry);
+    });
     closed.pending.forEach((pending) => {
       clearTimeout(pending.timer);
       pending.reject(new DebuggerError(`The debug session ended before the reply: ${closeReason}`, 502));
@@ -235,21 +247,39 @@ export const createDebuggerService = (dependencies = {}) => {
     broadcast();
   };
 
-  const sendRequest = (command, args, timeoutMs = REQUEST_TIMEOUT_MS) =>
-    new Promise((resolve, reject) => {
-      if (!session) {
-        reject(new DebuggerError('There is no active debug session', 409));
-        return;
-      }
-      session.seq += 1;
-      const requestSeq = session.seq;
-      const timer = setTimeout(() => {
-        session?.pending.delete(requestSeq);
-        reject(new DebuggerError(`The debug adapter did not answer ${command} in time`, 504));
-      }, timeoutMs);
-      session.pending.set(requestSeq, { resolve, reject, timer });
-      session.socket.write(encodeDapMessage(buildDapRequest(requestSeq, command, args)));
-    });
+  // A channel is { socket, seq, pending }: the root session is one, and each
+  // adopted subprocess gets its own. Requests for a channel must never
+  // resolve against another channel's pending map, so the send is explicit
+  // about its target and the shared `sendRequest` picks the control route.
+  const sendOnChannel = (channel, command, args, timeoutMs = REQUEST_TIMEOUT_MS) => {
+  const promise = new Promise((resolve, reject) => {
+    if (channel == null || channel.socket == null) {
+      reject(new DebuggerError('There is no channel for that debug request', 409));
+      return;
+    }
+    channel.seq += 1;
+    const requestSeq = channel.seq;
+    const timer = setTimeout(() => {
+      channel.pending.delete(requestSeq);
+      reject(new DebuggerError(`The debug adapter did not answer ${command} in time`, 504));
+    }, timeoutMs);
+    channel.pending.set(requestSeq, { resolve, reject, timer, command });
+    channel.socket.write(encodeDapMessage(buildDapRequest(requestSeq, command, args)));
+  });
+  // A teardown-time rejection storm must never take the whole server
+  // down because one caller's await raced the teardown. The noop
+  // observer only marks the rejection as seen; real consumers still
+  // get it through their own awaits.
+  promise.catch(() => {});
+  return promise;
+};
+
+  const sendRequest = (command, args, timeoutMs = REQUEST_TIMEOUT_MS) => {
+    if (!session) {
+      return Promise.reject(new DebuggerError('There is no active debug session', 409));
+    }
+    return sendOnChannel(session.control ?? session, command, args, timeoutMs);
+  };
 
   const resolveRequest = (target, message) => {
     const requestSeq = message.request_seq;
@@ -320,49 +350,152 @@ export const createDebuggerService = (dependencies = {}) => {
     broadcast();
   };
 
-  const sendCurrentBreakpoints = async (breakpointPath) => {
-    if (breakpointPath == null) {
-      for (const [path_, lines] of breakpointsByPath) {
-        await sendRequest('setBreakpoints', {
-          source: { path: path_ },
-          // DAP deprecated the `lines` field; adapters register only
-          // `breakpoints` entries.
-          breakpoints: lines.map((line) => ({ line })),
-          sourceModified: false,
-        });
-      }
-      return;
+  // Breakpoints belong to every live channel: the root session and each
+  // adopted subprocess hold their own copy with pydevd, so a change goes
+  // out to all of them, best effort per channel.
+  const liveChannels = (target) => [target, ...target.subprocesses.values()];
+
+  const sendBreakpointsToChannel = async (channel, breakpointPath) => {
+    const entries = breakpointPath == null
+      ? [...breakpointsByPath.entries()]
+      : [[breakpointPath, breakpointsByPath.get(breakpointPath) ?? []]];
+    for (const [breakpointPath_, lines] of entries) {
+      await sendOnChannel(channel, 'setBreakpoints', {
+        source: { path: breakpointPath_ },
+        // DAP deprecated the `lines` field; adapters register only
+        // `breakpoints` entries.
+        breakpoints: lines.map((line) => ({ line })),
+        sourceModified: false,
+      });
     }
-    const lines = breakpointsByPath.get(breakpointPath) ?? [];
-    await sendRequest('setBreakpoints', {
-      source: { path: breakpointPath },
-      breakpoints: lines.map((line) => ({ line })),
-      sourceModified: false,
-    });
   };
 
-  const handleEvent = async (target, message) => {
+  const sendCurrentBreakpoints = async (target, breakpointPath) => {
+    await Promise.allSettled(liveChannels(target).map((channel) => sendBreakpointsToChannel(channel, breakpointPath)));
+  };
+
+  // Closes one adopted subprocess channel; the run itself stays alive — a
+  // child exiting is the debuggee's own lifecycle, not the run's verdict.
+  const closeSubprocessChannel = (target, entry) => {
+    if (entry.closed) return;
+    if (target.subprocesses.get(entry.pid) !== entry) return;
+    console.warn(`[dbg-close] pid=${entry.pid} pending=${JSON.stringify([...entry.pending.values()].map((p) => p.command))} control=${target.control === entry}`);
+    entry.closed = true;
+    target.subprocesses.delete(entry.pid);
+    if (target.control === entry) target.control = null;
+    entry.pending.forEach((pending) => {
+      clearTimeout(pending.timer);
+      pending.reject(new DebuggerError('The subprocess debug session ended', 502));
+    });
+    entry.pending.clear();
+    entry.attachBarrier?.reject(new DebuggerError('The subprocess debug session ended', 502));
+    entry.socket?.destroy();
+  };
+
+  // pydevd blocks a multiprocess child until a client session adopts it, and
+  // the adapter offers each child through a `debugpyAttach` event. Answering
+  // with a fresh DAP session over the adapter's client socket unblocks the
+  // child and puts its breakpoints, output and stops under this same run.
+  const adoptSubprocess = async (target, body) => {
+    const pid = body?.subProcessId;
+    const host = body?.connect?.host;
+    const port = body?.connect?.port;
+    if (!Number.isInteger(pid) || !Number.isInteger(port) || !isString(host)) return;
+    if (host !== '127.0.0.1' && host !== 'localhost') return;
+    if (target.subprocesses.has(pid)) return;
+    const barrier = { promise: null, resolve: null, reject: null };
+    barrier.promise = new Promise((resolve, reject) => {
+      barrier.resolve = resolve;
+      barrier.reject = reject;
+    });
+    // The barrier can reject (session teardown) before this adoption wires
+    // its own handlers; a noop observer keeps that rejection from becoming
+    // an unhandled one while Promise.all below still sees the failure.
+    barrier.promise.catch(() => {});
+    const entry = {
+      pid,
+      closed: false,
+      socket: null,
+      seq: 0,
+      pending: new Map(),
+      parserState: { buffer: '' },
+      attachBarrier: barrier,
+    };
+    target.subprocesses.set(pid, entry);
+    try {
+      const socket = await connectToAdapter(port);
+      if (session !== target || entry.closed) {
+        socket.destroy();
+        return;
+      }
+      entry.socket = socket;
+      socket.setEncoding('utf8');
+      socket.on('data', (chunk) => {
+        if (session !== target) return;
+        let messages;
+        try {
+          messages = decodeDapChunk(entry.parserState, chunk);
+        } catch {
+          socket?.destroy();
+          return;
+        }
+        for (const message of messages) {
+          if (session !== target) return;
+          if (message.type === 'response') {
+            resolveRequest(entry, message);
+          } else if (message.type === 'event') {
+            void handleEvent(target, message, entry).catch(() => {});
+          }
+        }
+      });
+      socket.on('close', () => {
+        if (session === target) closeSubprocessChannel(target, entry);
+      });
+      const initializeReply = sendOnChannel(entry, 'initialize', {
+        adapterID: 'debugpy',
+        clientID: 'openchamber',
+        clientName: 'OpenChamber',
+        linesStartAt1: true,
+        columnsStartAt1: true,
+        supportsVariableType: true,
+      }, 2 * REQUEST_TIMEOUT_MS);
+      const attachReply = sendOnChannel(entry, 'attach', {
+        type: 'debugpy',
+        request: 'attach',
+        name: `subprocess ${pid}`,
+        redirectOutput: true,
+        justMyCode: false,
+        subProcessId: pid,
+      }, 6 * REQUEST_TIMEOUT_MS);
+      await Promise.all([initializeReply, attachReply, barrier.promise]);
+    } catch {
+      closeSubprocessChannel(target, entry);
+    }
+  };
+
+  const handleEvent = async (target, message, channel) => {
     const event = message.event;
     if (event === 'initialized') {
-      await sendCurrentBreakpoints(null);
-      await sendRequest('setExceptionBreakpoints', { filters: [] });
-      await sendRequest('configurationDone');
-      // debugpy answers the attach only after the configuration sequence, so
-      // `start` resolves on this barrier, not on the attach reply.
-      target.attachBarrier?.resolve();
+      await sendBreakpointsToChannel(channel, null);
+      await sendOnChannel(channel, 'setExceptionBreakpoints', { filters: [] });
+      await sendOnChannel(channel, 'configurationDone');
+      channel.attachBarrier?.resolve();
       return;
     }
     if (event === 'output') {
-      const body = message.body ?? {};
+      const { body = {} } = message;
       pushOutput(target, isString(body.category) ? body.category : 'console', isString(body.output) ? body.output : '');
       broadcast();
       return;
     }
     if (event === 'stopped') {
+      // The panel's control commands answer the channel the stop came from.
+      target.control = channel;
       await readStoppedState(target, message.body?.threadId);
       return;
     }
     if (event === 'continued') {
+      if (target.control !== channel) return;
       target.status = 'running';
       target.stack = [];
       target.currentFrameIndex = null;
@@ -370,14 +503,29 @@ export const createDebuggerService = (dependencies = {}) => {
       return;
     }
     if (event === 'exited') {
+      if (channel !== target) {
+        // A child's exit is its own; only the root channel's exit closes
+        // the run.
+        closeSubprocessChannel(target, channel);
+        return;
+      }
       const code = message.body?.exitCode;
       await finishAfterTestEvents(target, Number.isInteger(code) ? code : null, `the debuggee exited${code != null ? ` with code ${code}` : ''}`, null, { killChild: false });
       return;
     }
     if (event === 'terminated') {
+      if (channel !== target) {
+        closeSubprocessChannel(target, channel);
+        return;
+      }
       // The child's own exit handler records the code pydevd never sends
       // in CLI mode.
       await finishAfterTestEvents(target, null, 'the debug adapter terminated the session', null, { killChild: false });
+      return;
+    }
+    if (event === 'debugpyAttach') {
+      await adoptSubprocess(target, message.body);
+      return;
     }
   };
 
@@ -568,6 +716,14 @@ export const createDebuggerService = (dependencies = {}) => {
       seq: 0,
       pending: new Map(),
       socket: null,
+      // Subprocess DAP sessions adopted on `debugpyAttach`: pid → channel.
+      // pydevd blocks a multiprocess child until a client session answers
+      // for it, so the run keeps one channel per adopted child beside the
+      // root channel above.
+      subprocesses: new Map(),
+      // The channel the panel's control commands ride: the root session,
+      // or the subprocess whose `stopped` the panel is showing.
+      control: null,
       child,
       attachBarrier: null,
       error: null,
@@ -670,7 +826,7 @@ export const createDebuggerService = (dependencies = {}) => {
             // not block delivery of that reply. Ordering stays correct where
             // it matters, because the debuggee only runs after the
             // `initialized` handler finishes configurationDone.
-            void handleEvent(owned, message).catch((error) => {
+            void handleEvent(owned, message, owned).catch((error) => {
               // A failed frame read leaves the session alive; the panel
               // shows the error and the user can still step or stop. A
               // handler that raced the session's end is simply dropped.
@@ -753,7 +909,7 @@ export const createDebuggerService = (dependencies = {}) => {
   };
 
   const stop = async () => {
-    requireSession();
+    const active = requireSession();
     let settled = false;
     const grace = new Promise((resolve) => {
       const timer = setTimeout(() => {
@@ -762,7 +918,9 @@ export const createDebuggerService = (dependencies = {}) => {
           resolve();
         }
       }, DISCONNECT_GRACE_MS);
-      sendRequest('disconnect', { terminateDebuggee: true }, DISCONNECT_GRACE_MS)
+      // The disconnect terminates the whole debuggee, so it rides the root
+      // channel even while the panel's control route points at a subprocess.
+      sendOnChannel(active, 'disconnect', { terminateDebuggee: true }, DISCONNECT_GRACE_MS)
         .catch(() => {})
         .then(() => {
           if (!settled) {
@@ -773,8 +931,7 @@ export const createDebuggerService = (dependencies = {}) => {
         });
     });
     await grace;
-    const active = session;
-    if (active != null) {
+    if (session === active) {
       await finishAfterTestEvents(active, null, 'stopped by the user');
     }
     return state();
@@ -784,13 +941,9 @@ export const createDebuggerService = (dependencies = {}) => {
     const { path: breakpointPath, lines } = normalizeBreakpointPair(entry);
     breakpointsByPath.set(breakpointPath, lines);
     // During startup the `initialized` handler ships every stored file; live
-    // runs get the delta right away.
+    // runs get the delta right away on every channel the run owns.
     if (session && session.status !== 'starting') {
-      await sendRequest('setBreakpoints', {
-        source: { path: breakpointPath },
-        breakpoints: lines.map((line) => ({ line })),
-        sourceModified: false,
-      });
+      await sendCurrentBreakpoints(session, breakpointPath);
     }
     broadcast();
     return state();

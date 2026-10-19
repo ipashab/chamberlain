@@ -82,6 +82,15 @@ it survives the run like `outputTail`, so results stay readable after exit.
 **Events**: every state change broadcasts `openchamber:debugger-changed`
 with `{ change: 'state' }`; the panel refetches the projection.
 
+**Multiprocess debuggees**: pydevd blocks a spawned child until a client
+session answers for it, and the adapter offers each child as a
+`debugpyAttach` event carrying `{ subProcessId, connect: { host, port } }`.
+The service adopts each: a second DAP session over the adapter's client
+socket, `attach` with `subProcessId`, the same breakpoint mirror, its
+output folded into the same tail. A `stopped` from any channel routes the
+panel's control commands to the channel it came from. A child's own exit
+closes only its channel; the run's verdict stays with the root process.
+
 **Errors**: domain errors carry an HTTP status (`400` bad input, `409`
 nothing to act on, `502` adapter unreachable, `504` adapter timeout) with
 a human-readable `error` field.
@@ -95,5 +104,6 @@ a human-readable `error` field.
 - The pytest node list caps at 5000 entries (the collected total stays
   true), per-test logs at 64k characters and failure text at 32k.
 - Breakpoints live in memory only; a server restart clears them.
-- No attach, no remote, no multi-debuggee, no threads view: the session
-  follows the thread that last stopped.
+- No attach, no remote: the session follows the thread that last stopped;
+  multiprocess children join their parent's run, they are not separate
+  debuggees.
