@@ -5,6 +5,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nProvider } from '@/lib/i18n';
 import type { TeamPullSummary, TeamTask } from '@/lib/team/team-board-api';
 
+// Bun cannot load Vite's `?worker&url` import that the markdown worker makes.
+mock.module('@/components/chat/markdown/markdown-shiki.worker.ts?worker&url', () => ({ default: 'blob:test-shiki-worker' }));
+
 mock.module('@/components/ui/dialog', () => ({
   Dialog: ({ children }: React.PropsWithChildren) => <>{children}</>,
   DialogContent: ({ children }: React.PropsWithChildren) => <div>{children}</div>,

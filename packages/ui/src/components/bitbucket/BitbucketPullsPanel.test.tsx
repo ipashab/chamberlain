@@ -38,10 +38,13 @@ mock.module('@/stores/useBitbucketPullsStore', () => ({
   useBitbucketPullsStore: (selector: (state: PullsMemory) => PullsMemory[keyof PullsMemory]) => selector(memory),
 }));
 
+// Static markup never sends, but v2.5.0's reviewFlow imports the resolver off
+// the same module, so the mock has to answer that named export too.
 mock.module('@/sync/session-ui-store', () => ({
   useSessionUIStore: {
     getState: () => ({ currentSessionId: 'session_1', getDirectoryForSession: (id: string) => `/work/${id}` }),
   },
+  resolveSendSelection: () => ({}),
 }));
 
 // The landing list is a read, not render state: the static markup only ever
