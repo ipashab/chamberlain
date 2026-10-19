@@ -303,6 +303,25 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
+    id: 'chat.session-advisor',
+    page: 'chat',
+    titleKey: 'settings.openchamber.visual.field.sessionAdvisor',
+    descriptionKey: 'settings.openchamber.visual.field.sessionAdvisorInfo',
+    keywords: ['advisor', 'review', 'findings', 'violations', 'anchors', 'small model'],
+    // The advisor runs on the OpenChamber server; VS Code has no turn review.
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'chat.session-checkpoints',
+    page: 'chat',
+    titleKey: 'settings.openchamber.visual.field.sessionCheckpoints',
+    descriptionKey: 'settings.openchamber.visual.field.sessionCheckpointsInfo',
+    keywords: ['checkpoint', 'checkpoints', 'restore', 'undo', 'snapshot', 'files', 'turn'],
+    // Checkpoints pin git state in the OpenChamber-owned worktree; VS Code
+    // has no such git.
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
     id: 'chat.session-goal',
     page: 'chat',
     titleKey: 'settings.openchamber.visual.field.sessionGoal',
@@ -824,6 +843,14 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.openchamber.tools.field.agentRenderTool',
     descriptionKey: 'settings.openchamber.tools.field.agentRenderToolInfo',
     keywords: ['agent', 'tool', 'render', 'page', 'html', 'chart', 'table', 'diagram', 'generative', 'ui', 'openchamber'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    id: 'sessions.agent-debugger-tool',
+    page: 'general',
+    titleKey: 'settings.openchamber.tools.field.agentDebuggerTool',
+    descriptionKey: 'settings.openchamber.tools.field.agentDebuggerToolInfo',
+    keywords: ['agent', 'tool', 'debugger', 'debug', 'debugpy', 'breakpoint', 'pytest', 'step', 'openchamber'],
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {

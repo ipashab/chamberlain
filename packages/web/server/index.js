@@ -87,6 +87,9 @@ import { configureOpenCodeCredentials, openCodeCredentialSource } from './lib/op
 import { configureProjectStartCommandSource, openCodeProjectStartCommandSource } from './lib/opencode/project-start-command.js';
 import { createOpenCodeWatcherRuntime } from './lib/opencode/watcher.js';
 import { createSessionAssistRuntime } from './lib/session-assist/runtime.js';
+import { createAdvisorRuntime } from './lib/advisor/runtime.js';
+import { createCheckpointsRuntime } from './lib/checkpoints/runtime.js';
+import { createCheckpointStore } from './lib/checkpoints/store.js';
 import { createSessionGoalRuntime } from './lib/session-goal/runtime.js';
 import { createContextObligatoryRuntime } from './lib/context-obligatory/runtime.js';
 import { createSessionWarmingRuntime } from './lib/session-warming/runtime.js';
@@ -134,7 +137,7 @@ import { permissionDefaultOf, readSpacePermissionDefault } from './lib/spaces/sp
 import { dockerHostOf } from './lib/spaces/places/ssh-host.js';
 import { SPACE_IDLE_EXIT_CODE } from './lib/spaces/layout.js';
 import { createSwitchController, registerSpaceRoutes } from './lib/spaces/routes.js';
-import { configureGitEnvironment, getCheckedOutBranch, resolvePrimaryWorktreeRoot } from './lib/git/service.js';
+import { configureGitEnvironment, getCheckedOutBranch, resolvePrimaryWorktreeRoot, captureWorktreeSnapshot, restoreSnapshotFiles, deleteCheckpointRef } from './lib/git/service.js';
 import { createEnvironmentStore } from './lib/environment/store.js';
 import { createEnvironmentRuntime } from './lib/environment/runtime.js';
 import { readOpenCodeServiceEnv } from './lib/environment/opencode-service-env.js';
@@ -157,6 +160,7 @@ import { prepareInstanceDir } from './lib/opencode/instance-dir.js';
 import { createOpenChamberSessionService } from './lib/openchamber-sessions/routes.js';
 import { createOpenCodeClient as createSessionScopedOpenCodeClient } from './lib/openchamber-sessions/opencode-client.js';
 import { createTeamService } from './lib/team/service.js';
+import { createTrackerService } from './lib/tracker/service.js';
 import { createMissionsService } from './lib/missions/service.js';
 import { createDebuggerService } from './lib/debugger/service.js';
 import { registerDebuggerRoutes } from './lib/debugger/routes.js';
@@ -1002,6 +1006,44 @@ const sessionAssistRuntime = createSessionAssistRuntime({
   }),
 });
 
+// The post-turn advisor shares the assist's event hub, metadata store and
+// Small Model path, and writes its findings under `openchamber.advisor`.
+const advisorRuntime = createAdvisorRuntime({
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  getSmallModelService: async () => import('./lib/small-model/index.js'),
+  persistAdvisor: (sessionID, directory, advisor) =>
+    persistSessionMetadataPatch(sessionID, { openchamber: { advisor } }, { directory }),
+  // Declared further down; only ever called after startup.
+  isSessionArchived: (sessionID) => openChamberSessionService.archiveStore.isArchived(sessionID),
+  lineage: sessionLineage,
+});
+
+// Per-turn checkpoints: a worktree snapshot pinned when a session turns busy,
+// recorded when the turn touched files, with restore and undo answering from
+// the same registry. Evicted entries hand their refs back before leaving, so
+// their trees stop surviving `git gc`.
+const checkpointStore = createCheckpointStore({
+  dataDir: OPENCHAMBER_DATA_DIR,
+  onEvicted: (evicted) => {
+    for (const entry of evicted) {
+      Promise.resolve(deleteCheckpointRef(entry.directory, entry.baseRefName)).catch(() => {});
+      if (entry.restored) {
+        Promise.resolve(deleteCheckpointRef(entry.directory, entry.restored.refName)).catch(() => {});
+      }
+    }
+  },
+});
+const checkpointsRuntime = createCheckpointsRuntime({
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  store: checkpointStore,
+  git: { captureWorktreeSnapshot, restoreSnapshotFiles, deleteCheckpointRef },
+  // Declared further down; only ever called after startup.
+  isSessionArchived: (sessionID) => openChamberSessionService.archiveStore.isArchived(sessionID),
+  broadcast: (event) => broadcastOpenChamberUiEvent(event),
+});
+
 const sessionGoalRuntime = createSessionGoalRuntime({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
@@ -1224,6 +1266,7 @@ const openCodeWatcherRuntime = createOpenCodeWatcherRuntime({
 // Session-assist subscribes to the hub directly: it needs the envelope's
 // directory to route its own OpenCode calls to the right instance.
 console.log('[session-assist] listening for session events');
+console.log('[advisor] listening for session events');
 globalMessageStreamHub.subscribeEvent((event) => {
   const directory = typeof event?.directory === 'string' && event.directory && event.directory !== 'global'
     ? event.directory
@@ -1239,6 +1282,8 @@ globalMessageStreamHub.subscribeEvent((event) => {
     }
     sessionLineage.observe(payload);
     sessionAssistRuntime.processPayload(payload, directory || payload.properties?.directory || '');
+    advisorRuntime.processPayload(payload, directory || payload.properties?.directory || '');
+    checkpointsRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     sessionWorkRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     sessionGoalRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     contextObligatoryRuntime.processPayload(payload, directory || payload.properties?.directory || '');
@@ -1791,6 +1836,11 @@ const bitbucketConfigStore = createBitbucketConfigStore({ fsPromises, path, data
 // token, persisted as jira.json beside bitbucket.json and the rest. The
 // issue viewer reads through it; the settings card is its only writer.
 const jiraConfigStore = createJiraConfigStore({ fsPromises, path, dataDir: OPENCHAMBER_DATA_DIR });
+// The tracker service: the agent tool's actions on Bitbucket pull requests
+// and Jira issues, executed against the connections above. No store of its
+// own — the refs come in with each action, the connections are read per
+// call, and a write goes out under the configured user's own token.
+const trackerService = createTrackerService({ bitbucketConfigStore, jiraConfigStore });
 // The Confluence Data Center connection: one instance, one personal
 // access token, persisted as confluence.json beside jira.json and the
 // rest. The page reader reads through it; the settings card is its
@@ -1943,6 +1993,11 @@ const openChamberControlService = createOpenChamberControlService({
   sessionService: openChamberSessionService,
   scheduledTaskService,
   browserControl: browserControlRouter,
+  debuggerControl: debuggerService,
+  isDebuggerToolEnabled: async () => {
+    const settings = await readSettingsFromDiskMigrated().catch(() => null);
+    return settings?.agentDebuggerToolEnabled !== false;
+  },
   fileOpen: fileOpenRequester,
   projectContextRuntime,
   // The resolver session knowledge reads pinned notes and plans through, so
@@ -2061,6 +2116,7 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
   syncToHmrState,
   openCodeWatcherRuntime,
   sessionAssistRuntime,
+  advisorRuntime,
   sessionWorkRuntime,
   sessionGoalRuntime,
   contextObligatoryRuntime,
@@ -2131,6 +2187,8 @@ async function main(options = {}) {
     executeAction: (...args) => openChamberControlService.execute(...args),
     executeTeamAction: (action, input, sessionID, options) =>
       teamService.executeAction(action, input, sessionID, options),
+    executeTrackerAction: (action, input) =>
+      trackerService.executeAction(action, input),
     // A v2 tool call carries no directory, only the session it runs in.
     resolveSessionDirectory: (sessionID) => openChamberControlService.resolveSessionDirectory(sessionID),
     getActivePort: () => {
@@ -2672,6 +2730,7 @@ async function main(options = {}) {
     listConfiguredProjects,
     messageSearchRuntime,
     sessionWarmingRuntime,
+    checkpointsRuntime,
     crypto,
     fs,
     os,

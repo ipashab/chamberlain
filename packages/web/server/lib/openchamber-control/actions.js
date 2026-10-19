@@ -145,6 +145,35 @@ export const OPENCHAMBER_RENDER_ACTIONS = Object.freeze(
 );
 
 /**
+ * Debugger is its own tool: driving a debugpy run is a distinct intent with
+ * its own vocabulary, and the user switches it off without losing any other
+ * capability. The actions mirror the debug panel's REST surface one to one
+ * (../../debugger/routes.js); the panel and an agent share the single session,
+ * so the user watching the panel sees the agent's run live.
+ *
+ * `debug.start` and `debug.breakpoints` accept paths relative to the working
+ * directory, which the panel never sends; the service itself stays
+ * absolute-only. `debug.wait` resolves inside one call — polling across turns
+ * re-sends the whole context — and the generated entry sends the fetch with
+ * Bun's `timeout: false`, since Stop aborts through the request signal.
+ */
+export const OPENCHAMBER_DEBUGGER_ACTION_DEFINITIONS = Object.freeze([
+  { action: 'debug.start', title: 'Start a debug run', description: 'Requires module or program, not both; cwd or pythonPath optional; breakpoints pre-armed. Returns at once, then debug.wait for the stop or the exit' },
+  { action: 'debug.wait', title: 'Wait for the debuggee', description: 'Requires until: stop (any breakpoint stop) or exit (run ended, tests carry the verdict); timeoutMs in 1000-900000, default 300000. Returns the state at the moment it resolved' },
+  { action: 'debug.state', title: 'Read the debug state', description: 'Session, stack, variables, breakpoints, output tail and pytest results as one projection' },
+  { action: 'debug.stop', title: 'Stop the debug run', description: 'No parameters' },
+  { action: 'debug.breakpoints', title: 'Set breakpoints', description: 'Requires path and lines; applies live to a stopped run, or stores them for the next' },
+  { action: 'debug.continue', title: 'Resume the debuggee', description: 'No parameters' },
+  { action: 'debug.step', title: 'Step through code', description: 'Requires kind: over, into or out' },
+  { action: 'debug.evaluate', title: 'Evaluate on the stopped frame', description: 'Requires expression; reads real values instead of guessing from code' },
+  { action: 'debug.variables', title: 'Expand a variable', description: 'Requires reference from the state projection; valid only while the debuggee stays stopped' },
+]);
+
+export const OPENCHAMBER_DEBUGGER_ACTIONS = Object.freeze(
+  OPENCHAMBER_DEBUGGER_ACTION_DEFINITIONS.map(({ action }) => action),
+);
+
+/**
  * Which actions each managed tool may ask for.
  *
  * The callback needs this because models routinely drop the namespace: asked
@@ -162,6 +191,7 @@ const ACTIONS_BY_TOOL = Object.freeze({
   openchamber_knowledge: OPENCHAMBER_KNOWLEDGE_ACTIONS,
   openchamber_notify: OPENCHAMBER_NOTIFY_ACTIONS,
   openchamber_render: OPENCHAMBER_RENDER_ACTIONS,
+  openchamber_debugger: OPENCHAMBER_DEBUGGER_ACTIONS,
 });
 
 const bareName = (action) => {
@@ -211,4 +241,5 @@ export const OPENCHAMBER_ALL_ACTIONS = Object.freeze([
   ...OPENCHAMBER_KNOWLEDGE_ACTIONS,
   ...OPENCHAMBER_NOTIFY_ACTIONS,
   ...OPENCHAMBER_RENDER_ACTIONS,
+  ...OPENCHAMBER_DEBUGGER_ACTIONS,
 ]);

@@ -38,6 +38,7 @@ import type { ReviewTransferDirection } from '@/lib/reviewFlow';
 import { toast } from 'sonner';
 import { useCopyMessageLink } from './message/useCopyMessageLink';
 import { useI18n } from '@/lib/i18n';
+import { useCheckpointMessageActions } from '@/lib/checkpoints/useCheckpointMessageActions';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { getContextObligatoryMessages } from '@/lib/contextObligatoryMessages';
 import { setContextObligatoryMessage } from '@/sync/session-actions';
@@ -551,6 +552,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         useSessionUIStore.getState().forkFromMessage(sessionId, message.info.id);
     }, [sessionId, message.info.id]);
 
+    // Turn checkpoint actions ride in the same slot as extension actions;
+    // only a user row with a recorded checkpoint renders them.
+    const checkpointMessageActions = useCheckpointMessageActions(isUser ? sessionId : null, isUser ? message.info.id : null);
+    const messageExtraActions = React.useMemo<MessageExtraAction[] | undefined>(() => {
+        const merged = [...(guestMessageActions ?? []), ...(checkpointMessageActions ?? [])];
+        return merged.length > 0 ? merged : undefined;
+    }, [guestMessageActions, checkpointMessageActions]);
+
     const handleToggleTool = React.useCallback((toolId: string) => {
         setExpandedTools((prev) => {
             const next = new Set(prev);
@@ -666,7 +675,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                                                 onToggleContextPin={canPinIntoContext && messageCreatedAt ? handleToggleContextPin : undefined}
                                                 errorMessage={assistantErrorText}
                                                 errorResponseBody={assistantErrorResponseBody}
-                                                extraActions={guestMessageActions}
+                                                extraActions={messageExtraActions}
                                             />
                                         </div>
                                     </div>
@@ -702,7 +711,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                                         errorMessage={assistantErrorText}
                                         errorResponseBody={assistantErrorResponseBody}
                                         userMessagePart="actions"
-                                        extraActions={guestMessageActions}
+                                        extraActions={messageExtraActions}
                                     />
                                 </div>
                             </FadeInOnReveal>
@@ -748,7 +757,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                                 footerAgentName={headerAgentName}
                                 footerVariant={headerVariant}
                                 isDarkTheme={isDarkTheme}
-                                extraActions={guestMessageActions}
+                                extraActions={messageExtraActions}
                             />
 
                         </div>

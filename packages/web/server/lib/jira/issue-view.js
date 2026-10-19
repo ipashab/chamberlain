@@ -2,9 +2,9 @@
  * The Jira issue as the issue viewer reads it: the detail fields, the
  * rendered description, the comments, the issue links, the subtasks, the
  * attachments and the watchers. Everything comes from GETs to the issue's
- * own resources; the view is assembled here, on the user's machine, and
- * nothing is ever written back to the instance — the request module this
- * reads through has GET as its only verb.
+ * own resources; the view is assembled here, on the user's machine, and the
+ * view itself writes nothing back to the instance — it reads through the
+ * GET client and never the mutation one.
  *
  * Representation decisions, kept honest rather than guessed:
  * - The description and comment bodies arrive twice from the instance:

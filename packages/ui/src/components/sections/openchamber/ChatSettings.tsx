@@ -521,6 +521,10 @@ const AssistanceTab: React.FC = () => {
   const setSessionSuggestionEnabled = useUIStore((state) => state.setSessionSuggestionEnabled);
   const sessionReviewOfferEnabled = useUIStore((state) => state.sessionReviewOfferEnabled);
   const setSessionReviewOfferEnabled = useUIStore((state) => state.setSessionReviewOfferEnabled);
+  const sessionAdvisorEnabled = useUIStore((state) => state.sessionAdvisorEnabled);
+  const setSessionAdvisorEnabled = useUIStore((state) => state.setSessionAdvisorEnabled);
+  const sessionCheckpointsEnabled = useUIStore((state) => state.sessionCheckpointsEnabled);
+  const setSessionCheckpointsEnabled = useUIStore((state) => state.setSessionCheckpointsEnabled);
   const jevAvailable = useRoutingStore(selectSafetyNetAvailable);
   const sessionGoalEnabled = useUIStore((state) => state.sessionGoalEnabled);
   const setSessionGoalEnabled = useUIStore((state) => state.setSessionGoalEnabled);
@@ -561,6 +565,30 @@ const AssistanceTab: React.FC = () => {
           ariaLabel={t('settings.openchamber.visual.field.sessionSuggestionAria')}
           settingsItem="chat.session-suggestion"
         />
+        {/* The advisor runs on the OpenChamber server like Jev, so VS Code has
+            neither the review nor this row. */}
+        {isVSCode ? null : (
+          <SettingsCheckboxRow
+            checked={sessionAdvisorEnabled}
+            onChange={setSessionAdvisorEnabled}
+            label={t('settings.openchamber.visual.field.sessionAdvisor')}
+            ariaLabel={t('settings.openchamber.visual.field.sessionAdvisorAria')}
+            info={t('settings.openchamber.visual.field.sessionAdvisorInfo')}
+            settingsItem="chat.session-advisor"
+          />
+        )}
+        {/* Checkpoints pin git state in the worktree, which the OpenChamber
+            server owns; VS Code has no such git, so no row there either. */}
+        {isVSCode ? null : (
+          <SettingsCheckboxRow
+            checked={sessionCheckpointsEnabled}
+            onChange={setSessionCheckpointsEnabled}
+            label={t('settings.openchamber.visual.field.sessionCheckpoints')}
+            ariaLabel={t('settings.openchamber.visual.field.sessionCheckpointsAria')}
+            info={t('settings.openchamber.visual.field.sessionCheckpointsInfo')}
+            settingsItem="chat.session-checkpoints"
+          />
+        )}
         {/* Jev runs on the OpenChamber server, which VS Code does not have.
             The line naming who decides sits under the label, so it reads as
             part of this option rather than text between two checkboxes. */}

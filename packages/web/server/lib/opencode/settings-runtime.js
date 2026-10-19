@@ -49,6 +49,7 @@ const MANAGED_PLUGIN_SETTINGS_KEYS = new Set([
   'agentKnowledgeToolEnabled',
   'agentNotifyToolEnabled',
   'agentRenderToolEnabled',
+  'agentDebuggerToolEnabled',
   'agentToolsCodeMode',
 ]);
 

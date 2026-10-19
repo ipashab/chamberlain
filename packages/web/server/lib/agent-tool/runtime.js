@@ -5,6 +5,8 @@ import { asNonEmptyString, isBoolean } from '../shared/guards.js';
 import {
   OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS,
   OPENCHAMBER_AGENT_TOOL_ACTIONS,
+  OPENCHAMBER_DEBUGGER_ACTION_DEFINITIONS,
+  OPENCHAMBER_DEBUGGER_ACTIONS,
   OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS,
   OPENCHAMBER_KNOWLEDGE_ACTIONS,
   OPENCHAMBER_MEMORY_ACTION_DEFINITIONS,
@@ -25,6 +27,11 @@ import {
   resolveTeamAction,
 } from '../team/tools.js';
 import {
+  TRACKER_ACTION_DEFINITIONS,
+  TRACKER_PARAMETER_PROPERTIES,
+  resolveTrackerAction,
+} from '../tracker/tools.js';
+import {
   RENDER_PAGE_CLOSED_IN_CHAT_NOTE,
   RENDER_PAGE_MAX_HTML_LENGTH,
   RENDER_PAGE_MAX_TITLE_LENGTH,
@@ -43,6 +50,7 @@ const ACTIONS = new Set([
   ...OPENCHAMBER_KNOWLEDGE_ACTIONS,
   ...OPENCHAMBER_NOTIFY_ACTIONS,
   ...OPENCHAMBER_RENDER_ACTIONS,
+  ...OPENCHAMBER_DEBUGGER_ACTIONS,
 ]);
 const AGENT_TOOL_ACTION_TITLES = Object.fromEntries(
   [
@@ -53,6 +61,7 @@ const AGENT_TOOL_ACTION_TITLES = Object.fromEntries(
     ...OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS,
     ...OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS,
     ...OPENCHAMBER_RENDER_ACTION_DEFINITIONS,
+    ...OPENCHAMBER_DEBUGGER_ACTION_DEFINITIONS,
   ].map(({ action, title }) => [action, title]),
 );
 
@@ -198,6 +207,31 @@ const NOTIFY_PARAMETER_PROPERTIES = {
   showWhenFocused: { type: 'boolean', description: 'Show it while the user is in OpenChamber too, otherwise it shows only while they are away. Only for what cannot wait' },
 };
 
+/**
+ * Paths may be absolute or relative to cwd (start, breakpoints) — the
+ * server resolves them; module stays a Python module name, like `pytest`.
+ * `path` names no other tool's input, and `lines`/`kind` exist only here in
+ * these meanings, so the debugger keeps the whole map private rather than
+ * growing the shared one.
+ */
+const DEBUGGER_PARAMETER_PROPERTIES = {
+  cwd: { type: 'string', description: "Absolute; default: this session's directory" },
+  module: { type: 'string', description: 'Python module, such as pytest; module or program, not both' },
+  program: { type: 'string', description: 'Script path; absolute or relative to cwd' },
+  pythonPath: { type: 'string', description: 'Interpreter path or command; the literal python3 picks <cwd>/.venv/bin/python when that exists' },
+  args: { type: 'array', items: { type: 'string' }, description: 'Program arguments; for a pytest run, the test node ids and flags, such as ["-k", "test_tag"]' },
+  breakpoints: { type: 'array', description: 'Entries { path, lines } to pre-arm; 1-based line numbers', items: { type: 'object', properties: { path: { type: 'string' }, lines: { type: 'array', items: { type: 'integer' } } }, required: ['path', 'lines'] } },
+  path: { type: 'string', description: 'File for debug.breakpoints; absolute or relative to cwd' },
+  lines: { type: 'array', items: { type: 'integer' }, description: '1-based line numbers; an empty array clears the file' },
+  until: { type: 'string', enum: ['stop', 'exit'], description: 'debug.wait condition: stop at a breakpoint, or the run ends' },
+  timeoutMs: { type: 'integer', description: 'debug.wait bound in 1000-900000, default 300000; on timeout the state returns with waited: "timeout" and the run goes on' },
+  kind: { type: 'string', enum: ['over', 'into', 'out'] },
+  expression: { type: 'string', description: 'debug.evaluate on the top stopped frame; reads the real value' },
+  reference: { type: 'integer', description: 'From the state projection; valid only while the debuggee stays stopped at that frame' },
+};
+
+const DEBUGGER_TOOL_DESCRIPTION = "The debug panel's debugpy run, to see real program state instead of guessing from code: start a pytest run or program with breakpoints, read the stopped frame's variables and output, step, resume, evaluate expressions. One action per call. Pick breakpoints from the code you are investigating, then debug.wait until stop (or exit for the verdict). When done, debug.stop: the session is one, shared with the panel the user may be watching. Use it to investigate, not to run every test — plain tests run faster in your shell.";
+
 
 // Where the agent saves a screenshot for a page, so it stays out of the
 // project. The image grant route (../markdown-image-grants/routes.js) reads a
@@ -263,6 +297,10 @@ const NOTIFY_TOOL_DESCRIPTION = "Notify the user outside the chat: when long wor
 // it the model's first source of truth is here, then the team.start briefing.
 const TEAM_TOOL_DESCRIPTION = "Run a small team of AI agents that work in parallel in this directory: this session becomes the Team Lead, teammates are sessions spawned as its children, and coordination flows through a shared mailbox and a shared task board. Use only when the user explicitly asks for a team, multiple agents working together, or a leader with teammates; delegating part of your own task stays with the subagent tool. Start with team.start and read the returned briefing fully before any other team action. Propose the teammate lineup to the user and wait for approval before team.spawn_agent. Assign work with team.task_create — an owner assignment wakes that teammate with the task details. Report and coordinate through team.send_message; a teammate reports to the lead's slotId the same way. End your turn to wait: never stream waiting text. One action per call. Member targets are slotId values from team.members or your briefing, never display names."
 
+// The tracker description teaches the reference forms: pr:// and issue://
+// name the entity once, and every action after accepts the same ref.
+const TRACKER_TOOL_DESCRIPTION = "Act on the user's Bitbucket pull requests and Jira issues through the connections the user configured: read a pull request or issue, post a comment, approve a pull, list a Jira issue's workflow transitions or move it through one. Use when the user asks you to comment on, approve, review or move a specific pull request or issue, or asks for its state. Every write goes out under the user's own name — report what you posted, quote the text. Name the entity with ref: pr://<full Bitbucket pull-request URL> for pulls, issue://<Jira browse URL or bare issue key> for issues; the plain URL or key is accepted too. Read before writing when unsure: pr.view or issue.view first. issue.transition takes the id or exact name from issue.transitions. One action per call."
+
 const RENDER_TOOL_DESCRIPTION = "Draw a finished HTML page inline in the chat, above your reply, or ask the user to choose on one (awaitAnswer). "
   + "The page is part of your reply and sits on the chat's background: leave html, body and the outermost element without a background, add no outer card, border or banner title, and set boxes apart by tone. Style with the theme variables listed under html. "
   + "Read html before writing a page and awaitAnswer before asking on one.";
@@ -315,14 +353,17 @@ const agentOnlyUsageError = (action, input) => {
   return null;
 };
 
-const createResult = ({ ok, action, data, error, exitCode }) => ({
-  schemaVersion: TOOL_SCHEMA_VERSION,
-  ok,
-  action: action || 'unknown',
-  ...(data !== undefined ? { data } : {}),
-  ...(error ? { error } : {}),
-  ...(Number.isInteger(exitCode) ? { exitCode } : {}),
-});
+const createResult = ({ ok, action, data, error, exitCode }) => {
+  const result = {
+    schemaVersion: TOOL_SCHEMA_VERSION,
+    ok,
+    action: action || 'unknown',
+  };
+  if (data !== undefined) result.data = data;
+  if (error) result.error = error;
+  if (Number.isInteger(exitCode)) result.exitCode = exitCode;
+  return result;
+};
 
 /**
  * A page that waits for the user's answer (render.page with awaitAnswer)
@@ -394,6 +435,13 @@ const booleanNormalizationBlock = (parameters) => {
 `;
 };
 
+// Bun's fetch ends a request that gets no response for about six minutes with
+// "The operation timed out", and a debug.wait legitimately sits that long
+// between two state changes. Bun's own `timeout: false` lifts that; Stop still
+// ends the wait through the request signal.
+const LONG_RUNNING_FETCH_TIMEOUT = String.raw`
+            timeout: false,`;
+
 const multiActionSchema = (definitions) => ({
   property: { type: 'string', oneOf: definitions.map((entry) => ({ const: entry.action, description: entry.description })), description: 'OpenChamber action to perform' },
   required: ['action'],
@@ -446,7 +494,7 @@ const singleActionSchema = (definition) => ({
  * answer with an empty completion instead of an error, and the `oneOf` branches
  * are what carry the per-action descriptions the model reads.
  */
-const createToolEntry = ({ name, description, definitions, parameters, codeMode, answers = false }) => {
+const createToolEntry = ({ name, description, definitions, parameters, codeMode, answers = false, longRunning = false }) => {
   const normalizeBooleans = booleanNormalizationBlock(parameters);
   const actionSchema = definitions.length === 1 ? singleActionSchema(definitions[0]) : multiActionSchema(definitions);
   return String.raw`    tools.add({
@@ -522,7 +570,7 @@ ${answers ? ANSWER_WAIT_SETUP : ''}
             // directory on its own side. The signal fires when the session is
             // aborted, so the OpenChamber side stops the action too.
             body: JSON.stringify({ input: args, sessionID: context.sessionID, callID: context.id, tool: ${JSON.stringify(name)} }),
-            signal: ${answers ? 'waitSignal' : 'context.signal'},${answers ? ANSWER_FETCH_TIMEOUT : ''}
+            signal: ${answers ? 'waitSignal' : 'context.signal'},${answers ? ANSWER_FETCH_TIMEOUT : ''}${longRunning ? LONG_RUNNING_FETCH_TIMEOUT : ''}
           })
           const content = await response.text()
           let result = null
@@ -551,7 +599,7 @@ ${answers ? ANSWER_WAIT_SETUP : ''}
  */
 const OPENCODE_TOOLS_REPLACED_BY_CONTROL = ['opencode_worktree_create', 'opencode_models'];
 
-const createPluginSource = ({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, codeMode }) => {
+const createPluginSource = ({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, includeDebugger, codeMode }) => {
   const entries = [];
   if (includeControl) {
     entries.push(`    for (const id of ${JSON.stringify(OPENCODE_TOOLS_REPLACED_BY_CONTROL)}) tools.remove(id)
@@ -611,6 +659,18 @@ const createPluginSource = ({ includeControl, includeSchedule, includeWeb, inclu
       codeMode,
     }));
   }
+  if (includeDebugger) {
+    entries.push(createToolEntry({
+      name: 'openchamber_debugger',
+      description: DEBUGGER_TOOL_DESCRIPTION,
+      definitions: OPENCHAMBER_DEBUGGER_ACTION_DEFINITIONS,
+      parameters: DEBUGGER_PARAMETER_PROPERTIES,
+      codeMode,
+      // debug.wait may sit between two state changes longer than Bun's
+      // default fetch patience; Stop still ends it through the signal.
+      longRunning: true,
+    }));
+  }
   // Team Mode is a first-party capability, not a settings-gated convenience:
   // the tool is inert (404) for every session not in a team, so it ships on.
   entries.push(createToolEntry({
@@ -618,6 +678,17 @@ const createPluginSource = ({ includeControl, includeSchedule, includeWeb, inclu
     description: TEAM_TOOL_DESCRIPTION,
     definitions: TEAM_ACTION_DEFINITIONS,
     parameters: TEAM_PARAMETER_PROPERTIES,
+    codeMode,
+  }));
+  // The tracker tool ships the same way: without a configured Bitbucket or
+  // Jira connection every action answers unconfigured, so there is nothing
+  // to gate — and with one, the user has already handed over the credentials
+  // the actions run under.
+  entries.push(createToolEntry({
+    name: 'openchamber_tracker',
+    description: TRACKER_TOOL_DESCRIPTION,
+    definitions: TRACKER_ACTION_DEFINITIONS,
+    parameters: TRACKER_PARAMETER_PROPERTIES,
     codeMode,
   }));
   if (includeRender) {
@@ -689,6 +760,9 @@ export const createAgentToolRuntime = (dependencies) => {
     // Team Mode dispatch: reads and writes the roster, mailbox and board for
     // the session that called the openchamber_team tool.
     executeTeamAction = null,
+    // Tracker dispatch: one action on a Bitbucket pull request or a Jira
+    // issue, against the connections the user configured.
+    executeTrackerAction = null,
     resolveSessionDirectory,
   } = dependencies;
   // The plugin embeds this server's tool declarations, so it lives in this
@@ -708,13 +782,13 @@ export const createAgentToolRuntime = (dependencies) => {
    * change while it runs, so the source on disk always matches the settings —
    * the running OpenCode reloads the directory it already has configured.
    */
-  const materializePlugin = async ({ includeControl = true, includeSchedule = false, includeWeb = true, includeMemory = true, includeKnowledge = false, includeNotify = false, includeRender = false, codeMode = false } = {}) => {
-    if (!includeControl && !includeSchedule && !includeWeb && !includeMemory && !includeKnowledge && !includeNotify && !includeRender) {
+  const materializePlugin = async ({ includeControl = true, includeSchedule = false, includeWeb = true, includeMemory = true, includeKnowledge = false, includeNotify = false, includeRender = false, includeDebugger = false, codeMode = false } = {}) => {
+    if (!includeControl && !includeSchedule && !includeWeb && !includeMemory && !includeKnowledge && !includeNotify && !includeRender && !includeDebugger) {
       throw new Error('At least one OpenChamber managed tool must be enabled to inject the plugin');
     }
     await fsPromises.mkdir(pluginDirectory, { recursive: true });
     await fsPromises.writeFile(pluginManifestPath, PLUGIN_PACKAGE_JSON, { mode: 0o600 });
-    await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, codeMode }), { mode: 0o600 });
+    await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, includeDebugger, codeMode }), { mode: 0o600 });
     return pluginDirectory;
   };
 
@@ -762,7 +836,7 @@ export const createAgentToolRuntime = (dependencies) => {
       if (!sessionID) {
         return createResult({ ok: false, action, error: { message: 'The team tool needs the session that called it', kind: 'usage' } });
       }
-      if (typeof executeTeamAction !== 'function') {
+      if (!executeTeamAction) {
         return createResult({ ok: false, action, error: { message: 'OpenChamber team service is unavailable', kind: 'runtime' } });
       }
       try {
@@ -772,6 +846,36 @@ export const createAgentToolRuntime = (dependencies) => {
           sessionID,
           { signal: options.signal },
         );
+        return createResult({ ok: true, action, data });
+      } catch (error) {
+        const statusCode = Number(error?.statusCode);
+        return createResult({
+          ok: false,
+          action,
+          error: {
+            message: error instanceof Error ? error.message : String(error),
+            kind: statusCode >= 400 && statusCode < 499 ? 'usage' : 'runtime',
+          },
+        });
+      }
+    }
+
+    // Tracker actions resolve against their own grammar and dispatch to the
+    // configured Bitbucket/Jira connections; they never enter the control
+    // service's allowlist, and no session state is involved — the ref names
+    // the entity. The failures answer usage for what the agent can fix (the
+    // ref, the text, a missing transition) and runtime for the rest.
+    if (asNonEmptyString(payload.tool) === 'openchamber_tracker') {
+      const resolution = resolveTrackerAction(requested);
+      if (resolution.error) {
+        return createResult({ ok: false, action: requested, error: { message: resolution.error, kind: 'usage' } });
+      }
+      const action = resolution.action;
+      if (!executeTrackerAction) {
+        return createResult({ ok: false, action, error: { message: 'OpenChamber tracker service is unavailable', kind: 'runtime' } });
+      }
+      try {
+        const data = await executeTrackerAction(action, { ...payload.input, action });
         return createResult({ ok: true, action, data });
       } catch (error) {
         const statusCode = Number(error?.statusCode);
@@ -801,7 +905,7 @@ export const createAgentToolRuntime = (dependencies) => {
     if (usageError) {
       return createResult({ ok: false, action, error: { message: usageError, kind: 'usage' } });
     }
-    if (typeof executeAction !== 'function') {
+    if (!executeAction) {
       return createResult({ ok: false, action, error: { message: 'OpenChamber control service is unavailable', kind: 'runtime' } });
     }
     // OpenCode 2 tools no longer receive a directory, so the plugin sends the
@@ -812,7 +916,7 @@ export const createAgentToolRuntime = (dependencies) => {
     const knowledgeAction = OPENCHAMBER_KNOWLEDGE_ACTIONS.includes(action);
     let contextDirectory = knowledgeAction ? undefined : asNonEmptyString(payload.contextDirectory) ?? undefined;
     const sessionID = asNonEmptyString(payload.sessionID);
-    if (!contextDirectory && sessionID && typeof resolveSessionDirectory === 'function') {
+    if (!contextDirectory && sessionID && resolveSessionDirectory) {
       contextDirectory = await Promise.resolve(resolveSessionDirectory(sessionID))
         .then((value) => asNonEmptyString(value) ?? undefined)
         .catch(() => undefined);
@@ -829,20 +933,23 @@ export const createAgentToolRuntime = (dependencies) => {
       const data = await executeAction(action, { ...payload.input, action }, contextDirectory, actionOptions);
       return createResult({ ok: true, action, data });
     } catch (error) {
-      return createResult({
+      const failure = {
         ok: false,
         action,
-        ...(error?.partial === true ? { data: {
-          partial: true,
-          partialAction: error.partialAction,
-          sessionId: error.sessionId,
-          directory: error.directory,
-        } } : {}),
         error: {
           message: error instanceof Error ? error.message : String(error),
           kind: Number(error?.statusCode) >= 400 && Number(error?.statusCode) < 499 ? 'usage' : 'runtime',
         },
-      });
+      };
+      if (error?.partial === true) {
+        failure.data = {
+          partial: true,
+          partialAction: error.partialAction,
+          sessionId: error.sessionId,
+          directory: error.directory,
+        };
+      }
+      return createResult(failure);
     }
   };
 

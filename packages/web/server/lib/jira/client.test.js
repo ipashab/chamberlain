@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { classifyJiraFailure, createJiraRequest } from './client.js';
+import { classifyJiraFailure, createJiraMutation, createJiraRequest } from './client.js';
 
 const config = { origin: 'https://jira.example.com', token: 'JIRA-test', verifySsl: true };
 
@@ -47,6 +47,74 @@ describe('createJiraRequest', () => {
   it('wraps a dying transport as an unreachable error', async () => {
     const fetchImpl = vi.fn(async () => { throw Object.assign(new Error('socket gone'), { code: 'ECONNRESET' }); });
     await expect(createJiraRequest({ fetchImpl })({ config, path: '/x' }))
+      .rejects.toMatchObject({ kind: 'unreachable' });
+  });
+});
+
+describe('createJiraMutation', () => {
+  it('posts a JSON body and answers the created resource', async () => {
+    const fetchImpl = vi.fn(async ({ url, token, method, json }) => ({
+      status: 201,
+      body: JSON.stringify({ id: '10', body: json?.body }),
+    }));
+    const mutation = createJiraMutation({ fetchImpl });
+    const result = await mutation({
+      config,
+      path: '/rest/api/2/issue/OC-42/comment',
+      json: { body: 'Agent note' },
+    });
+    expect(result).toEqual({ id: '10', body: 'Agent note' });
+    expect(fetchImpl).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://jira.example.com/rest/api/2/issue/OC-42/comment',
+      token: 'JIRA-test',
+      verifySsl: true,
+      method: 'POST',
+      json: { body: 'Agent note' },
+    }));
+  });
+
+  it('answers null for a bodyless 204 transition', async () => {
+    const fetchImpl = async () => ({ status: 204, body: '' });
+    await expect(createJiraMutation({ fetchImpl })({
+      config,
+      path: '/rest/api/2/issue/OC-42/transitions',
+      json: { transition: { id: '31' } },
+    })).resolves.toBeNull();
+  });
+
+  it('reads a 400 as an invalid request with the instance message', async () => {
+    const fetchImpl = async () => ({
+      status: 400,
+      body: JSON.stringify({ errorMessages: ['The transition is not valid for this issue.'] }),
+    });
+    await expect(createJiraMutation({ fetchImpl })({
+      config,
+      path: '/rest/api/2/issue/OC-42/transitions',
+      json: { transition: { id: '31' } },
+    })).rejects.toMatchObject({ kind: 'invalid', message: 'The transition is not valid for this issue.' });
+  });
+
+  it('turns the refusing statuses into error kinds', async () => {
+    const refusing = async (status) => {
+      const fetchImpl = async () => ({ status, body: '' });
+      return createJiraMutation({ fetchImpl })({ config, path: '/x', json: {} });
+    };
+    await expect(refusing(401)).rejects.toMatchObject({ kind: 'unauthorized' });
+    await expect(refusing(403)).rejects.toMatchObject({ kind: 'unauthorized' });
+    await expect(refusing(404)).rejects.toMatchObject({ kind: 'not-found' });
+    await expect(refusing(500)).rejects.toMatchObject({ kind: 'server-error' });
+  });
+
+  it('refuses to run without a configured instance', async () => {
+    const fetchImpl = vi.fn();
+    await expect(createJiraMutation({ fetchImpl })({ config: null, path: '/x', json: {} }))
+      .rejects.toMatchObject({ kind: 'unconfigured' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('wraps a dying transport as an unreachable error', async () => {
+    const fetchImpl = vi.fn(async () => { throw Object.assign(new Error('socket gone'), { code: 'ECONNRESET' }); });
+    await expect(createJiraMutation({ fetchImpl })({ config, path: '/x', json: {} }))
       .rejects.toMatchObject({ kind: 'unreachable' });
   });
 });

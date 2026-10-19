@@ -1145,6 +1145,10 @@ interface UIStore {
   sessionWorkEnabled: boolean;
   /** Let Jev offer an AI review or a walkthrough after a turn that changed the project. */
   sessionReviewOfferEnabled: boolean;
+  /** The post-turn advisor: findings from rules, anchor checks and the Small Model under the answer. */
+  sessionAdvisorEnabled: boolean;
+  /** Per-turn checkpoints: pin the worktree when a turn starts, put the turn's files back on demand. */
+  sessionCheckpointsEnabled: boolean;
   sessionGoalEnabled: boolean;
   /** Who checks goal progress; the small model checks when no classification provider can. */
   sessionGoalChecker: SessionGoalChecker;
@@ -1269,6 +1273,8 @@ interface UIStore {
   agentKnowledgeToolEnabled: boolean;
   agentNotifyToolEnabled: boolean;
   agentRenderToolEnabled: boolean;
+  /** Whether agents may drive the debug panel's debugpy run. */
+  agentDebuggerToolEnabled: boolean;
   /** Whether OpenChamber's agent tools sit behind OpenCode's Code Mode instead of being direct tools. */
   agentToolsCodeMode: boolean;
   /** The isolated-spaces switch as saved; the server applies it at its next start. */
@@ -1483,6 +1489,8 @@ interface UIStore {
   setSessionSuggestionEnabled: (value: boolean) => void;
   setSessionWorkEnabled: (value: boolean) => void;
   setSessionReviewOfferEnabled: (value: boolean) => void;
+  setSessionAdvisorEnabled: (value: boolean) => void;
+  setSessionCheckpointsEnabled: (value: boolean) => void;
   setSessionGoalEnabled: (value: boolean) => void;
   setSessionGoalChecker: (value: SessionGoalChecker) => void;
   setSessionGoalMaxAutoTurns: (value: number) => void;
@@ -1589,6 +1597,7 @@ interface UIStore {
   setAgentKnowledgeToolEnabled: (value: boolean) => void;
   setAgentNotifyToolEnabled: (value: boolean) => void;
   setAgentRenderToolEnabled: (value: boolean) => void;
+  setAgentDebuggerToolEnabled: (value: boolean) => void;
   setAgentToolsCodeMode: (value: boolean) => void;
   setIsolatedSpacesEnabled: (value: boolean) => void;
   setPermissionDefaultMode: (value: PermissionMode) => void;
@@ -1731,6 +1740,8 @@ export const useUIStore = create<UIStore>()(
         sessionSuggestionEnabled: true,
         sessionWorkEnabled: true,
         sessionReviewOfferEnabled: false,
+        sessionAdvisorEnabled: false,
+        sessionCheckpointsEnabled: true,
         sessionGoalEnabled: true,
         sessionGoalChecker: 'small-model',
         sessionGoalMaxAutoTurns: DEFAULT_SESSION_GOAL_MAX_AUTO_TURNS,
@@ -1826,6 +1837,7 @@ export const useUIStore = create<UIStore>()(
         agentKnowledgeToolEnabled: true,
         agentNotifyToolEnabled: false,
         agentRenderToolEnabled: true,
+        agentDebuggerToolEnabled: true,
         agentToolsCodeMode: false,
         isolatedSpacesEnabled: false,
         permissionDefaultMode: 'ask',
@@ -3036,6 +3048,14 @@ export const useUIStore = create<UIStore>()(
           set({ sessionReviewOfferEnabled: value });
         },
 
+        setSessionAdvisorEnabled: (value: boolean) => {
+          set({ sessionAdvisorEnabled: value });
+        },
+
+        setSessionCheckpointsEnabled: (value: boolean) => {
+          set({ sessionCheckpointsEnabled: value });
+        },
+
         setSessionGoalEnabled: (value) => {
           set({ sessionGoalEnabled: value });
         },
@@ -3667,6 +3687,9 @@ export const useUIStore = create<UIStore>()(
         setAgentRenderToolEnabled: (value) => {
           set({ agentRenderToolEnabled: value });
         },
+        setAgentDebuggerToolEnabled: (value) => {
+          set({ agentDebuggerToolEnabled: value });
+        },
         setAgentToolsCodeMode: (value) => {
           set({ agentToolsCodeMode: value });
         },
@@ -4125,6 +4148,8 @@ export const useUIStore = create<UIStore>()(
           sessionSuggestionEnabled: state.sessionSuggestionEnabled,
           sessionWorkEnabled: state.sessionWorkEnabled,
           sessionReviewOfferEnabled: state.sessionReviewOfferEnabled,
+          sessionAdvisorEnabled: state.sessionAdvisorEnabled,
+          sessionCheckpointsEnabled: state.sessionCheckpointsEnabled,
           sessionGoalEnabled: state.sessionGoalEnabled,
           sessionGoalChecker: state.sessionGoalChecker,
           sessionGoalMaxAutoTurns: state.sessionGoalMaxAutoTurns,
@@ -4204,6 +4229,7 @@ export const useUIStore = create<UIStore>()(
           agentKnowledgeToolEnabled: state.agentKnowledgeToolEnabled,
           agentNotifyToolEnabled: state.agentNotifyToolEnabled,
           agentRenderToolEnabled: state.agentRenderToolEnabled,
+          agentDebuggerToolEnabled: state.agentDebuggerToolEnabled,
           agentToolsCodeMode: state.agentToolsCodeMode,
           isolatedSpacesEnabled: state.isolatedSpacesEnabled,
           permissionDefaultMode: state.permissionDefaultMode,

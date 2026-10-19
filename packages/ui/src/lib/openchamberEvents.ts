@@ -108,6 +108,14 @@ const sessionFoldersChangedSchema = z.object({ updatedAt: z.number().finite() })
 type SessionFoldersChangedEvent = { type: 'session-folders-changed' } & z.infer<typeof sessionFoldersChangedSchema>;
 
 /**
+ * A checkpoint was recorded for this session: the transcript refetches the
+ * registry, so a second window cannot keep offering a checkpoint it never
+ * fetched. The frame carries only which session moved.
+ */
+const sessionCheckpointsSchema = z.object({ sessionID: z.string().min(1) });
+type SessionCheckpointsEvent = { type: 'session-checkpoints'; sessionID: string };
+
+/**
  * One team's roster, mailbox or board moved. Like the memory event it carries
  * only which team changed: the team panel refetches, so a frame that raced a
  * second change cannot leave it rendering an older board than it fetched.
@@ -234,6 +242,7 @@ type OpenChamberEvent =
   | { type: 'space-queue-stream'; spaceId: string }
   | ScheduledTaskRanEvent
   | SessionCreatedEvent
+  | SessionCheckpointsEvent
   | WorktreeChangedEvent
   | BrowserControlRequestEvent
   | FileOpenRequestEvent
@@ -511,6 +520,12 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
   if (envelope.type === 'openchamber:session-folders-changed') {
     const parsed = sessionFoldersChangedSchema.safeParse(envelope.properties);
     if (parsed.success) for (const listener of listeners) listener({ type: 'session-folders-changed', ...parsed.data });
+    return;
+  }
+
+  if (envelope.type === 'openchamber:session-checkpoints') {
+    const parsed = sessionCheckpointsSchema.safeParse(envelope.properties);
+    if (parsed.success) for (const listener of listeners) listener({ type: 'session-checkpoints', ...parsed.data });
     return;
   }
 

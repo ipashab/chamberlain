@@ -94,6 +94,8 @@ export const OpenChamberToolsSettings: React.FC = () => {
   const setAgentNotifyToolEnabled = useUIStore((state) => state.setAgentNotifyToolEnabled);
   const agentRenderToolEnabled = useUIStore((state) => state.agentRenderToolEnabled);
   const setAgentRenderToolEnabled = useUIStore((state) => state.setAgentRenderToolEnabled);
+  const agentDebuggerToolEnabled = useUIStore((state) => state.agentDebuggerToolEnabled);
+  const setAgentDebuggerToolEnabled = useUIStore((state) => state.setAgentDebuggerToolEnabled);
   const agentToolsCodeMode = useUIStore((state) => state.agentToolsCodeMode);
   const setAgentToolsCodeMode = useUIStore((state) => state.setAgentToolsCodeMode);
 
@@ -121,6 +123,11 @@ export const OpenChamberToolsSettings: React.FC = () => {
     setAgentRenderToolEnabled(enabled);
     void updateDesktopSettings({ agentRenderToolEnabled: enabled });
   }, [setAgentRenderToolEnabled]);
+
+  const handleAgentDebuggerToolChange = React.useCallback((enabled: boolean) => {
+    setAgentDebuggerToolEnabled(enabled);
+    void updateDesktopSettings({ agentDebuggerToolEnabled: enabled });
+  }, [setAgentDebuggerToolEnabled]);
 
   const handleAgentKnowledgeToolChange = React.useCallback((enabled: boolean) => {
     setAgentKnowledgeToolEnabled(enabled);
@@ -264,6 +271,17 @@ export const OpenChamberToolsSettings: React.FC = () => {
           summary={t('settings.openchamber.tools.field.agentRenderToolSummary')}
           info={t('settings.openchamber.tools.field.agentRenderToolInfo')}
           ariaLabel={t('settings.openchamber.tools.field.agentRenderToolAria')}
+        />
+
+        <ToolRow
+          icon="bug"
+          settingsItem="sessions.agent-debugger-tool"
+          checked={agentDebuggerToolEnabled}
+          onChange={handleAgentDebuggerToolChange}
+          title={t('settings.openchamber.tools.field.agentDebuggerTool')}
+          summary={t('settings.openchamber.tools.field.agentDebuggerToolSummary')}
+          info={t('settings.openchamber.tools.field.agentDebuggerToolInfo')}
+          ariaLabel={t('settings.openchamber.tools.field.agentDebuggerToolAria')}
         />
 
         <ToolRow

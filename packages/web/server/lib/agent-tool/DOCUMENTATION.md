@@ -66,6 +66,23 @@ the user can want independently:
   `session.prompt` hook: a prompt for the session, from any sender, aborts the
   waiting call, which returns `{ answered: false, reason: "chat" }`, and the
   agent reads the message next.
+- `openchamber_debugger` — the debug panel's debugpy run, so an agent reads
+  real program state rather than reasoning from source: `debug.start`,
+  `debug.wait`, `debug.state`, `debug.stop`, `debug.breakpoints`,
+  `debug.continue`, `debug.step`, `debug.evaluate`, `debug.variables`,
+  dispatched by `../openchamber-control/debugger-actions.js` into
+  `../debugger/service.js`. On by default: enabled while
+  `agentDebuggerToolEnabled` is not `false`, and the control service refuses
+  the actions when it is, so a stale plugin cannot keep debugging.
+  `debug.wait` is what makes the tool usable at all: it resolves inside one
+  call once the debuggee stops or the run exits (bounded, and cancelled with
+  the calling turn's signal), because polling `debug.state` across turns
+  re-sends the whole context each time. Its generated entry sends Bun's
+  `timeout: false` for the same reason the waiting render callback does.
+  `debug.start` and `debug.breakpoints` also accept paths relative to the
+  working directory, which the panel never sends. The description keeps the
+  two rules agents need: the session is one and shared with the panel the
+  user may be watching, and plain test runs are faster in the agent's shell.
 
 Both default to on, are toggled in Settings → General → OpenChamber Tools, and take
 effect in the running OpenCode within a couple of seconds — OpenChamber rewrites

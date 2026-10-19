@@ -171,6 +171,9 @@
     "agentRenderToolEnabled": {
       "scope": "instance"
     },
+    "agentDebuggerToolEnabled": {
+      "scope": "instance"
+    },
     "agentToolsCodeMode": {
       "scope": "instance"
     },
@@ -615,6 +618,12 @@
       "scope": "profile"
     },
     "sessionWorkEnabled": {
+      "scope": "profile"
+    },
+    "sessionAdvisorEnabled": {
+      "scope": "profile"
+    },
+    "sessionCheckpointsEnabled": {
       "scope": "profile"
     },
     "sessionReviewOfferEnabled": {

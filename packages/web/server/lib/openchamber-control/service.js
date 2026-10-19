@@ -2,9 +2,10 @@ import { asNonEmptyString, isBoolean } from '../shared/guards.js';
 import path from 'node:path';
 import { OpenCode } from '@opencode/client';
 import { OpenChamberControlError, asControlError } from './error.js';
-import { OPENCHAMBER_ALL_ACTIONS, OPENCHAMBER_KNOWLEDGE_ACTIONS } from './actions.js';
+import { OPENCHAMBER_ALL_ACTIONS, OPENCHAMBER_KNOWLEDGE_ACTIONS, OPENCHAMBER_DEBUGGER_ACTIONS } from './actions.js';
 import { writeScreenshot } from './screenshots.js';
 import { createProjectKnowledgeActions } from './project-knowledge.js';
+import { createDebuggerActions } from './debugger-actions.js';
 import { createPageAnswers, createRenderPageAction } from './render-page.js';
 
 const DEFAULT_WAIT_TIMEOUT_SECONDS = 600;
@@ -226,6 +227,12 @@ export const createOpenChamberControlService = (dependencies) => {
     resolveProjectContextId = null,
     isKnowledgeToolEnabled = async () => true,
     isRenderToolEnabled = async () => true,
+    // Drives the debugpy session the debug panel shows; null means this server
+    // runs without the debug surface and every debug.* action answers 503.
+    debuggerControl = null,
+    // Same stale-plugin rule as knowledge and render: a debugger tool call
+    // from a plugin generated before the setting was switched off is refused.
+    isDebuggerToolEnabled = async () => true,
     // Hears when a page an agent shows starts and stops waiting for the
     // user's answer (render.page with awaitAnswer).
     onPageWaitChange = () => {},
@@ -315,6 +322,12 @@ export const createOpenChamberControlService = (dependencies) => {
     showPlan,
     resolveDirectory: (input) => sessionService.resolveDirectory(input),
   });
+
+  // The debug actions vanish with the service, so a server without the debug
+  // surface answers "not available" instead of failing inside the dispatch.
+  const debugActions = debuggerControl
+    ? createDebuggerActions({ debuggerService: debuggerControl })
+    : null;
 
   const pageAnswers = createPageAnswers({ onWaitChange: onPageWaitChange });
   const renderPage = createRenderPageAction({ isEnabled: isRenderToolEnabled, pageAnswers });
@@ -790,6 +803,17 @@ export const createOpenChamberControlService = (dependencies) => {
       }
       if (OPENCHAMBER_KNOWLEDGE_ACTIONS.includes(action)) {
         return await knowledgeActions.execute(action, input, contextDirectory, options.contextSessionId);
+      }
+      if (OPENCHAMBER_DEBUGGER_ACTIONS.includes(action)) {
+        // The setting refuses what a plugin generated before it was switched
+        // off still asks for, the same way knowledge and render do.
+        if (!await isDebuggerToolEnabled()) {
+          throw new OpenChamberControlError('The debugger tool is switched off in Settings', 403);
+        }
+        if (!debugActions) {
+          throw new OpenChamberControlError('The debugger is not available on this server', 503);
+        }
+        return await debugActions.execute(action, input, contextDirectory, options);
       }
       if (action.startsWith('memory.')) {
         if (!agentMemoryActions) {

@@ -977,3 +977,34 @@ describe('returning a dispatched session result', () => {
     expect(sessionService.send).not.toHaveBeenCalled();
   });
 });
+
+describe('debug actions', () => {
+  it('delegates to the debugger service with the session directory', async () => {
+    const start = vi.fn(async () => ({ session: { status: 'starting' } }));
+    const { service } = createService({ debuggerControl: { start } });
+    await service.execute('debug.start', { module: 'pytest', args: ['-k', 'test_tag'] }, '/repo');
+    expect(start).toHaveBeenCalledWith({ cwd: '/repo', module: 'pytest', args: ['-k', 'test_tag'] });
+  });
+
+  it('passes the calling turn\'s signal to a wait, and nothing else', async () => {
+    const state = vi.fn(() => ({ session: null, lastExit: { exitCode: 0 }, outputTail: [], tests: null }));
+    const { service } = createService({ debuggerControl: { state } });
+    const signal = new AbortController().signal;
+    const result = await service.execute('debug.wait', { until: 'exit' }, '/repo', { signal });
+    expect(result.waited).toBe('exit');
+    expect(signal.aborted).toBe(false);
+  });
+
+  it('answers 503 when this server runs without the debug surface', async () => {
+    const { service } = createService({});
+    await expect(service.execute('debug.state', {}, '/repo')).rejects.toMatchObject({ statusCode: 503 });
+  });
+
+  it('refuses what a plugin generated before the tool was switched off still asks for', async () => {
+    const { service } = createService({
+      isDebuggerToolEnabled: async () => false,
+      debuggerControl: { state: vi.fn() },
+    });
+    await expect(service.execute('debug.state', {}, '/repo')).rejects.toMatchObject({ statusCode: 403, message: expect.stringContaining('switched off') });
+  });
+});

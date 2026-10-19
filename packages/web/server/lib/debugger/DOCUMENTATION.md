@@ -20,9 +20,21 @@ packages/web/server/lib/debugger/
 └── routes.js                    One REST surface, `state()` after every action.
 ```
 
-The panel is the only intended client; nothing here is part of an agent
-tool surface. Running Python on the user's machine is the same trust level
-as the terminal's shell runs.
+## Clients
+
+The debug panel, through the routes below, and agents, through the
+`openchamber_debugger` tool (`../openchamber-control/debugger-actions.js`,
+declared in `../agent-tool/runtime.js`). Both drive the one session this
+service owns, so a user watching the panel sees an agent's run live through
+the same `openchamber:debugger-changed` events, and either side can stop it.
+The agent surface adds one action the routes do not have, `debug.wait`: it
+resolves inside a single call once the debuggee stops or the run exits,
+bounded by a timeout and the calling turn's abort signal, so an agent never
+polls state across turns. It also resolves relative paths in the launch
+input and in breakpoints against the working directory; the service keeps
+its absolute-only contract. Running Python on the user's machine is the same
+trust level as the terminal's shell runs, so the routes gate nothing behind
+permissions and neither does the tool.
 
 ## Routes
 

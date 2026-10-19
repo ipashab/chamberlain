@@ -43,6 +43,7 @@ import { createTeamPullStatus } from '../team/pull-status.js';
 import { registerMissionsRoutes } from '../missions/routes.js';
 import { registerAssistantsRoutes } from '../assistants/routes.js';
 import { registerDebuggerRoutes } from '../debugger/routes.js';
+import { registerCheckpointRoutes } from '../checkpoints/routes.js';
 import { createMcpConsoleService } from '../mcp-console/service.js';
 import { registerMcpConsoleRoutes } from '../mcp-console/routes.js';
 import { registerOpenChamberControlRoutes } from '../openchamber-control/routes.js';
@@ -215,6 +216,7 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     const {
       messageSearchRuntime,
       sessionWarmingRuntime,
+      checkpointsRuntime,
       crypto,
       fs,
       os,
@@ -375,6 +377,8 @@ export const createFeatureRoutesRuntime = (dependencies) => {
     registerMissionsRoutes(app, { missionsService });
     registerAssistantsRoutes(app, { assistantsService });
     registerDebuggerRoutes(app, { debuggerService });
+
+    registerCheckpointRoutes(app, { checkpointsRuntime });
 
     // The MCP console adopts one connection per configured server on the
     // user's command: catalogs and tool calls without an agent in between.

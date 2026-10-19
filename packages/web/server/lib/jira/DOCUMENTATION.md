@@ -1,10 +1,11 @@
 # Jira Data Center (self-hosted)
 
-The fork's own read-only client for a self-hosted Jira Data Center
+The fork's own client for a self-hosted Jira Data Center
 instance. It exists for the surfaces that read issues — the viewer the
 context panel's Jira surface renders, the quick finder beside it, and the
 board's landing list of the account's own open issues — and grows toward
-the ask flow and the issue analysis along the same REST surface.
+the ask flow and the issue analysis along the same REST surface; the agent
+tool's tracker actions write through it too (see `tracker/DOCUMENTATION.md`).
 
 It mirrors the Bitbucket DC module beside it: the same connection shape,
 the same card, the same routes' grammar, the same per-instance TLS policy.
@@ -96,6 +97,13 @@ token, per-instance TLS policy, 15s timeout, JSON parsed and returned
 callers branch on: `unconfigured`, `unauthorized` (401/403), `not-found`
 (404), `unreachable` (transport and TLS), `server-error` (everything
 else, including a body that is not the JSON the caller asked for).
+
+The mutation factory (`createJiraMutation`) is the write side the tracker
+tool reads: one POST with a JSON body, a bodyless 2xx (a transition answers
+204) reading back null, and the same kinds plus `invalid` (400) carrying
+Jira's own message when its error body parsed. Every read surface above
+stays on the GET client; only the tracker's comment and transition calls
+take the POST path.
 
 ## The reference grammar (`url.js`)
 

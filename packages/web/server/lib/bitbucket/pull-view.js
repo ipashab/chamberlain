@@ -2,9 +2,9 @@
  * The pull request as the PR viewer reads it: the meta with reviewers and
  * checks, the commits, the files with their locally rebuilt unified diffs,
  * and the comments. Everything comes from GETs to the pull's own resources; the
- * view is assembled here, on the user's machine, and nothing is ever
- * written back to the instance — the request module this reads through has
- * GET as its only verb.
+ * view is assembled here, on the user's machine, and the view itself writes
+ * nothing back to the instance — it reads through the GET client and never
+ * the mutation one.
  *
  * Representation decisions, kept honest rather than guessed:
  * - DC answers diffs as JSON with interleaved segments; the unified patch

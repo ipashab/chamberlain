@@ -46,6 +46,7 @@ import { hasActiveFormToolInCurrentTurn, recoverPendingFormWithRetry } from '@/s
 import { toast } from '@/components/ui';
 import { StatusRowContainer } from './StatusRowContainer';
 import { SessionRecapNote } from '@/components/chat/SessionRecapSpacer';
+import { AdvisorNote } from '@/components/chat/AdvisorNote';
 import {
     FLOATING_COMPOSER_DEFAULT_TAIL_INSET_PX,
     FLOATING_COMPOSER_GAP_PX,
@@ -1922,6 +1923,11 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                             >
                                 <div className="chat-input-column">
                                     <SessionRecapNote
+                                        sessionId={currentSessionId}
+                                        directory={effectiveSessionDirectory}
+                                        isMobile={isMobile}
+                                    />
+                                    <AdvisorNote
                                         sessionId={currentSessionId}
                                         directory={effectiveSessionDirectory}
                                         isMobile={isMobile}

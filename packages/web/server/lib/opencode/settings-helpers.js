@@ -542,6 +542,12 @@ export const createSettingsHelpers = (dependencies) => {
     if (typeof candidate.sessionReviewOfferEnabled === 'boolean') {
       result.sessionReviewOfferEnabled = candidate.sessionReviewOfferEnabled;
     }
+    if (candidate.sessionAdvisorEnabled === true || candidate.sessionAdvisorEnabled === false) {
+      result.sessionAdvisorEnabled = candidate.sessionAdvisorEnabled;
+    }
+    if (candidate.sessionCheckpointsEnabled === true || candidate.sessionCheckpointsEnabled === false) {
+      result.sessionCheckpointsEnabled = candidate.sessionCheckpointsEnabled;
+    }
     if (typeof candidate.sessionGoalEnabled === 'boolean') {
       result.sessionGoalEnabled = candidate.sessionGoalEnabled;
     }
@@ -765,6 +771,9 @@ export const createSettingsHelpers = (dependencies) => {
     }
     if (candidate.agentRenderToolEnabled === true || candidate.agentRenderToolEnabled === false) {
       result.agentRenderToolEnabled = candidate.agentRenderToolEnabled;
+    }
+    if (candidate.agentDebuggerToolEnabled === true || candidate.agentDebuggerToolEnabled === false) {
+      result.agentDebuggerToolEnabled = candidate.agentDebuggerToolEnabled;
     }
     if (typeof candidate.agentToolsCodeMode === 'boolean') {
       result.agentToolsCodeMode = candidate.agentToolsCodeMode;

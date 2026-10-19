@@ -12,6 +12,7 @@ import { fingerprintRemoteUrl } from '../source-control/url-redaction.js';
 import { readWorktreeDirectorySetting } from '../opencode/shared.js';
 import { readProjectStartCommand } from '../opencode/project-start-command.js';
 import { normalizeGitOutputPath } from './output-path.js';
+import { isString } from '../shared/guards.js';
 import { overlayEnvironment } from '../environment/variables.js';
 import { primaryWorktreeRootFromGitDir, unsupportedRepositoryRootReason } from './repository-root.js';
 import { randomUUID } from 'crypto';
@@ -1159,9 +1160,10 @@ const isMissingDirectoryError = (error) => {
   return /directory that does not exist|does not exist|no such file or directory/i.test(text);
 };
 
-const runGitCommand = async (cwd, args, { env: envOverride, timeoutMs = 0 } = {}) => {
+const runGitCommand = async (cwd, args, { env: envOverride, timeoutMs = 0, encoding = 'utf8' } = {}) => {
+  const asBuffer = encoding === 'buffer';
   try {
-    const { stdout, stderr } = await execFileAsync(getGitBinary(), args, {
+    const execOptions = {
       cwd,
       env: envOverride || await buildGitEnv(cwd),
       windowsHide: true,
@@ -1169,18 +1171,21 @@ const runGitCommand = async (cwd, args, { env: envOverride, timeoutMs = 0 } = {}
       // Only short probes pass a timeout; commands that legitimately run long
       // (a fetch into a temporary clone) keep the default of none.
       ...(timeoutMs > 0 ? { timeout: timeoutMs, killSignal: 'SIGKILL' } : {}),
-    });
+    };
+    // Binary output (checkpoint blob reads) must not travel as text.
+    if (asBuffer) execOptions.encoding = 'buffer';
+    const { stdout, stderr } = await execFileAsync(getGitBinary(), args, execOptions);
     return {
       success: true,
       exitCode: 0,
-      stdout: String(stdout || ''),
+      stdout: asBuffer ? stdout : String(stdout || ''),
       stderr: String(stderr || ''),
     };
   } catch (error) {
     return {
       success: false,
       exitCode: Number.isInteger(error?.code) ? error.code : null,
-      stdout: String(error?.stdout || ''),
+      stdout: asBuffer ? error?.stdout ?? Buffer.alloc(0) : String(error?.stdout || ''),
       stderr: String(error?.stderr || ''),
       message: parseGitErrorText(error),
     };
@@ -4003,13 +4008,179 @@ export async function revertFile(directory, filePath, options = {}) {
   });
 }
 
+// --- Turn checkpoints -------------------------------------------------------
+
+const CHECKPOINT_REF_PREFIX = 'refs/openchamber/checkpoints/';
+const CHECKPOINT_REF_PATTERN = /^refs\/openchamber\/checkpoints\/[a-zA-Z0-9][a-zA-Z0-9/_-]*$/;
+const SNAPSHOT_TREE_PATTERN = /^[0-9a-f]{40,64}$/i;
+const WORKTREE_SNAPSHOT_TIMEOUT_MS = 120_000;
+
+const validateCheckpointRefName = (refName) => {
+  if (!isString(refName) || !CHECKPOINT_REF_PATTERN.test(refName)) {
+    throw new Error(`Invalid checkpoint ref name: ${refName}`);
+  }
+};
+
+const validateSnapshotTree = (tree) => {
+  if (!isString(tree) || !SNAPSHOT_TREE_PATTERN.test(tree)) {
+    throw new Error(`Invalid checkpoint snapshot: ${tree}`);
+  }
+};
+
+/**
+ * Whole-worktree snapshot for agent-turn checkpoints: every file Git can see,
+ * tracked or untracked, frozen as one tree. The snapshot is built through a
+ * throwaway index (`GIT_INDEX_FILE`), so the repository's own index, its lock
+ * and the user's staged state stay untouched; the two things written are
+ * object blobs and one ref under `refs/openchamber/checkpoints/`. The ref is
+ * what keeps the tree alive through a later `git gc`: an unreferenced tree is
+ * dangling and gets pruned within weeks. Ignored files are not snapshotted,
+ * which also fences off vendored bulk like `node_modules` and virtualenvs.
+ */
+export async function captureWorktreeSnapshot(directory, { refName } = {}) {
+  validateCheckpointRefName(refName);
+  const { repoRoot } = await createRepositoryGitContext(directory);
+  const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'openchamber-checkpoint-'));
+  const env = { ...(await buildGitEnv(repoRoot)), GIT_INDEX_FILE: path.join(tempDir, 'index') };
+  try {
+    const verifyHead = await runGitCommand(repoRoot, ['rev-parse', '--verify', '-q', 'HEAD'], { env });
+    if (verifyHead.success && verifyHead.stdout.trim()) {
+      const readTree = await runGitCommand(repoRoot, ['read-tree', 'HEAD'], { env });
+      if (!readTree.success) {
+        throw new Error(readTree.message || 'Failed to seed the checkpoint index from HEAD');
+      }
+    }
+    const add = await runGitCommand(repoRoot, ['add', '-A', '--', '.'], { env, timeoutMs: WORKTREE_SNAPSHOT_TIMEOUT_MS });
+    if (!add.success) {
+      throw new Error(add.message || 'Failed to snapshot the worktree');
+    }
+    const writeTree = await runGitCommand(repoRoot, ['write-tree'], { env });
+    if (!writeTree.success) {
+      throw new Error(writeTree.message || 'Failed to write the checkpoint tree');
+    }
+    const tree = writeTree.stdout.trim();
+    validateSnapshotTree(tree);
+    const updateRef = await runGitCommand(repoRoot, ['update-ref', refName, tree], { env });
+    if (!updateRef.success) {
+      throw new Error(updateRef.message || 'Failed to pin the checkpoint ref');
+    }
+    return { tree, refName, repoRoot };
+  } finally {
+    await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * Writes `files` back from the snapshot `tree` into the worktree, without
+ * touching the index or the staged state: a checkpoint restore returns the
+ * files the turn changed to their pre-turn content, and what the user staged
+ * is a separate concern. Blob content is read back through `cat-file
+ * --filters`, so clean/smudge chains like Git LFS round-trip. A path missing
+ * from the tree was created after the snapshot and is removed instead,
+ * except when Git currently ignores it; symlinks are recreated as links,
+ * gitlinks (submodules) and directory paths are reported as skipped rather
+ * than guessed at.
+ */
+export async function restoreSnapshotFiles(directory, tree, files) {
+  validateSnapshotTree(tree);
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new Error('Checkpoint restore requires at least one file');
+  }
+  const { repoRoot } = await createRepositoryGitContext(directory);
+  validateRepositoryFilePaths(repoRoot, files);
+  const restored = [];
+  const removed = [];
+  const skipped = [];
+  for (const filePath of files) {
+    const absolutePath = path.resolve(repoRoot, filePath);
+    const repoPath = toGitPath(path.relative(repoRoot, absolutePath));
+    const listed = await runGitCommand(repoRoot, ['ls-tree', tree, '--', `:(literal)${repoPath}`]);
+    if (!listed.success) {
+      throw new Error(listed.message || 'Failed to read the checkpoint tree');
+    }
+    const entry = listed.stdout.trim();
+    if (!entry) {
+      const ignoreCheck = await runGitCommand(repoRoot, ['check-ignore', '-q', '--', repoPath]);
+      if (ignoreCheck.success) {
+        skipped.push({ path: filePath, reason: 'ignored' });
+        continue;
+      }
+      const stat = await fsp.lstat(absolutePath).catch(() => null);
+      if (!stat) {
+        continue;
+      }
+      if (stat.isDirectory()) {
+        skipped.push({ path: filePath, reason: 'directory' });
+      } else {
+        try {
+          await fsp.rm(absolutePath, { force: true });
+          removed.push(filePath);
+        } catch (error) {
+          skipped.push({ path: filePath, reason: 'remove-failed' });
+        }
+      }
+      continue;
+    }
+    const fields = entry.split(/\s+/);
+    if (fields.length < 3) {
+      skipped.push({ path: filePath, reason: 'unknown' });
+      continue;
+    }
+    if (fields[1] !== 'blob') {
+      skipped.push({ path: filePath, reason: fields[1] === 'commit' ? 'submodule' : 'tree' });
+      continue;
+    }
+    const cat = await runGitCommand(
+      repoRoot,
+      ['cat-file', '--filters', `--path=${repoPath}`, fields[2]],
+      { encoding: 'buffer' },
+    );
+    if (!cat.success) {
+      skipped.push({ path: filePath, reason: 'read-failed' });
+      continue;
+    }
+    const content = Buffer.isBuffer(cat.stdout) ? cat.stdout : Buffer.from(String(cat.stdout), 'utf8');
+    try {
+      if (fields[0] === '120000') {
+        await fsp.rm(absolutePath, { force: true, recursive: true }).catch(() => {});
+        await fsp.symlink(content.toString('utf8'), absolutePath);
+      } else {
+        await fsp.mkdir(path.dirname(absolutePath), { recursive: true });
+        await fsp.rm(absolutePath, { force: true }).catch(() => {});
+        await fsp.writeFile(absolutePath, content);
+        if (fields[0] === '100755') {
+          await fsp.chmod(absolutePath, 0o755).catch(() => {});
+        }
+      }
+      restored.push(filePath);
+    } catch (error) {
+      skipped.push({ path: filePath, reason: 'write-failed' });
+    }
+  }
+  return { restored, removed, skipped };
+}
+
+/**
+ * Drops a checkpoint ref. A missing ref answers false without an error, so
+ * pruning a store that outlived its repository is not an error: `update-ref
+ * -d` exits zero on a nonexistent ref, so absence is probed, not assumed.
+ */
+export async function deleteCheckpointRef(directory, refName) {
+  validateCheckpointRefName(refName);
+  const { repoRoot } = await createRepositoryGitContext(directory);
+  const verify = await runGitCommand(repoRoot, ['rev-parse', '--verify', '-q', refName]);
+  if (!verify.success || !verify.stdout.trim()) {
+    return false;
+  }
+  const result = await runGitCommand(repoRoot, ['update-ref', '-d', refName]);
+  return result.success;
+}
+
 const HUNK_ACTION_FLAGS = {
   stage: ['--cached'],
   unstage: ['--cached', '--reverse'],
   discard: ['--reverse'],
-};
-
-const parsePatchPathToken = (line) => {
+};const parsePatchPathToken = (line) => {
   const value = String(line || '').replace(/^(?:-{3}|\+{3})\s+/, '');
   if (!value || value === '/dev/null') {
     return null;

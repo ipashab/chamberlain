@@ -75,6 +75,9 @@ describe('settings runtime', () => {
 
       await runtime.persistSettings({ agentWebToolEnabled: false });
       expect(onManagedPluginSettingsChanged).toHaveBeenCalledTimes(1);
+
+      await runtime.persistSettings({ agentDebuggerToolEnabled: false });
+      expect(onManagedPluginSettingsChanged).toHaveBeenCalledTimes(2);
     } finally {
       await cleanup();
     }

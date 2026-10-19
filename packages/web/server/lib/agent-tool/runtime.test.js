@@ -274,6 +274,50 @@ describe('managed agent tool runtime', () => {
     expect(knowledge.description).toContain('retry the save with the same id');
   });
 
+  it('exposes the debugger as its own tool carrying only its own inputs', async () => {
+    const { runtime, dataDir } = await createRuntime();
+    await prepareManagedEnv(runtime, { includeDebugger: true });
+    const tools = await loadTools(dataDir, 'debugger-schema');
+    const debuggerTool = tools.openchamber_debugger;
+    expect(debuggerTool.description).toContain('debug panel');
+    expect(debuggerTool.description).toContain('debug.wait');
+    const actions = debuggerTool.input.properties.action.oneOf.map((entry) => entry.const);
+    expect(actions).toEqual([
+      'debug.start', 'debug.wait', 'debug.state', 'debug.stop', 'debug.breakpoints',
+      'debug.continue', 'debug.step', 'debug.evaluate', 'debug.variables',
+    ]);
+    const parameters = debuggerTool.input.properties.parameters.properties;
+    expect(Object.keys(parameters).sort()).toEqual([
+      'args', 'breakpoints', 'cwd', 'expression', 'kind', 'lines', 'module',
+      'path', 'program', 'pythonPath', 'reference', 'timeoutMs', 'until',
+    ]);
+    // No debug action or input leaks into the other tools.
+    expect(tools.openchamber.input.properties.action.oneOf.map((entry) => entry.const)).not.toContain('debug.start');
+    expect(tools.openchamber_web.input.properties.parameters.properties).not.toHaveProperty('expression');
+    await runtime.materializePlugin({ includeDebugger: false });
+    expect(await loadTools(dataDir, 'debugger-disabled')).not.toHaveProperty('openchamber_debugger');
+  });
+
+  it('sends a debugger call with Bun\'s patience lifted, and only that tool\'s', async () => {
+    const { runtime, dataDir } = await createRuntime();
+    await prepareManagedEnv(runtime, { includeDebugger: true });
+    const withDebugger = await fs.readFile(path.join(pluginDirectoryFor(dataDir), 'index.js'), 'utf8');
+    expect(withDebugger.match(/timeout: false/g)).toHaveLength(1);
+    await prepareManagedEnv(runtime, {});
+    const withoutDebugger = await fs.readFile(path.join(pluginDirectoryFor(dataDir), 'index.js'), 'utf8');
+    expect(withoutDebugger).not.toContain('timeout: false');
+  });
+
+  it('resolves the bare action name inside the debugger tool', async () => {
+    const { runtime, executeAction } = await createRuntime();
+    const result = await runtime.execute({ tool: 'openchamber_debugger', input: { action: 'start', module: 'pytest' }, sessionID: 'ses_1' });
+    expect(result.ok).toBe(true);
+    expect(executeAction).toHaveBeenCalledWith('debug.start', expect.objectContaining({ action: 'debug.start' }), undefined, { contextSessionId: 'ses_1' });
+    const miss = await runtime.execute({ tool: 'openchamber_debugger', input: { action: 'delete' } });
+    expect(miss.ok).toBe(false);
+    expect(miss.error.message).toContain('debug.start');
+  });
+
   it('uses the callback session for knowledge scope and provenance', async () => {
     const { runtime, executeAction } = await createRuntime({ resolveSessionDirectory: async (id) => id === 'ses_real' ? '/real' : null });
     const input = { action: 'knowledge.save', kind: 'note', body: 'Note', origin: { sessionId: 'spoof' }, sessionId: 'spoof' };
@@ -535,7 +579,7 @@ describe('managed agent tool runtime', () => {
     await prepareManagedEnv(runtime, { includeControl: false, includeWeb: true, includeMemory: false });
     const tool = await loadTools(dataDir, 'web');
 
-    expect(Object.keys(tool)).toEqual(['openchamber_web', 'openchamber_team']);
+    expect(Object.keys(tool)).toEqual(['openchamber_web', 'openchamber_team', 'openchamber_tracker']);
   });
 
   it('exposes the team tool on every settings combination', async () => {
@@ -554,12 +598,32 @@ describe('managed agent tool runtime', () => {
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('slotId');
   });
 
+  it('exposes the tracker tool with the pr:// and issue:// grammar only', async () => {
+    // Like the team tool, the tracker ships always: without a configured
+    // Bitbucket or Jira connection every action answers unconfigured, so
+    // there is nothing to gate.
+    const { runtime, dataDir } = await createRuntime();
+    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false });
+    const tool = await loadTools(dataDir, 'tracker');
+
+    expect(Object.keys(tool.openchamber_tracker.input.properties.parameters.properties).sort())
+      .toEqual(['ref', 'text', 'transition']);
+    const actions = tool.openchamber_tracker.input.properties.action.oneOf.map((entry) => entry.const);
+    expect(actions).toEqual(['pr.view', 'pr.comment', 'pr.approve', 'issue.view', 'issue.comment', 'issue.transitions', 'issue.transition']);
+    // The reference forms ride on the description, the grammar the agent reads first.
+    expect(tool.openchamber_tracker.description).toContain('pr://<full Bitbucket pull-request URL>');
+    expect(tool.openchamber_tracker.description).toContain('issue://<Jira browse URL or bare issue key>');
+    // Tracker inputs must not leak into the control tool's schema.
+    expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('ref');
+    expect(tool.openchamber.input.properties.action.oneOf.map((entry) => entry.const).filter((action) => action.startsWith('pr.') || action.startsWith('issue.'))).toEqual([]);
+  });
+
   it('exposes memory as its own tool carrying only its own inputs', async () => {
     const { runtime, dataDir } = await createRuntime();
     await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: true });
     const tool = await loadTools(dataDir, 'memory');
 
-    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_memory', 'openchamber_team']);
+    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_memory', 'openchamber_team', 'openchamber_tracker']);
     expect(Object.keys(tool.openchamber_memory.input.properties.parameters.properties).sort())
       .toEqual(['body', 'memoryId', 'scope', 'title', 'type']);
     // Memory inputs must not leak into the control tool's schema, which the
@@ -572,7 +636,7 @@ describe('managed agent tool runtime', () => {
     await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false });
     const tool = await loadTools(dataDir, 'nomemory');
 
-    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_team']);
+    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_team', 'openchamber_tracker']);
   });
 
   it('injects the plugin when memory is the only tool left on', async () => {
@@ -580,7 +644,7 @@ describe('managed agent tool runtime', () => {
     await prepareManagedEnv(runtime, { includeControl: false, includeWeb: false, includeMemory: true });
     const tool = await loadTools(dataDir, 'onlymemory');
 
-    expect(Object.keys(tool)).toEqual(['openchamber_memory', 'openchamber_team']);
+    expect(Object.keys(tool)).toEqual(['openchamber_memory', 'openchamber_team', 'openchamber_tracker']);
   });
 
   it('exposes notify as its own tool only when switched on', async () => {
@@ -588,14 +652,14 @@ describe('managed agent tool runtime', () => {
     await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false, includeNotify: true });
     const tool = await loadTools(dataDir, 'notify');
 
-    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_notify', 'openchamber_team']);
+    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_notify', 'openchamber_team', 'openchamber_tracker']);
     expect(Object.keys(tool.openchamber_notify.input.properties.parameters.properties).sort())
       .toEqual(['body', 'showWhenFocused', 'title']);
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('showWhenFocused');
 
     const { runtime: plain, dataDir: plainDir } = await createRuntime();
     await prepareManagedEnv(plain, { includeControl: true, includeWeb: false, includeMemory: false });
-    expect(Object.keys(await loadTools(plainDir, 'nonotify'))).toEqual(['openchamber', 'openchamber_team']);
+    expect(Object.keys(await loadTools(plainDir, 'nonotify'))).toEqual(['openchamber', 'openchamber_team', 'openchamber_tracker']);
   });
 
   it('exposes render as its own tool carrying only the page and its title', async () => {
@@ -605,7 +669,7 @@ describe('managed agent tool runtime', () => {
 
     // The team tool is a fork capability that ships always (it is inert
     // outside a team), so it rides along here too.
-    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_team', 'openchamber_render']);
+    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_team', 'openchamber_tracker', 'openchamber_render']);
     expect(Object.keys(tool.openchamber_render.input.properties.parameters.properties).sort()).toEqual(['awaitAnswer', 'html', 'title']);
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('html');
     // How to write the page rides on its input, which no client cuts short.
@@ -633,7 +697,7 @@ describe('managed agent tool runtime', () => {
 
     // Team Mode ships on for every session (the tool is inert outside a team),
     // so the fork's team tool rides along here too.
-    expect(Object.keys(tools)).toEqual(['openchamber', 'openchamber_schedule', 'openchamber_team']);
+    expect(Object.keys(tools)).toEqual(['openchamber', 'openchamber_schedule', 'openchamber_team', 'openchamber_tracker']);
     const scheduleActions = tools.openchamber_schedule.input.properties.action.oneOf.map((entry) => entry.const);
     expect(scheduleActions).toEqual(['schedule.list', 'schedule.create', 'schedule.update', 'schedule.run', 'schedule.delete', 'schedule.toggle']);
     expect(tools.openchamber.input.properties.action.oneOf.map((entry) => entry.const).filter((action) => action.startsWith('schedule.'))).toEqual([]);
@@ -657,13 +721,53 @@ describe('managed agent tool runtime', () => {
     expect(refused.ok).toBe(false);
   });
 
+  it('runs a tracker action through the tracker tool, graded by the statusCode', async () => {
+    const executeTrackerAction = vi.fn(async () => ({ approved: true, url: 'https://bitbucket.example.com/projects/OC/repos/core/pull-requests/42' }));
+    const { runtime } = await createRuntime({ executeTrackerAction });
+
+    const result = await runtime.execute({
+      tool: 'openchamber_tracker',
+      input: { action: 'pr.approve', ref: 'pr://https://bitbucket.example.com/projects/OC/repos/core/pull-requests/42' },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data).toMatchObject({ approved: true });
+    expect(executeTrackerAction).toHaveBeenCalledWith('pr.approve', expect.objectContaining({
+      action: 'pr.approve',
+      ref: 'pr://https://bitbucket.example.com/projects/OC/repos/core/pull-requests/42',
+    }));
+
+    // The service's statusCode grades the failure: 4xx answers usage, 5xx runtime.
+    const failing = vi.fn(async () => { throw Object.assign(new Error('ref must name a Bitbucket pull request'), { statusCode: 400 }); });
+    const graded = await createRuntime({ executeTrackerAction: failing });
+    const miss = await graded.runtime.execute({ tool: 'openchamber_tracker', input: { action: 'pr.comment', ref: '', text: 'Ship it' } });
+    expect(miss).toEqual(expect.objectContaining({ ok: false, action: 'pr.comment', error: expect.objectContaining({ kind: 'usage' }) }));
+    expect(failing).toHaveBeenCalled();
+
+    const down = vi.fn(async () => { throw Object.assign(new Error('Bitbucket request failed'), { statusCode: 502 }); });
+    const broken = await createRuntime({ executeTrackerAction: down });
+    const crash = await broken.runtime.execute({ tool: 'openchamber_tracker', input: { action: 'pr.approve', ref: 'pr://https://bitbucket.example.com/projects/OC/repos/core/pull-requests/42' } });
+    expect(crash).toEqual(expect.objectContaining({ ok: false, error: expect.objectContaining({ kind: 'runtime' }) }));
+  });
+
+  it('answers a tracker miss with its grammar, and a missing service with the runtime kind', async () => {
+    const { runtime } = await createRuntime();
+    const miss = await runtime.execute({ tool: 'openchamber_tracker', input: { action: 'pr.merge' } });
+    expect(miss).toEqual(expect.objectContaining({ ok: false, action: 'pr.merge', error: expect.objectContaining({ kind: 'usage' }) }));
+    expect(miss.error.message).toContain('pr.view, pr.comment, pr.approve');
+    expect(miss.error.message).toContain('pr://<full Bitbucket pull-request URL>');
+
+    // valid action, no tracker service wired: runtime, not usage.
+    const refused = await runtime.execute({ tool: 'openchamber_tracker', input: { action: 'issue.transition', ref: 'issue://OC-42', transition: '31' } });
+    expect(refused).toEqual(expect.objectContaining({ ok: false, action: 'issue.transition', error: expect.objectContaining({ kind: 'runtime', message: expect.stringContaining('unavailable') }) }));
+  });
+
   it('keeps every tool description within the length Claude Code passes on whole', async () => {
     const { runtime, dataDir } = await createRuntime();
     await prepareManagedEnv(runtime, { includeSchedule: true, includeKnowledge: true, includeNotify: true, includeRender: true });
     const tools = await loadTools(dataDir, 'description-length');
 
     // The fork's team tool ships on for every session, so it joins the list.
-    expect(Object.keys(tools).sort()).toEqual(['openchamber', 'openchamber_knowledge', 'openchamber_memory', 'openchamber_notify', 'openchamber_render', 'openchamber_schedule', 'openchamber_team', 'openchamber_web']);
+    expect(Object.keys(tools).sort()).toEqual(['openchamber', 'openchamber_knowledge', 'openchamber_memory', 'openchamber_notify', 'openchamber_render', 'openchamber_schedule', 'openchamber_team', 'openchamber_tracker', 'openchamber_web']);
     for (const tool of Object.values(tools)) {
       // Claude Code before 2.1.296 cuts an MCP tool description at 2048
       // characters, and the plugin runs whichever CLI the user installed.

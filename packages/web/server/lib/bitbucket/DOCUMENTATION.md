@@ -1,8 +1,9 @@
 # Bitbucket Data Center (self-hosted)
 
-The fork's own read-only client for a self-hosted Bitbucket Data Center
+The fork's own client for a self-hosted Bitbucket Data Center
 instance. It exists for one consumer today — the team board's PR chips — and
-grows toward the PR viewer along the same REST surface.
+grows toward the PR viewer along the same REST surface; the agent tool's
+tracker actions write through it too (see `tracker/DOCUMENTATION.md`).
 
 ## What it is not
 
@@ -74,6 +75,12 @@ Failures classify into `BitbucketError` kinds the callers branch on:
 `unconfigured`, `unauthorized` (401/403), `not-found` (404), `unreachable`
 (transport and TLS), `server-error` (everything else, including a body that
 is not the JSON the caller asked for).
+
+The mutation factory (`createBitbucketMutation`) is the write side the
+tracker tool reads: one POST with a JSON body, the same kinds plus
+`conflict` (409) and `invalid` (400) carrying the instance's own message
+when its error body parsed. Every read surface above stays on the GET
+client; only the tracker's comment and approve calls take the POST path.
 
 ## The URL grammar (`url.js`)
 
