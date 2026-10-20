@@ -1,7 +1,7 @@
 // The session backlog routes, `/api/openchamber/backlog/*`, as the composer's
-// strip calls them. Every answer is parsed here, once, into the types the
-// strip renders; a shape the server did not send fails the fetch rather than
-// putting half-typed state on the row. The contract is the
+// strip and stage button call them. Every answer is parsed here, once, into
+// the types the composer renders; a shape the server did not send fails the
+// fetch rather than putting half-typed state on the row. The contract is the
 // `packages/web/server/lib/session-backlog/DOCUMENTATION.md` shape.
 
 import { z } from 'zod';
@@ -31,6 +31,12 @@ const backlogRemoveOutcomeSchema = z.object({
     sessionID: z.string(),
     /** Whether the item was there to be taken out. */
     removed: z.boolean(),
+});
+
+const backlogAddOutcomeSchema = z.object({
+    sessionID: z.string(),
+    /** The staged item as the store now holds it. */
+    item: backlogItemSchema,
 });
 
 const backlogClearOutcomeSchema = z.object({
@@ -64,8 +70,8 @@ const readBody = async <T>(response: Response, schema: z.ZodType<T>, failure: st
     return parsed.data;
 };
 
-/** The body the backlog POST routes take: the session, plus the item to remove. */
-type BacklogPostBody = { sessionID: string; itemID?: string };
+/** The body the backlog POST routes take: the session, plus the text to stage or the item to remove. */
+type BacklogPostBody = { sessionID: string; text?: string; itemID?: string };
 
 const postRoute = async (route: string, body: BacklogPostBody, fetchImpl: typeof runtimeFetch) => {
     return fetchImpl(route, {
@@ -86,6 +92,16 @@ export const backlogApi = {
         }
         const data = await readBody(response, backlogListSchema, 'Backlog response did not match the expected shape');
         return { items: data.items, draining: data.draining };
+    },
+
+    /** Stages one prompt verbatim; it runs only when the user starts the drain. */
+    add: async (sessionId: string, text: string, fetchImpl: typeof runtimeFetch = runtimeFetch): Promise<BacklogItem> => {
+        const response = await postRoute(BACKLOG_ROUTE, { sessionID: sessionId, text }, fetchImpl);
+        if (!response.ok) {
+            throw new Error(await errorTextFrom(response, 'The draft could not be added to the queue'));
+        }
+        const data = await readBody(response, backlogAddOutcomeSchema, 'Add response did not match the expected shape');
+        return data.item;
     },
 
     /** Takes one staged item out of the queue; answers whether the client should refetch. */

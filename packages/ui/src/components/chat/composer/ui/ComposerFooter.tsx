@@ -15,6 +15,7 @@ import type { SourceControlProvider } from '@/lib/api/types';
 import React from 'react';
 
 import { SessionGoalButton, SessionGoalObjectiveCounter } from '@/components/chat/SessionGoalButton';
+import { BacklogStageButton } from '@/components/chat/composer/ui/BacklogStageButton';
 import { ComposerDictation } from '@/components/dictation/ComposerDictation';
 import { Icon } from '@/components/icon/Icon';
 import type { GuestAttachItem } from '@/hooks/useGuestSurfaces';
@@ -53,6 +54,8 @@ interface ComposerFooterProps {
     canSend: boolean;
     canAbort: boolean;
     hasContent: boolean;
+    /** Whether the draft holds text the stage button can park in the backlog. */
+    canStageToBacklog: boolean;
     isExpandedInput: boolean;
     permissionMode: PermissionMode;
     isPermissionAutoAcceptInteractive: boolean;
@@ -71,6 +74,8 @@ interface ComposerFooterProps {
     onToggleExpandedInput: () => void;
     onCyclePermissionMode: () => void;
     onPrimaryAction: () => void;
+    /** Parks the draft as a staged prompt of the session's backlog. */
+    onStageToBacklog: () => void;
     onAbort: () => void;
     onStartDictation: () => void;
     onDictationInsert: (text: string) => void;
@@ -126,6 +131,7 @@ function ComposerFooterView(props: ComposerFooterProps) {
         canSend,
         canAbort,
         hasContent,
+        canStageToBacklog,
         isExpandedInput,
         permissionMode,
         isPermissionAutoAcceptInteractive,
@@ -142,6 +148,7 @@ function ComposerFooterView(props: ComposerFooterProps) {
         onToggleExpandedInput,
         onCyclePermissionMode,
         onPrimaryAction,
+        onStageToBacklog,
         onAbort,
         onStartDictation,
         onDictationInsert,
@@ -162,6 +169,9 @@ function ComposerFooterView(props: ComposerFooterProps) {
     const dictationEnabled = useConfigStore((state) => state.dictationEnabled);
     const [dictationSupported] = React.useState(() => !isVSCodeRuntime() && isDictationCaptureSupported());
     const showDictation = dictationEnabled && dictationSupported;
+    // Only a bound session parks a prompt: BTW and a parallel draft stage
+    // nothing, and the backlog strip is just as absent there.
+    const showBacklogStage = Boolean(currentSessionId) && !isBtw && !parallelRun;
 
     return (
         <div
@@ -237,6 +247,12 @@ function ComposerFooterView(props: ComposerFooterProps) {
                                 >
                                     <Icon name="mic" className={cn(iconSizeClass, 'text-current')} />
                                 </button> : null}
+                                {showBacklogStage ? <BacklogStageButton
+                                    footerIconButtonClass={footerIconButtonClass}
+                                    iconSizeClass={iconSizeClass}
+                                    disabled={!canStageToBacklog}
+                                    onStage={onStageToBacklog}
+                                /> : null}
                                 <ComposerActionButtons
                                     isMobile={isMobile}
                                     footerIconButtonClass={footerIconButtonClass}
@@ -311,6 +327,12 @@ function ComposerFooterView(props: ComposerFooterProps) {
                             onStart={onDictationStart}
                             onContentHeightChange={onDictationContentHeightChange}
                             onActiveChange={onDictationActiveChange}
+                        /> : null}
+                        {showBacklogStage ? <BacklogStageButton
+                            footerIconButtonClass={footerIconButtonClass}
+                            iconSizeClass={iconSizeClass}
+                            disabled={!canStageToBacklog}
+                            onStage={onStageToBacklog}
                         /> : null}
                         {parallelRun ? (
                             // Parallel mode keeps the ordinary send button: the strip above

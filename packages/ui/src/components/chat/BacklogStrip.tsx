@@ -11,10 +11,10 @@ import { useSessionBacklog } from '@/lib/session-backlog/useSessionBacklog';
 /**
  * The session's staged backlog, as a top row of the composer next to the
  * queued messages: what waits, the count, and the drain the user starts by
- * their own word — the stagings themselves happen in the chat, and the strip
- * follows the store's broadcast, so a queue staged in another window is
- * honest here. The list can stay collapsed to one line; the rows open on the
- * strip's own toggle.
+ * their own word — a prompt is staged from the chat, by the agent, or by the
+ * composer's stage button, and the strip follows the store's broadcast, so a
+ * queue staged in another window is honest here. The list can stay collapsed
+ * to one line; the rows open on the strip's own toggle.
  */
 export const BacklogStrip = memo(({ sessionId }: { sessionId: string | null }) => {
     const { t } = useI18n();

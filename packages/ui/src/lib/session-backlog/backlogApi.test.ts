@@ -59,6 +59,32 @@ describe('backlogApi', () => {
     await expect(backlogApi.list('ses_1', fetchImpl)).rejects.toThrow('could not be read');
   });
 
+  test('stages one prompt under the session, verbatim', async () => {
+    const { fetchImpl, log } = fetchAnswering({
+      '/api/openchamber/backlog': { body: { sessionID: 'ses_1', item: { id: 'bl_2', text: 'Make the review', createdAt: 101 } } },
+    });
+    const staged = await backlogApi.add('ses_1', 'Make the review', fetchImpl);
+    expect(staged.id).toBe('bl_2');
+    expect(staged.text).toBe('Make the review');
+    expect(log[0].init?.method).toBe('POST');
+    expect(String(log[0].init?.body)).toContain('"sessionID":"ses_1"');
+    expect(String(log[0].init?.body)).toContain('"text":"Make the review"');
+  });
+
+  test('fails a stage answer that does not match the contract', async () => {
+    const { fetchImpl } = fetchAnswering({
+      '/api/openchamber/backlog': { body: { sessionID: 'ses_1' } },
+    });
+    await expect(backlogApi.add('ses_1', 'Make the review', fetchImpl)).rejects.toThrow('expected shape');
+  });
+
+  test('carries the server message from a refused stage', async () => {
+    const { fetchImpl } = fetchAnswering({
+      '/api/openchamber/backlog': { status: 400, body: { error: 'An empty prompt is not a staged item' } },
+    });
+    await expect(backlogApi.add('ses_1', '', fetchImpl)).rejects.toThrow('not a staged item');
+  });
+
   test('removes one item and clears, both with the session named in the body', async () => {
     const { fetchImpl, log } = fetchAnswering({
       '/api/openchamber/backlog/remove': { body: { sessionID: 'ses_1', itemID: 'bl_1', removed: true } },

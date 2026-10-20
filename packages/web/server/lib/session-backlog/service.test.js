@@ -82,6 +82,20 @@ describe('createBacklogService', () => {
       .rejects.toMatchObject({ statusCode: 400 });
   });
 
+  it('broadcasts every change as one envelope the event stream can serialize', async () => {
+    // The stream serializes the whole payload as one frame; a bare type
+    // string drops `properties` on the floor and clients never refetch.
+    const broadcastUiEvent = vi.fn();
+    const backlog = service({ store: inMemoryStore(), broadcastUiEvent });
+    await backlog.executeAction('backlog.add', { sessionID: 'ses_one', text: 'first' });
+    expect(broadcastUiEvent).toHaveBeenCalledTimes(1);
+    const [envelope] = broadcastUiEvent.mock.calls[0];
+    expect(envelope).toEqual({
+      type: 'openchamber:session-backlog',
+      properties: { sessionID: 'ses_one', count: null, draining: false },
+    });
+  });
+
   it('refuses the run of an empty queue and of a drain already going', async () => {
     const backlog = service({ store: inMemoryStore() });
     await expect(backlog.executeAction('backlog.run', { sessionID: 'ses_one' }))

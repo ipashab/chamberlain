@@ -1,4 +1,5 @@
 import React from 'react';
+import { backlogApi } from '@/lib/session-backlog/backlogApi';
 import { formatChangeRequestReference } from '@/lib/source-control/identity';
 import { ComposerDictation } from '@/components/dictation/ComposerDictation';
 // sessionStore removed — currentSessionId comes from useSessionUIStore
@@ -1471,6 +1472,42 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
         void resumeAfterQueue().catch(console.warn);
         recordLinkedReferences(queueSessionId, queueTarget.directory, linked);
     }, [getCurrentInputSnapshot, currentSessionId, messageQueueTarget, inputMode, hasDrafts, guestCommands, attachedFiles, sanitizeAttachmentsForSend, prepareReadOnSendMentions, extractInlineFileMentions, agents, currentDirectory, consumePendingSyntheticParts, mailboxTarget, inlineDraftTarget, consumeDrafts, linkedReferences, scrollToLatest, clearAttachedFiles, chatDraftIdentity, isMobile, isMobileCommentOpen, addToQueue, currentProviderId, currentModelId, currentAgentName, currentVariant, t]);
+
+    // Park the draft as a staged backlog item. The text leaves verbatim, with
+    // no resolved mentions, attachments or send configuration — what the
+    // strip lists is exactly what the drain will one day send — and
+    // everything else stays on the composer for sends that need it.
+    const handleStageToBacklog = React.useCallback(async () => {
+        // The comment's exit paths are attach/cancel; staging a real prompt
+        // underneath comment mode must never fire.
+        if (isMobileCommentOpen()) return;
+        const inputSnapshot = getCurrentInputSnapshot();
+        const text = inputSnapshot.message.trim();
+        if (!currentSessionId || !text) return;
+
+        // A local or extension command is run, not staged: the drain hands
+        // the text to the session as an ordinary follow-up, and `/compact`
+        // or a guest command means nothing there.
+        if (planLocalSlashCommand(inputSnapshot.message, inputMode, hasDrafts, true)
+            || routeGuestSlashCommand(inputSnapshot.message, inputMode, guestCommands)) {
+            toast.error(t('chat.backlog.stageCommandRefused'));
+            return;
+        }
+        try {
+            await backlogApi.add(currentSessionId, text);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : t('chat.backlog.stageFailed'));
+            return;
+        }
+        // Only the text leaves. The attachments, drafts and context chips
+        // stay on the composer: the staged item is the prompt alone.
+        setMessage('');
+        confirmedMentionsRef.current.clear();
+        if (!isMobile) {
+            composerRef.current?.focus();
+        }
+        toast.success(t('chat.backlog.stageSuccess'));
+    }, [getCurrentInputSnapshot, currentSessionId, inputMode, hasDrafts, guestCommands, isMobile, isMobileCommentOpen, t]);
 
     /** Put the context a queued message was captured with back on the composer chips. */
     const restoreQueuedContext = React.useCallback((context: readonly QueuedContextPart[]) => {
@@ -4052,7 +4089,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     // session so an expanded list collapses on a session switch.
     const backgroundShellsRow = !isBtwActive && !newSessionDraftOpen ? (
         <BackgroundShellsStrip
-            key={currentSessionId ?? ''}
+            key={'background-shells:' + (currentSessionId ?? '')}
             sessionId={currentSessionId}
             directory={currentSessionDirectoryForSync ?? currentDirectory}
         />
@@ -4095,7 +4132,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     // follow-up queue it is deliberately not part of.
     const backlogRow = !isBtwActive && !newSessionDraftOpen ? (
         <BacklogStrip
-            key={currentSessionId ?? ''}
+            key={'backlog:' + (currentSessionId ?? '')}
             sessionId={currentSessionId}
         />
     ) : null;
@@ -4162,6 +4199,10 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
     // Set by the footer's desktop dictation; the mobile overlay lives outside the box.
     const [desktopDictating, setDesktopDictating] = React.useState(false);
     const goalObjectiveLength = goalArmed ? message.length : 0;
+    // The stage button needs only whether there is text, so it flips between
+    // an empty and a non-empty draft on the same edges as hasContent — the
+    // memoized footer never renders per keystroke.
+    const canStageToBacklog = Boolean(currentSessionId) && message.trim().length > 0;
     const waitingForOpenCode = useOpenCodeStartupStore((state) => state.waitingSends > 0);
 
     const footerPaddingClass = isMobile ? 'px-1.5 py-1.5' : (isVSCode ? 'px-1.5 py-1' : 'px-2.5 py-1.5');
@@ -4583,6 +4624,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         canSend={canSend}
                         canAbort={canAbort}
                         hasContent={Boolean(hasContent)}
+                        canStageToBacklog={canStageToBacklog}
                         isExpandedInput={isExpandedInput}
                         permissionMode={shownPermissionMode}
                         isPermissionAutoAcceptInteractive={isPermissionAutoAcceptInteractive}
@@ -4599,6 +4641,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         onToggleExpandedInput={handleToggleExpandedInput}
                         onCyclePermissionMode={handlePermissionModeCycle}
                         onPrimaryAction={handlePrimaryAction}
+                        onStageToBacklog={handleStageToBacklog}
                         onAbort={handleAbort}
                         onStartDictation={toggleDictation}
                         onDictationInsert={handleDictationInsert}

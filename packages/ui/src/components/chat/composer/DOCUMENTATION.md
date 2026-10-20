@@ -92,11 +92,31 @@ The composer's top rows render inside the box and inside the mobile pill, so
 the surface stays one shape. Top to bottom: worktree setup and a message
 waiting for its space (`ComposerStatusStrip`), the goal (`SessionGoalRow`), a
 running review loop (`AutoReviewStrip`), background commands, a staged revert
-(`RevertedMessagesStrip`), the queue (`QueuedMessagesStrip`),
-the "looks done" hint or the review offer, the suggestion
-(`SessionSuggestionChip`). BTW hides all of them. A pending form, a nonempty
-queue, composer content and a new-session draft hide the suggestion; a
-new-session draft also hides the queue.
+(`RevertedMessagesStrip`), the queue (`QueuedMessagesStrip`), the staged
+backlog (`BacklogStrip`), the "looks done" hint or the review offer, the
+suggestion (`SessionSuggestionChip`). BTW hides all of them. A pending form, a
+nonempty queue, composer content and a new-session draft hide the suggestion;
+a new-session draft also hides the queue.
+
+`BacklogStrip` shows the session's staged prompts — the queue the drain runs
+only when the user says so (see
+`packages/web/server/lib/session-backlog/`). It appears only with something
+staged or a drain going, hiding in BTW and new-session drafts like every
+other row. Staging reaches it three ways — the agent's `backlog.add` in the
+chat, the server routes, and the composer's stage button — and every way ends
+in the same broadcast, so the strip is honest with no polling.
+
+The stage button (`ComposerActionButtons`'s neighbour,
+`BacklogStageButton`) parks the draft as one staged prompt: the text leaves
+verbatim — attached files, drafts and context chips stay on the composer,
+because the item is the prompt alone — and the strip appears through the
+broadcast. A draft holding a local or extension command refuses the staging
+with a toast, mirroring the queue's rule that a command is run, never
+delivered as text: the drain hands the item to the session as an ordinary
+follow-up. The button sits next to send and is disabled while the draft holds
+no text; like the footer's objective counter it re-renders the memoized
+footer only on the empty/non-empty flip, never per keystroke. A parallel
+draft stages nothing and hides it, matching the strip.
 
 `RevertedMessagesStrip` lists the user messages a staged revert hides (see
 "Committing a revert" in `sync/DOCUMENTATION.md`). Its one action is Restore,

@@ -61,7 +61,7 @@ export const createBacklogService = (dependencies) => {
   });
 
   const announce = (sessionID, count, draining) => {
-    broadcastUiEvent('openchamber:session-backlog', { sessionID, count, draining });
+    broadcastUiEvent({ type: 'openchamber:session-backlog', properties: { sessionID, count, draining } });
   };
 
   const readItems = async (sessionID) => {

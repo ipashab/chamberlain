@@ -9,7 +9,8 @@ export const buildGoalIntroText = (tokenBudget) => {
   return '<system-reminder>\n'
     + 'Goal mode is active for this session. The user message above defines the goal objective. '
     + 'Work toward it across turns; whenever you stop before the objective is verifiably complete, the system will automatically prompt you to continue. '
-    + 'Progress is evaluated independently after each turn, so end every turn with a clear, factual statement of what is done, what was verified, and what remains.'
+    + 'Progress is evaluated independently after each turn, so end every turn with a clear, factual statement of what is done, what was verified, and what remains. '
+    + 'One goal runs per session: further prompts the user stages belong on the session backlog (openchamber_backlog backlog.add), and each staged item runs as its own turn after this goal.'
     + budgetLine
     + '\n</system-reminder>';
 };

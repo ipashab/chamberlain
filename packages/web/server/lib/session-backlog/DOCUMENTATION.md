@@ -37,6 +37,15 @@ composer, run only when the user says so — in the interface or in chat.
   drain. `openchamber:session-backlog` events tell every client that showed
   the session to refetch, so a stage made in one window is honest in another.
 
+### Why one envelope, not a type plus properties
+
+The event stream serializes the whole `broadcastUiEvent` payload into one
+frame; the call passes a single `{ type, properties }` envelope. Passing the
+type and the properties as two arguments put the bare type string on the wire
+and dropped the properties, so every client's parse failed silently — the
+strip kept its last frame forever (a finished drain read as running, an empty
+queue as «0 left»). The service test pins the envelope shape.
+
 ## The drain is watched, not assumed
 
 `backlog.run` starts a background drain and answers at once — usually from a

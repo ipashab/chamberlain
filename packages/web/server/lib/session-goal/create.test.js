@@ -76,4 +76,10 @@ describe('session goal creation', () => {
     expect(buildGoalIntroText(null)).toContain('Goal mode is active for this session.');
     expect(buildGoalIntroText(200_000)).toContain('A token budget of 200000 tokens applies to this goal.');
   });
+
+  it('points the goal at the session backlog for staged follow-ups', () => {
+    const intro = buildGoalIntroText(null);
+    expect(intro).toContain('One goal runs per session');
+    expect(intro).toContain('openchamber_backlog backlog.add');
+  });
 });
