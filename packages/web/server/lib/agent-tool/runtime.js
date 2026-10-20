@@ -32,6 +32,16 @@ import {
   resolveTrackerAction,
 } from '../tracker/tools.js';
 import {
+  CONTACT_ACTION_DEFINITIONS,
+  CONTACT_PARAMETER_PROPERTIES,
+  resolveContactAction,
+} from '../contact-run/tools.js';
+import {
+  BACKLOG_ACTION_DEFINITIONS,
+  BACKLOG_PARAMETER_PROPERTIES,
+  resolveBacklogAction,
+} from '../session-backlog/tools.js';
+import {
   RENDER_PAGE_CLOSED_IN_CHAT_NOTE,
   RENDER_PAGE_MAX_HTML_LENGTH,
   RENDER_PAGE_MAX_TITLE_LENGTH,
@@ -300,6 +310,15 @@ const TEAM_TOOL_DESCRIPTION = "Run a small team of AI agents that work in parall
 // The tracker description teaches the reference forms: pr:// and issue://
 // name the entity once, and every action after accepts the same ref.
 const TRACKER_TOOL_DESCRIPTION = "Act on the user's Bitbucket pull requests and Jira issues through the connections the user configured: read a pull request or issue, post a comment, approve a pull, list a Jira issue's workflow transitions or move it through one. Use when the user asks you to comment on, approve, review or move a specific pull request or issue, or asks for its state. Every write goes out under the user's own name — report what you posted, quote the text. Name the entity with ref: pr://<full Bitbucket pull-request URL> for pulls, issue://<Jira browse URL or bare issue key> for issues; the plain URL or key is accepted too. Read before writing when unsure: pr.view or issue.view first. issue.transition takes the id or exact name from issue.transitions. One action per call."
+
+// The contacts description teaches the shape of a run: the fork hands the
+// context over, the wait resolves inside one call, and the name the user
+// says in chat is the whole address.
+const CONTACT_TOOL_DESCRIPTION = "The saved contacts the user keeps (the assistants list): each is a persona with its own name, prompt, model and agent. Use when the user addresses one by name — \"@Kontakt, do the audit\", \"ask Natasha to review it\" — or asks who the saved contacts are. Resolve the name with contact.list when unsure. contact.run starts a task: it forks this conversation, so the child inherits this dialog's context and the contact answers in it, with its own model, agent and persona heading the task; returns at once with the child's session id. contact.wait resolves inside one call: it polls the child's turn and returns its answer text when the turn finishes; on timeout the run goes on — call contact.wait again to keep waiting. One action per call."
+
+// The backlog description teaches what the queue is: this dialog's own staged
+// prompts, run by the drain and nowhere else.
+const BACKLOG_TOOL_DESCRIPTION = "The staged follow-ups of this dialog: prompts the user queued without sending — \"add this to the queue, don't run it\", \"stage the audit for later\" — or the follow-ups the plan parks for the next passes. backlog.list reads the queue in run order; backlog.add stages a follow-up without running it; backlog.remove takes one item out; backlog.clear drops the lot. backlog.run starts the drain: each staged item is sent into this dialog as its own turn, in order, after the current turn ends; returns at once, so end your turn after calling it. The user's own \"выполни очередь\" and \"run the queue\" mean backlog.run. One action per call."
 
 const RENDER_TOOL_DESCRIPTION = "Draw a finished HTML page inline in the chat, above your reply, or ask the user to choose on one (awaitAnswer). "
   + "The page is part of your reply and sits on the chat's background: leave html, body and the outermost element without a background, add no outer card, border or banner title, and set boxes apart by tone. Style with the theme variables listed under html. "
@@ -691,6 +710,28 @@ const createPluginSource = ({ includeControl, includeSchedule, includeWeb, inclu
     parameters: TRACKER_PARAMETER_PROPERTIES,
     codeMode,
   }));
+  // Contact delegation ships the same always-on way: without a saved contact
+  // the list answers empty and the run names what it lacks, so there is
+  // nothing to gate. longRunning because contact.wait holds its call open
+  // while the child's whole turn runs.
+  entries.push(createToolEntry({
+    name: 'openchamber_contacts',
+    description: CONTACT_TOOL_DESCRIPTION,
+    definitions: CONTACT_ACTION_DEFINITIONS,
+    parameters: CONTACT_PARAMETER_PROPERTIES,
+    codeMode,
+    longRunning: true,
+  }));
+  // The backlog tool ships the same always-on way: an empty backlog answers
+  // empty and the run names what it lacks, so there is nothing to gate. The
+  // drain waits for the caller's turn, so the wait is the caller's own.
+  entries.push(createToolEntry({
+    name: 'openchamber_backlog',
+    description: BACKLOG_TOOL_DESCRIPTION,
+    definitions: BACKLOG_ACTION_DEFINITIONS,
+    parameters: BACKLOG_PARAMETER_PROPERTIES,
+    codeMode,
+  }));
   if (includeRender) {
     entries.push(createToolEntry({
       name: 'openchamber_render',
@@ -763,6 +804,8 @@ export const createAgentToolRuntime = (dependencies) => {
     // Tracker dispatch: one action on a Bitbucket pull request or a Jira
     // issue, against the connections the user configured.
     executeTrackerAction = null,
+    executeContactAction = null,
+    executeBacklogAction = null,
     resolveSessionDirectory,
   } = dependencies;
   // The plugin embeds this server's tool declarations, so it lives in this
@@ -876,6 +919,70 @@ export const createAgentToolRuntime = (dependencies) => {
       }
       try {
         const data = await executeTrackerAction(action, { ...payload.input, action });
+        return createResult({ ok: true, action, data });
+      } catch (error) {
+        const statusCode = Number(error?.statusCode);
+        return createResult({
+          ok: false,
+          action,
+          error: {
+            message: error instanceof Error ? error.message : String(error),
+            kind: statusCode >= 400 && statusCode < 499 ? 'usage' : 'runtime',
+          },
+        });
+      }
+    }
+
+    // Contact delegation forks the calling conversation, so the dispatch
+    // carries the caller's session id: the child inherits this dialog's
+    // context. The wait is long and re-calls keep it honest; the failures
+    // grade the same way the tracker's do.
+    if (asNonEmptyString(payload.tool) === 'openchamber_contacts') {
+      const resolution = resolveContactAction(requested);
+      if (resolution.error) {
+        return createResult({ ok: false, action: requested, error: { message: resolution.error, kind: 'usage' } });
+      }
+      const action = resolution.action;
+      if (!executeContactAction) {
+        return createResult({ ok: false, action, error: { message: 'OpenChamber contact delegation is unavailable', kind: 'runtime' } });
+      }
+      try {
+        // The caller's session id rides under its own name: the agent's input
+        // stays untouched, so contact.wait's sessionID — the child the run
+        // returned — is never trampled by the session the tool call ran in.
+        const contactInput = { ...payload.input, action };
+        if (asNonEmptyString(payload.sessionID)) contactInput.callerSessionID = payload.sessionID;
+        const data = await executeContactAction(action, contactInput);
+        return createResult({ ok: true, action, data });
+      } catch (error) {
+        const statusCode = Number(error?.statusCode);
+        return createResult({
+          ok: false,
+          action,
+          error: {
+            message: error instanceof Error ? error.message : String(error),
+            kind: statusCode >= 400 && statusCode < 499 ? 'usage' : 'runtime',
+          },
+        });
+      }
+    }
+
+    // The backlog is the calling session's own queue, so the dispatch carries
+    // the caller's session id the same way the contacts dispatch does — under
+    // its own name, the agent's input untouched.
+    if (asNonEmptyString(payload.tool) === 'openchamber_backlog') {
+      const resolution = resolveBacklogAction(requested);
+      if (resolution.error) {
+        return createResult({ ok: false, action: requested, error: { message: resolution.error, kind: 'usage' } });
+      }
+      const action = resolution.action;
+      if (!executeBacklogAction) {
+        return createResult({ ok: false, action, error: { message: 'OpenChamber backlog service is unavailable', kind: 'runtime' } });
+      }
+      try {
+        const backlogInput = { ...payload.input, action };
+        if (asNonEmptyString(payload.sessionID)) backlogInput.callerSessionID = payload.sessionID;
+        const data = await executeBacklogAction(action, backlogInput);
         return createResult({ ok: true, action, data });
       } catch (error) {
         const statusCode = Number(error?.statusCode);

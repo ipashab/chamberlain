@@ -157,6 +157,11 @@ const RunFrame: React.FC = () => {
 
   return (
     <div className="space-y-3">
+      {tool.description ? (
+        <p className="whitespace-pre-wrap rounded-md border border-border/70 bg-card p-3 text-sm leading-relaxed text-muted-foreground">
+          {tool.description}
+        </p>
+      ) : null}
       {tool.inputSchema != null ? (
         <details className="rounded-md border border-border/70 bg-card">
           <summary className="cursor-pointer p-3 typography-meta text-muted-foreground">{t('mcpConsole.run.schema')}</summary>

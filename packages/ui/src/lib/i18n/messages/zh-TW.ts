@@ -17,6 +17,7 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { debuggerToolI18n } from './debugger-tool.i18n';
 import { advisorI18n } from './advisor.i18n';
 import { checkpointsI18n } from './checkpoints.i18n';
+import { backlogI18n } from './backlog.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
@@ -154,6 +155,7 @@ export const dict: Record<I18nKey, string> = {
   ...debuggerToolI18n['zh-TW'],
   ...advisorI18n['zh-TW'],
   ...checkpointsI18n['zh-TW'],
+  ...backlogI18n['zh-TW'],
   ...sessionNoticesI18n['zh-TW'],
   ...usageStatsI18n['zh-TW'],
   ...webSearchI18n['zh-TW'],

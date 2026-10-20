@@ -55,6 +55,7 @@ import { JiraIssueMentionHint } from '@/components/jira/JiraIssueMentionHint';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
 import type { ToolPopupContent } from './message/types';
 import { QueuedMessagesStrip } from './QueuedMessagesStrip';
+import { BacklogStrip } from './BacklogStrip';
 import { AutoReviewStrip } from './AutoReviewStrip';
 import type { FileMentionHandle } from './FileMentionAutocomplete';
 import type { CommandAutocompleteHandle, CommandInfo } from './CommandAutocomplete';
@@ -4089,9 +4090,18 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             onSendMessage={handleQueuedMessageSend}
         />
     ) : null;
+    // The staged backlog: what the dialog parked without running. Visible
+    // only when there is something staged or a drain is going, next to the
+    // follow-up queue it is deliberately not part of.
+    const backlogRow = !isBtwActive && !newSessionDraftOpen ? (
+        <BacklogStrip
+            key={currentSessionId ?? ''}
+            sessionId={currentSessionId}
+        />
+    ) : null;
     // Null exactly when the suggestion row alone would have been: the mobile
     // pill picks its shape from whether a top row exists.
-    const composerTopRows = worktreeSetupRow || spaceWaitRow || goalRow || autoReviewRow || backgroundShellsRow || revertRow || queueRow || doneHintRow || reviewHintRow || suggestionRow ? (
+    const composerTopRows = worktreeSetupRow || spaceWaitRow || goalRow || autoReviewRow || backgroundShellsRow || revertRow || queueRow || backlogRow || doneHintRow || reviewHintRow || suggestionRow ? (
         <>
             {worktreeSetupRow}
             {spaceWaitRow}
@@ -4100,6 +4110,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
             {backgroundShellsRow}
             {revertRow}
             {queueRow}
+            {backlogRow}
             {doneHintRow}
             {reviewHintRow}
             {suggestionRow}

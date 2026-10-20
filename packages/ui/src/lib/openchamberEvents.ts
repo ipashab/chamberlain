@@ -116,6 +116,14 @@ const sessionCheckpointsSchema = z.object({ sessionID: z.string().min(1) });
 type SessionCheckpointsEvent = { type: 'session-checkpoints'; sessionID: string };
 
 /**
+ * The session's staged backlog moved: the composer strip refetches, so a
+ * frame that raced a stage or a drain cannot keep showing items the store
+ * no longer holds. The frame carries only which session moved.
+ */
+const sessionBacklogSchema = z.object({ sessionID: z.string().min(1) });
+type SessionBacklogEvent = { type: 'session-backlog'; sessionID: string };
+
+/**
  * One team's roster, mailbox or board moved. Like the memory event it carries
  * only which team changed: the team panel refetches, so a frame that raced a
  * second change cannot leave it rendering an older board than it fetched.
@@ -243,6 +251,7 @@ type OpenChamberEvent =
   | ScheduledTaskRanEvent
   | SessionCreatedEvent
   | SessionCheckpointsEvent
+  | SessionBacklogEvent
   | WorktreeChangedEvent
   | BrowserControlRequestEvent
   | FileOpenRequestEvent
@@ -526,6 +535,12 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
   if (envelope.type === 'openchamber:session-checkpoints') {
     const parsed = sessionCheckpointsSchema.safeParse(envelope.properties);
     if (parsed.success) for (const listener of listeners) listener({ type: 'session-checkpoints', ...parsed.data });
+    return;
+  }
+
+  if (envelope.type === 'openchamber:session-backlog') {
+    const parsed = sessionBacklogSchema.safeParse(envelope.properties);
+    if (parsed.success) for (const listener of listeners) listener({ type: 'session-backlog', ...parsed.data });
     return;
   }
 

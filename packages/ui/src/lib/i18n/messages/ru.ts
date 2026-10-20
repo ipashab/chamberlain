@@ -17,6 +17,7 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { debuggerToolI18n } from './debugger-tool.i18n';
 import { advisorI18n } from './advisor.i18n';
 import { checkpointsI18n } from './checkpoints.i18n';
+import { backlogI18n } from './backlog.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { sessionWarmingI18n } from './session-warming.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
@@ -155,6 +156,7 @@ export const dict = {
   ...debuggerToolI18n.ru,
   ...advisorI18n.ru,
   ...checkpointsI18n.ru,
+  ...backlogI18n.ru,
   ...usageStatsI18n.ru,
   ...webSearchI18n.ru,
   ...isolatedSpacesI18n.ru,

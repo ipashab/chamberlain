@@ -90,6 +90,7 @@ import { createSessionAssistRuntime } from './lib/session-assist/runtime.js';
 import { createAdvisorRuntime } from './lib/advisor/runtime.js';
 import { createCheckpointsRuntime } from './lib/checkpoints/runtime.js';
 import { createCheckpointStore } from './lib/checkpoints/store.js';
+import { createBacklogStore } from './lib/session-backlog/store.js';
 import { createSessionGoalRuntime } from './lib/session-goal/runtime.js';
 import { createContextObligatoryRuntime } from './lib/context-obligatory/runtime.js';
 import { createSessionWarmingRuntime } from './lib/session-warming/runtime.js';
@@ -161,6 +162,8 @@ import { createOpenChamberSessionService } from './lib/openchamber-sessions/rout
 import { createOpenCodeClient as createSessionScopedOpenCodeClient } from './lib/openchamber-sessions/opencode-client.js';
 import { createTeamService } from './lib/team/service.js';
 import { createTrackerService } from './lib/tracker/service.js';
+import { createContactRunService } from './lib/contact-run/service.js';
+import { createBacklogService } from './lib/session-backlog/service.js';
 import { createMissionsService } from './lib/missions/service.js';
 import { createDebuggerService } from './lib/debugger/service.js';
 import { registerDebuggerRoutes } from './lib/debugger/routes.js';
@@ -1034,6 +1037,9 @@ const checkpointStore = createCheckpointStore({
     }
   },
 });
+// The session backlog: staged follow-ups per session, one JSON file each,
+// under the same data directory as the checkpoints registry.
+const backlogStore = createBacklogStore({ dataDir: OPENCHAMBER_DATA_DIR });
 const checkpointsRuntime = createCheckpointsRuntime({
   buildOpenCodeUrl,
   getOpenCodeAuthHeaders,
@@ -1896,6 +1902,29 @@ const assistantsService = createAssistantsService({
 });
 void assistantsService.init().catch((error) =>
   console.warn('[assistants] could not initialize contact state:', error?.message ?? error));
+// Contact delegation: the `openchamber_contacts` tool's executor. It sits on
+// the assistants list for the personas and on the session service for the
+// fork — the child inherits the calling conversation's context.
+const contactRunService = createContactRunService({
+  listContacts: () => assistantsService.listAssistants(),
+  forkSession: (sessionID, payload) => openChamberSessionService.fork(sessionID, payload),
+  createOpenCodeClient: createSessionScopedOpenCodeClient,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+});
+// Session backlog: staged follow-ups for one dialog, and the drain that runs
+// them. The same service answers the client routes and the agent tool, so a
+// staged item means the same thing everywhere.
+const backlogService = createBacklogService({
+  store: backlogStore,
+  sessionService: openChamberSessionService,
+  resolveSessionDirectory: (sessionID) => openChamberControlService.resolveSessionDirectory(sessionID),
+  getSessionState: (sessionId) => sessionRuntime.getSessionState(sessionId),
+  createOpenCodeClient: createSessionScopedOpenCodeClient,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  broadcastUiEvent: broadcastOpenChamberUiEvent,
+});
 // Browser actions are published to whichever OpenChamber clients are connected;
 // the one owning the browser panel answers. `emitRequest` returns the number of
 // clients reached so the broker can fail fast when nobody is listening.
@@ -2189,6 +2218,10 @@ async function main(options = {}) {
       teamService.executeAction(action, input, sessionID, options),
     executeTrackerAction: (action, input) =>
       trackerService.executeAction(action, input),
+    executeContactAction: (action, input) =>
+      contactRunService.executeAction(action, input),
+    executeBacklogAction: (action, input) =>
+      backlogService.executeAction(action, input),
     // A v2 tool call carries no directory, only the session it runs in.
     resolveSessionDirectory: (sessionID) => openChamberControlService.resolveSessionDirectory(sessionID),
     getActivePort: () => {
@@ -2731,6 +2764,7 @@ async function main(options = {}) {
     messageSearchRuntime,
     sessionWarmingRuntime,
     checkpointsRuntime,
+    backlogService,
     crypto,
     fs,
     os,

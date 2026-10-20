@@ -83,6 +83,24 @@ the user can want independently:
   working directory, which the panel never sends. The description keeps the
   two rules agents need: the session is one and shared with the panel the
   user may be watching, and plain test runs are faster in the agent's shell.
+- `openchamber_contacts` — contact delegation: `contact.list`, `contact.run`,
+  `contact.wait`, dispatched by `../contact-run/service.js` over the
+  assistants list and the session service's fork. A run forks the calling
+  conversation (the child inherits its context) with the contact's own model,
+  agent and persona heading the task; the wait resolves inside one call by
+  watching the child's records, so its generated entry sends Bun's
+  `timeout: false` like the debugger's. The caller's session id is injected
+  by the dispatch under the name `callerSessionID`, so an agent-passed
+  `sessionID` is never trampled. Ships always, like the team and tracker
+  tools: without a saved contact the list answers empty and the run names
+  what it lacks, so there is nothing to gate — and it has no settings toggle.
+- `openchamber_backlog` — the session's own staged follow-ups:
+  `backlog.list`, `backlog.add`, `backlog.remove`, `backlog.clear`,
+  `backlog.run`, dispatched by `../session-backlog/service.js`, the same
+  executor the client routes use. `backlog.run` starts the watched drain and
+  returns at once — each staged item runs as its own turn, in order, after
+  the calling turn ends — so the answer tells the agent to end its turn.
+  Ships always, with no settings toggle, for the same reason.
 
 Both default to on, are toggled in Settings → General → OpenChamber Tools, and take
 effect in the running OpenCode within a couple of seconds — OpenChamber rewrites
