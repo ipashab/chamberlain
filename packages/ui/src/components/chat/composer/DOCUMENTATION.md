@@ -106,6 +106,15 @@ other row. Staging reaches it three ways — the agent's `backlog.add` in the
 chat, the server routes, and the composer's stage button — and every way ends
 in the same broadcast, so the strip is honest with no polling.
 
+The expanded list reorders through the store, never locally: a grip drag or
+a row arrow sends one `backlog.move` and the broadcast brings the new order
+back, so two windows cannot disagree about the queue, the same invariant the
+strip's counts live by. The drag rides dnd-kit with the sensors the queue
+strip uses (mouse after a small move, touch after a long press), and the
+arrows are the keyboard's way to the same move, disabled past each row's
+boundary. Reordering during a drain is allowed: the drain reads the head
+item each pass, so a moved item runs when its new place reaches the front.
+
 The stage button (`ComposerActionButtons`'s neighbour,
 `BacklogStageButton`) parks the draft as one staged prompt: the text leaves
 verbatim — attached files, drafts and context chips stay on the composer,

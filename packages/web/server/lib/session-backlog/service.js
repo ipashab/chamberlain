@@ -238,6 +238,27 @@ export const createBacklogService = (dependencies) => {
     return { sessionID, itemID, removed };
   };
 
+  const moveAction = async (input) => {
+    const sessionID = requireSession(input?.sessionID ?? input?.callerSessionID);
+    const itemID = asNonEmptyString(input?.itemID);
+    if (!itemID) throw new BacklogError('itemID is required, as backlog.list shows it', 400);
+    const position = input?.position;
+    if (!Number.isSafeInteger(position) || position < 0) {
+      throw new BacklogError('position is required, the target index in the queue, 0 first', 400);
+    }
+    let items;
+    try {
+      items = await store.move(sessionID, itemID, position);
+    } catch (error) {
+      throw new BacklogError(error instanceof Error ? error.message : String(error), 400);
+    }
+    if (!items) {
+      throw new BacklogError(`No staged item ${itemID} is queued in this session`, 404);
+    }
+    announce(sessionID, null, draining.get(sessionID) === true);
+    return { sessionID, itemID, position, items };
+  };
+
   const clearAction = async (input) => {
     const sessionID = requireSession(input?.sessionID ?? input?.callerSessionID);
     const removed = await store.clear(sessionID);
@@ -285,6 +306,8 @@ export const createBacklogService = (dependencies) => {
           return addAction(input);
         case 'backlog.remove':
           return removeAction(input);
+        case 'backlog.move':
+          return moveAction(input);
         case 'backlog.clear':
           return clearAction(input);
         case 'backlog.run':

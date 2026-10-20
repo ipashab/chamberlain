@@ -10,6 +10,7 @@ import { runtimeFetch } from '@/lib/runtime-fetch';
 
 const BACKLOG_ROUTE = '/api/openchamber/backlog';
 const BACKLOG_REMOVE_ROUTE = '/api/openchamber/backlog/remove';
+const BACKLOG_MOVE_ROUTE = '/api/openchamber/backlog/move';
 const BACKLOG_CLEAR_ROUTE = '/api/openchamber/backlog/clear';
 const BACKLOG_RUN_ROUTE = '/api/openchamber/backlog/run';
 
@@ -31,6 +32,14 @@ const backlogRemoveOutcomeSchema = z.object({
     sessionID: z.string(),
     /** Whether the item was there to be taken out. */
     removed: z.boolean(),
+});
+
+const backlogMoveOutcomeSchema = z.object({
+    sessionID: z.string(),
+    itemID: z.string(),
+    position: z.number(),
+    /** The queue in its new run order; the item indexes say where each one lands. */
+    items: z.array(backlogItemSchema),
 });
 
 const backlogAddOutcomeSchema = z.object({
@@ -70,8 +79,8 @@ const readBody = async <T>(response: Response, schema: z.ZodType<T>, failure: st
     return parsed.data;
 };
 
-/** The body the backlog POST routes take: the session, plus the text to stage or the item to remove. */
-type BacklogPostBody = { sessionID: string; text?: string; itemID?: string };
+/** The body the backlog POST routes take: the session, plus the text to stage, the item to remove, or the item to move and its target index. */
+type BacklogPostBody = { sessionID: string; text?: string; itemID?: string; position?: number };
 
 const postRoute = async (route: string, body: BacklogPostBody, fetchImpl: typeof runtimeFetch) => {
     return fetchImpl(route, {
@@ -112,6 +121,16 @@ export const backlogApi = {
         }
         const data = await readBody(response, backlogRemoveOutcomeSchema, 'Remove response did not match the expected shape');
         return data.removed;
+    },
+
+    /** Moves one staged item to a new place in the run order, index 0 first; answers the queue in its new order. */
+    move: async (sessionId: string, itemId: string, position: number, fetchImpl: typeof runtimeFetch = runtimeFetch): Promise<BacklogItem[]> => {
+        const response = await postRoute(BACKLOG_MOVE_ROUTE, { sessionID: sessionId, itemID: itemId, position }, fetchImpl);
+        if (!response.ok) {
+            throw new Error(await errorTextFrom(response, 'The queue order could not be changed'));
+        }
+        const data = await readBody(response, backlogMoveOutcomeSchema, 'Move response did not match the expected shape');
+        return data.items;
     },
 
     /** Drops every staged item of the session and answers how many were dropped. */

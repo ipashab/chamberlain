@@ -74,6 +74,53 @@ describe('createBacklogStore', () => {
     await expect(store.list('ses_one')).resolves.toEqual([]);
   });
 
+  it('moves an item and the file keeps the new run order', async () => {
+    const dataDir = createDataDir();
+    const store = createBacklogStore({ dataDir });
+    await store.add('ses_one', { text: 'first', createdAt: 100 });
+    await store.add('ses_one', { text: 'second', createdAt: 200 });
+    const third = await store.add('ses_one', { text: 'third', createdAt: 300 });
+    const moved = await store.move('ses_one', third.id, 0);
+    expect(moved.map(({ text }) => text)).toEqual(['third', 'first', 'second']);
+    // A fresh store reads the same order back: the positions live in the file.
+    const reRead = createBacklogStore({ dataDir });
+    expect((await reRead.list('ses_one')).map(({ text }) => text)).toEqual(['third', 'first', 'second']);
+    // A later add lands behind the reordered items.
+    await reRead.add('ses_one', { text: 'fourth', createdAt: 400 });
+    expect((await reRead.list('ses_one')).map(({ text }) => text))
+      .toEqual(['third', 'first', 'second', 'fourth']);
+    await expect(reRead.move('ses_one', 'bl_missing', 1)).resolves.toBeNull();
+  });
+
+  it('grades move failures by name: the empty queue and the out-of-range position', async () => {
+    const dataDir = createDataDir();
+    const store = createBacklogStore({ dataDir });
+    await expect(store.move('ses_one', 'bl_1', 0)).rejects.toThrow('empty');
+    await store.add('ses_one', { text: 'only', createdAt: 100 });
+    await expect(store.move('ses_one', 'bl_1', 1)).rejects.toThrow('within the queue');
+    await expect(store.move('ses_one', 'bl_1', -1)).rejects.toThrow('within the queue');
+    await expect(store.move('ses_one', 'bl_1', 1.5)).rejects.toThrow('within the queue');
+  });
+
+  it('reads a file from before reordering in its chronological order', async () => {
+    const dataDir = createDataDir();
+    fsDefault.mkdirSync(pathDefault.join(dataDir, 'backlog'), { recursive: true });
+    const filePath = pathDefault.join(dataDir, 'backlog', 'ses_one.json');
+    // No positions: written before any move. The array order is not the
+    // authority; the timestamps are.
+    fsDefault.writeFileSync(filePath, JSON.stringify({
+      version: 1,
+      items: [
+        { id: 'bl_2', text: 'second', createdAt: 200 },
+        { id: 'bl_1', text: 'first', createdAt: 100 },
+      ],
+    }), 'utf8');
+    const store = createBacklogStore({ dataDir });
+    expect((await store.list('ses_one')).map(({ text }) => text)).toEqual(['first', 'second']);
+    await store.move('ses_one', 'bl_2', 0);
+    expect((await store.list('ses_one')).map(({ text }) => text)).toEqual(['second', 'first']);
+  });
+
   it('keeps malformed bytes as a failure, never an empty queue', async () => {
     const dataDir = createDataDir();
     fsDefault.mkdirSync(pathDefault.join(dataDir, 'backlog'), { recursive: true });

@@ -30,6 +30,13 @@ const inMemoryStore = (initialItems = []) => {
       items.splice(index, 1);
       return true;
     }),
+    move: vi.fn(async (sessionId, itemId, position) => {
+      const from = items.findIndex((item) => item.id === itemId);
+      if (from === -1) return null;
+      const [moved] = items.splice(from, 1);
+      items.splice(position, 0, moved);
+      return [...items];
+    }),
     clear: vi.fn(async () => {
       calls.clear += 1;
       const dropped = items.length;
@@ -80,6 +87,38 @@ describe('createBacklogService', () => {
       .rejects.toMatchObject({ statusCode: 400 });
     await expect(backlog.executeAction('backlog.add', { sessionID: 'ses_one' }))
       .rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it('moves one item through the store and tells every window', async () => {
+    const store = inMemoryStore();
+    const broadcastUiEvent = vi.fn();
+    const backlog = service({ store, broadcastUiEvent });
+    await backlog.executeAction('backlog.add', { sessionID: 'ses_one', text: 'first' });
+    const second = await backlog.executeAction('backlog.add', { sessionID: 'ses_one', text: 'second' });
+    const moved = await backlog.executeAction('backlog.move', { sessionID: 'ses_one', itemID: second.item.id, position: 0 });
+    expect(moved.items.map(({ text }) => text)).toEqual(['second', 'first']);
+    expect(moved.position).toBe(0);
+    expect(store.items.map(({ text }) => text)).toEqual(['second', 'first']);
+    // The move broadcast the same envelope the stream serializes.
+    const [envelope] = broadcastUiEvent.mock.calls.at(-1);
+    expect(envelope).toEqual({
+      type: 'openchamber:session-backlog',
+      properties: { sessionID: 'ses_one', count: null, draining: false },
+    });
+  });
+
+  it('grades the move failures: the missing fields, the bad position, the unknown item', async () => {
+    const store = inMemoryStore([{ id: 'bl_1', text: 'only', createdAt: 100 }]);
+    const backlog = service({ store });
+    await expect(backlog.executeAction('backlog.move', { sessionID: 'ses_one', position: 0 }))
+      .rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('itemID') });
+    await expect(backlog.executeAction('backlog.move', { sessionID: 'ses_one', itemID: 'bl_1' }))
+      .rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('position') });
+    await expect(backlog.executeAction('backlog.move', { sessionID: 'ses_one', itemID: 'bl_1', position: -1 }))
+      .rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('position') });
+    await expect(backlog.executeAction('backlog.move', { sessionID: 'ses_one', itemID: 'bl_missing', position: 0 }))
+      .rejects.toMatchObject({ statusCode: 404 });
+    expect(store.items.map(({ id }) => id)).toEqual(['bl_1']);
   });
 
   it('broadcasts every change as one envelope the event stream can serialize', async () => {

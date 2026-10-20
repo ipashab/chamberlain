@@ -98,6 +98,41 @@ describe('backlogApi', () => {
     expect(log[1].url).toBe('/api/openchamber/backlog/clear');
   });
 
+  test('moves one item and answers the queue in its new order', async () => {
+    const { fetchImpl, log } = fetchAnswering({
+      '/api/openchamber/backlog/move': {
+        body: {
+          sessionID: 'ses_1',
+          itemID: 'bl_2',
+          position: 0,
+          items: [
+            { id: 'bl_2', text: 'Make the review', createdAt: 101 },
+            { id: 'bl_1', text: 'Do the audit', createdAt: 100 },
+          ],
+        },
+      },
+    });
+    const items = await backlogApi.move('ses_1', 'bl_2', 0, fetchImpl);
+    expect(items.map(({ id }) => id)).toEqual(['bl_2', 'bl_1']);
+    expect(log[0].init?.method).toBe('POST');
+    expect(String(log[0].init?.body)).toContain('"itemID":"bl_2"');
+    expect(String(log[0].init?.body)).toContain('"position":0');
+  });
+
+  test('fails a move answer that does not match the contract', async () => {
+    const { fetchImpl } = fetchAnswering({
+      '/api/openchamber/backlog/move': { body: { sessionID: 'ses_1', itemID: 'bl_2' } },
+    });
+    await expect(backlogApi.move('ses_1', 'bl_2', 0, fetchImpl)).rejects.toThrow('expected shape');
+  });
+
+  test('carries the server message from a refused move', async () => {
+    const { fetchImpl } = fetchAnswering({
+      '/api/openchamber/backlog/move': { status: 404, body: { error: 'No staged item bl_missing is queued in this session' } },
+    });
+    await expect(backlogApi.move('ses_1', 'bl_missing', 0, fetchImpl)).rejects.toThrow('bl_missing');
+  });
+
   test('starts the drain and parses the outcome', async () => {
     const { fetchImpl, log } = fetchAnswering({
       '/api/openchamber/backlog/run': {

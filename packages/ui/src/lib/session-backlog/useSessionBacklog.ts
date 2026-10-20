@@ -103,6 +103,13 @@ export const useSessionBacklog = (sessionId: string | null) => {
     return removed;
   }, [sessionId]);
 
+  const move = useCallback(async (itemId: string, position: number) => {
+    if (!sessionId) return null;
+    const items = await backlogApi.move(sessionId, itemId, position);
+    void fetchSession(sessionId, { force: true });
+    return items;
+  }, [sessionId]);
+
   const clear = useCallback(async () => {
     if (!sessionId) return 0;
     const removed = await backlogApi.clear(sessionId);
@@ -123,6 +130,7 @@ export const useSessionBacklog = (sessionId: string | null) => {
     draining: slot?.draining ?? false,
     loaded: slot?.loaded ?? false,
     remove,
+    move,
     clear,
     run,
   };

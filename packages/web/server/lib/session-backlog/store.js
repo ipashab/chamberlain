@@ -15,13 +15,20 @@ const STORE_DIRECTORY = 'backlog';
 
 const asTimestamp = (value) => (Number.isSafeInteger(value) && value > 0 ? value : 0);
 
+// The run order of a record: an explicit position (stamped by `move`), or
+// nothing staged behind it yet.
+const asPosition = (value) => (Number.isSafeInteger(value) && value >= 0 ? value : null);
+
 const readItem = (value) => {
   if (!isPlainObject(value)) return null;
   const id = asNonEmptyString(value.id);
   const text = isString(value.text) ? value.text : '';
   const createdAt = asTimestamp(value.createdAt);
+  const position = asPosition(value.position);
   if (!id || !text.trim() || !createdAt) return null;
-  return { id, text, createdAt };
+  const item = { id, text, createdAt };
+  if (position !== null) item.position = position;
+  return item;
 };
 
 const readStored = (raw, sessionId) => {
@@ -41,8 +48,12 @@ const readStored = (raw, sessionId) => {
     if (item) items.push(item);
   }
   // Oldest first: the drain takes the head of the list, and the head is
-  // what a bounded list trims from the back.
-  items.sort((left, right) => left.createdAt - right.createdAt);
+  // what a bounded list trims from the back. A record from before reordering
+  // exits carries no position and keeps its chronological place; a record
+  // staged after a move carries none either and lands behind the last
+  // positioned one, newest within that tail by its timestamp.
+  const sortKey = (item) => item.position ?? Number.MAX_SAFE_INTEGER;
+  items.sort((left, right) => (sortKey(left) - sortKey(right)) || (left.createdAt - right.createdAt));
   return items.slice(0, LIST_LIMIT);
 };
 
@@ -137,6 +148,26 @@ export const createBacklogStore = ({
       if (without.length === items.length) return false;
       await persist(sessionId, without);
       return true;
+    }),
+
+    /**
+     * Move one staged item to a new index in the run order, 0 first. Every
+     * record is stamped with its position in the new order, so the file says
+     * the order the next read sorts by. Answers the reordered list, or null
+     * when the item was not staged.
+     */
+    move: (sessionId, itemId, position) => runExclusive(async () => {
+      const items = await readFile(sessionId);
+      if (items.length === 0) throw new Error('The backlog of this session is empty');
+      if (!Number.isSafeInteger(position) || position < 0 || position >= items.length) {
+        throw new Error(`The target position must be within the queue, 0 to ${items.length - 1}`);
+      }
+      const from = items.findIndex((item) => item.id === itemId);
+      if (from === -1) return null;
+      const [moved] = items.splice(from, 1);
+      items.splice(position, 0, moved);
+      await persist(sessionId, items.map((item, index) => ({ ...item, position: index })));
+      return items;
     }),
 
     /** Drop every staged item; answers how many were dropped. */

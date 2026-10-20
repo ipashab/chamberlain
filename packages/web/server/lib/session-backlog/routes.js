@@ -52,6 +52,13 @@ export const registerBacklogRoutes = (app, dependencies) => {
     return runThroughService(res, 'backlog.remove', { sessionID: sessionId, itemID: body.itemID });
   });
 
+  app.post('/api/openchamber/backlog/move', jsonBody, async (req, res) => {
+    const body = req.body ?? {};
+    const sessionId = asNonEmptyString(body.sessionID);
+    if (!sessionId) return res.status(400).json({ error: 'sessionID is required' });
+    return runThroughService(res, 'backlog.move', { sessionID: sessionId, itemID: body.itemID, position: body.position });
+  });
+
   app.post('/api/openchamber/backlog/clear', jsonBody, async (req, res) => {
     const body = req.body ?? {};
     const sessionId = asNonEmptyString(body.sessionID);

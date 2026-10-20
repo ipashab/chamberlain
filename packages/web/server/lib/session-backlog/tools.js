@@ -14,6 +14,7 @@ export const BACKLOG_ACTION_DEFINITIONS = Object.freeze([
   { action: 'backlog.list', title: 'Read the session\'s staged items', description: 'The backlog of this dialog: every staged item in run order, oldest first. No parameters' },
   { action: 'backlog.add', title: 'Stage a follow-up', description: 'Adds an item to the back of the queue without running it; the drain runs items later, one turn each. Parameters: text' },
   { action: 'backlog.remove', title: 'Take one item out', description: 'Takes one staged item out of the queue. Parameters: itemID, as backlog.list shows it' },
+  { action: 'backlog.move', title: 'Reorder one staged item', description: 'Moves one staged item to a new place in the queue; the drain takes the head first. Parameters: itemID, as backlog.list shows it, and position, the target index in the queue, 0 first' },
   { action: 'backlog.clear', title: 'Drop every staged item', description: 'Drops every staged item of this dialog\'s backlog. No parameters' },
   { action: 'backlog.run', title: 'Run the queue', description: 'Starts the drain: each staged item is sent into this dialog as its own turn, in order, the next only after the previous turn ends. The current turn finishes first. Returns at once. No parameters' },
 ]);
@@ -24,7 +25,8 @@ const BACKLOG_ACTION_NAMES = new Set(BACKLOG_ACTIONS);
 
 export const BACKLOG_PARAMETER_PROPERTIES = Object.freeze({
   text: { type: 'string', description: 'backlog.add: the prompt to stage, 1 to 40000 characters' },
-  itemID: { type: 'string', description: 'backlog.remove: the staged item\'s id, as backlog.list shows it' },
+  itemID: { type: 'string', description: 'backlog.remove and backlog.move: the staged item\'s id, as backlog.list shows it' },
+  position: { type: 'number', description: 'backlog.move: the target index in the queue, 0 first' },
 });
 
 /**

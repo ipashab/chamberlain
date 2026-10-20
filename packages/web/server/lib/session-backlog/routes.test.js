@@ -80,6 +80,9 @@ describe('registerBacklogRoutes', () => {
     const removed = await callRoute(app, 'POST', '/api/openchamber/backlog/remove', { body: { sessionID: 'ses_one', itemID: 'bl_1' } });
     expect(backlogService.executeAction).toHaveBeenCalledWith('backlog.remove', { sessionID: 'ses_one', itemID: 'bl_1' });
     expect(removed.statusCode).toBe(200);
+    const moved = await callRoute(app, 'POST', '/api/openchamber/backlog/move', { body: { sessionID: 'ses_one', itemID: 'bl_1', position: 0 } });
+    expect(backlogService.executeAction).toHaveBeenCalledWith('backlog.move', { sessionID: 'ses_one', itemID: 'bl_1', position: 0 });
+    expect(moved.statusCode).toBe(200);
     const cleared = await callRoute(app, 'POST', '/api/openchamber/backlog/clear', { body: { sessionID: 'ses_one' } });
     expect(backlogService.executeAction).toHaveBeenCalledWith('backlog.clear', { sessionID: 'ses_one' });
     expect(cleared.statusCode).toBe(200);
@@ -91,7 +94,7 @@ describe('registerBacklogRoutes', () => {
   it('grades every body-reading route a missing sessionID', async () => {
     const app = makeApp();
     registerBacklogRoutes(app, { backlogService: serviceOf() });
-    for (const path of ['/api/openchamber/backlog', '/api/openchamber/backlog/remove', '/api/openchamber/backlog/clear', '/api/openchamber/backlog/run']) {
+    for (const path of ['/api/openchamber/backlog', '/api/openchamber/backlog/remove', '/api/openchamber/backlog/move', '/api/openchamber/backlog/clear', '/api/openchamber/backlog/run']) {
       const res = await callRoute(app, 'POST', path, { body: {} });
       expect(res.statusCode).toBe(400);
     }

@@ -11,7 +11,7 @@ import {
 
 describe('BACKLOG_ACTION_DEFINITIONS', () => {
   it('keeps the queue grammar the agent is taught', () => {
-    expect(BACKLOG_ACTIONS).toEqual(['backlog.list', 'backlog.add', 'backlog.remove', 'backlog.clear', 'backlog.run']);
+    expect(BACKLOG_ACTIONS).toEqual(['backlog.list', 'backlog.add', 'backlog.remove', 'backlog.move', 'backlog.clear', 'backlog.run']);
     expect(BACKLOG_ACTION_DEFINITIONS.every(({ action, title, description }) =>
       isString(action)
       && action.length > 0

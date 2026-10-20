@@ -21,21 +21,34 @@ composer, run only when the user says so — in the interface or in chat.
 ## Shape
 
 - `store.js` — the authority on what is staged: one JSON file per session
-  under `<dataDir>/backlog/`, items oldest first, one read-modify-write at a
+  under `<dataDir>/backlog/`, items in run order, one read-modify-write at a
   time. The list is bounded (50) and refuses the add that would evict — a
   dropped task nobody ever sent is data loss, not pruning. Malformed bytes
   stay failures: the file is moved aside for the user, never silently
   rewritten as an empty queue.
 - `tools.js` — the agent-facing grammar: `backlog.list`, `backlog.add`,
-  `backlog.remove`, `backlog.clear`, `backlog.run`; the tool works from the
-  calling session, so no action takes a session id.
+  `backlog.remove`, `backlog.move`, `backlog.clear`, `backlog.run`; the tool
+  works from the calling session, so no action takes a session id.
 - `service.js` — the single executor over the store. The routes and the
   tool pass through the same `executeAction`, so a staged item means the same
   thing everywhere; the dispatch hands the caller's session id in under its
   own name (`callerSessionID`), the agent's input untouched.
-- `routes.js` — the client surface: read, stage, remove, clear, start the
-  drain. `openchamber:session-backlog` events tell every client that showed
-  the session to refetch, so a stage made in one window is honest in another.
+- `routes.js` — the client surface: read, stage, remove, reorder, clear,
+  start the drain. `openchamber:session-backlog` events tell every client
+  that showed the session to refetch, so a stage made in one window is honest
+  in another.
+
+### Why the reordered file carries positions, not new timestamps
+
+`backlog.move` answers with the reordered list and stamps every record it
+persists with an explicit `position`; the read sorts by position first and
+falls back to the timestamp for records that carry none. Rewriting
+`createdAt` instead would make the file lie about when the user staged the
+prompt, and keeping only the array order would not survive a read, since
+the read sorts. A file from before reordering has no positions and reads in
+its old, chronological order; the first move stamps all of it. A record
+staged after a move carries no position and lands behind the last
+positioned one, so the add after the reorder behaves like any other add.
 
 ### Why one envelope, not a type plus properties
 
