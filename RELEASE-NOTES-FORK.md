@@ -10,6 +10,30 @@ highlights and carries the fork's own work on top.
 
 ---
 
+## `2.5.0-fork5` — a backlog you can reorder
+
+**Rows that move, one order everywhere.** The backlog strip's expanded
+list now changes the run order: a grip drags a row to a new place (dnd-kit
+with the queue strip's sensors: mouse after a small move, touch after a
+long press), and arrows walk a row one place at a time, disabled past each
+row's boundary. Every move is one graded `backlog.move` through the store,
+and the broadcast brings the new order back to every window before the
+rows redraw, so two windows keep agreeing on the queue — the same
+invariant the strip's counts already live by.
+
+**Positions in the file, not rewritten timestamps.** The store stamps every
+record it persists with an explicit `position` and sorts by it on read,
+falling back to the timestamp for records that carry none. A file from
+before the first move reads in its old chronological order; a record staged
+after a reorder lands behind the reordered ones, newest last. The reorder
+is honest across restarts.
+
+**The agent can reorder too.** The `openchamber_backlog` tool gains
+`backlog.move` (itemID + position), so "передвинь ревью в начало очереди"
+works in chat as well as in the strip.
+
+---
+
 ## `2.5.0-fork4` — the stage button, one strip per composer, honest counts
 
 **A button that stages the draft.** Beside the composer's send button, a
