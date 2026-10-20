@@ -10,6 +10,38 @@ highlights and carries the fork's own work on top.
 
 ---
 
+## `2.5.0-fork4` — the stage button, one strip per composer, honest counts
+
+**A button that stages the draft.** Beside the composer's send button, a
+"stage to queue" action moves the current draft verbatim into the session
+backlog — one click, the draft is queued, the composer is clear, and a toast
+says where it went. Slash-command drafts are refused with a toast instead of
+staging, and the button appears only when a session is bound and the draft
+carries text. Every one of the sixteen locales carries its strings, in the
+fork's parity tests.
+
+**The queue every window agrees on.** The backlog broadcast left the server
+with its frame in the wrong shape, so other windows never refetched and the
+ strip over the composer could sit on a stale count until its own window
+staged something. The frame now travels as the one envelope the client
+matches, pinned by a regression test.
+
+**One strip per composer, not one per re-render.** `BacklogStrip` and
+`BackgroundShellsStrip` are siblings in the composer's top rows, and both
+were keyed by the bare session id — React read them as duplicate keys, which
+is an unsupported mode that *duplicates children*: every re-render of the
+composer mounted one more frozen copy of the strip, and over a long session
+the copies covered the chat. The keys are now namespaced per component
+(`background-shells:`/`backlog:` + session id), keeping the swap-on-session-
+change behavior they were keyed for.
+
+**The goal knows where the follow-ups go.** The goal-mode reminder now tells
+the agent that one goal runs per session and prompts the user stages further
+belong on the session backlog (`openchamber_backlog` `backlog.add`), each
+running as its own turn after the goal.
+
+---
+
 ## `2.5.0-fork3` — contacts, the session backlog, full tool descriptions
 
 **Delegating to the saved contacts.** `openchamber_contacts`, a managed
