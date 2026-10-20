@@ -10,6 +10,33 @@ highlights and carries the fork's own work on top.
 
 ---
 
+## `2.5.0-fork3` — contacts, the session backlog, full tool descriptions
+
+**Delegating to the saved contacts.** `openchamber_contacts`, a managed
+tool grammar over the contacts list: `contact.list` shows who exists;
+`contact.run` hands the task to a contact by forking the calling
+session under the contact's model and agent, context riding along;
+`contact.wait` follows the child session until the contact's first
+answer lands, or its turn ends without one. The caller's session id
+rides under its own name, so `wait`'s sessionID, the child the run
+returned, is never trampled. Contract in
+`packages/web/server/lib/contact-run/`.
+
+**A queue for the work not started yet.** `openchamber_backlog`, a
+per-session queue the agent fills from the chat itself: add, list,
+remove, clear, and a `backlog.run` that starts a watched drain — each
+staged item goes out as its own turn, in order, and a refusal stops
+the queue with the rest still staged. A strip over the composer shows
+the queue, runs it and clears it; all sixteen locales carry its
+strings, in the fork's parity tests. Contract in
+`packages/web/server/lib/session-backlog/`.
+
+**Tool runs carry their descriptions.** The MCP console's run frame
+renders the tool's full description above its schema, so a long help
+text reads where the run happens.
+
+---
+
 ## `2.5.0-fork2` — the advisor, turn checkpoints, the tracker, the debug tool
 
 **A turn's work, reviewed where it lands.** After a turn that changed
