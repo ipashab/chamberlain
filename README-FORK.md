@@ -15,7 +15,7 @@ Fork base: upstream `733fa61` (2026-10-07, upstream version `2.2.0`) at
 the start; since `2.4.0-fork1` the app itself ships as **Chamberlain**,
 its own name, appId and icon beside stock OpenChamber. The fork keeps
 upstream's version and adds a prerelease marker, `forkN`, bumping on
-each fork patch: currently `2.5.0-fork5` on upstream `2.5.0`.
+each fork patch: currently `2.5.0-fork8` on upstream `2.5.0`.
 
 Owning docs that move with the code:
 

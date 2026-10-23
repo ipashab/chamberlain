@@ -10,6 +10,69 @@ highlights and carries the fork's own work on top.
 
 ---
 
+## `2.5.0-fork8` — a face per person, on every surface
+
+**Avatars load in the desktop app.** A picture of a comment's author was a
+relative `/api/openchamber/...` path in an `img` element. On the web surface
+the server serves that document, so the path resolves. The packaged app loads
+its own shell scheme and answers every runtime path there with `503`, so the
+bytes never arrived and the circle fell back to initials. Jira people were
+drawn the same way and went missing the same way. Both now ask the runtime
+URL resolver for the address, which yields a relative path on the web surface
+and an absolute one pointing at the runtime server elsewhere. An `img` cannot
+attach an authorization header, so the two avatar routes joined the short list
+of reads a scoped URL token may open.
+
+**Every reply carries its author's circle.** A thread drew the picture only on
+its root comment, and the replies below were bare names. Now each level gets
+its own circle, the same one that person has in every other list.
+
+**About reports the fork's version.** That dialog reads the version from the
+`@openchamber/web` manifest, and the `forkN` bumps were moving two manifests
+out of six, so it kept reporting an older number while the app itself was
+already newer. The release bump now moves all six together.
+
+One limit worth naming: a Data Center instance may serve a personal picture
+only to a request carrying a browser session cookie, and answer a token
+request with its built-in placeholder. That placeholder is what shows there.
+Nothing to do about it from a token-only client.
+
+---
+
+## `2.5.0-fork7` — the comment's code window in the quote's format
+
+**One code format in the pull viewer.** An anchored comment carries a window
+of the lines it talks about, and that window used to draw smaller and denser
+than a fenced block of the comment's own text: 11px rows, tight leading, a
+plain border with no fill. It now draws the way the fenced block draws. A
+rounded card on the elevated surface, the file's language in a header line,
+`--text-code` type at the markdown code line height, and a two-rem number
+gutter with a hairline rule and tabular figures. The diff keeps its own
+signals, so the plus and minus signs, the added and removed row tints and the
+selection band on the anchored line all stay, and the colors still come from
+the whole-file worker pass the Changes tab pays for.
+
+---
+
+## `2.5.0-fork6` — threads with depth, an arch for a seal
+
+**Nested PR replies render.** Data Center nests a comment thread
+arbitrarily deep — the instance reports no `parentId` on nested replies,
+so the tree is the only witness of who answers whom. The pull viewer read
+one level of `comment.comments` and dropped the rest; now the whole tree
+walks through the mapper, the client schema and the card, every level one
+indent deeper. The ask on a nested reply names the reply it answers, not
+the thread's root, and the quote material and the analysis reading carry
+the depth with `>` markers. Replies keep their `id`, so the thread keys
+stay stable.
+
+**A new Chamberlain icon.** The brass seal with the key on teal wax is
+retired for a drawn-in-vector arch monogram: a blue arch on a deep navy
+squircle, with light and dark variants for the asset catalog
+(`AppIcon.icon` rebuilt through actool). The `package-beta` flavor no
+longer draws its icon from an inline Pillow pass — it copies whatever
+the fork's stock icons carry, so the next icon change is a file swap.
+
 ## `2.5.0-fork5` — a backlog you can reorder
 
 **Rows that move, one order everywhere.** The backlog strip's expanded
