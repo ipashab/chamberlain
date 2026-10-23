@@ -1,4 +1,4 @@
-import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
+import type { BitbucketPullView, PullViewReply } from '@/lib/bitbucket/pull-view-api';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useInlineCommentDraftStore } from '@/stores/useInlineCommentDraftStore';
 import {
@@ -133,24 +133,32 @@ export const attachFileAsk = (
  * question about the note can see the note's subject; a comment of the
  * overview carries the pull's own material, because its subject is the
  * change as a whole. A chosen `reply` becomes the subject instead, with
- * its parent quoted as the thread it answers. Nothing is sent from here,
+ * `replyParentAuthor` naming the note it actually answers — Data Center
+ * keeps parentId empty on nested replies, so the tree position (which the
+ * card renders from) is the only witness. Nothing is sent from here,
  * and the author's words ride along verbatim.
  */
 export const attachCommentAsk = (
     view: BitbucketPullView,
     comment: BitbucketPullView['comments'][number],
     reply?: BitbucketPullView['comments'][number]['replies'][number],
+    replyParentAuthor?: string | null,
 ): PullAskResult => {
     const anchor = comment.anchor ?? null;
     const where = anchor
         ? `\nOn ${anchor.path}${anchor.line === null ? '' : `:${anchor.line}`}` +
           `${anchor.lineType ? ` (${anchor.lineType.toLowerCase()})` : ''}`
         : '';
+    // A reply one level down answers the thread's comment itself, which the
+    // ask has always named; a deeper one names its own parent, or the
+    // instance's nesting would be flattened into a false attribution.
+    const parentAuthor = replyParentAuthor ?? comment.author;
     const head = reply
         ? [
             `Bitbucket pull request #${view.pull.number}: reply by ${reply.author ?? 'unknown'}`,
             where,
-            `In reply to ${comment.author ?? 'unknown'} (${comment.resolved ? 'thread resolved' : 'thread open'}):`,
+            `In reply to ${parentAuthor ?? 'unknown'}:` +
+                (parentAuthor === comment.author ? ` (${comment.resolved ? 'thread resolved' : 'thread open'})` : ''),
             comment.text,
             '',
             'The reply:',
@@ -167,9 +175,7 @@ export const attachCommentAsk = (
         ];
     const lines = [
         ...head,
-        ...comment.replies.flatMap((entry) =>
-            entry === reply ? [] : [`Reply by ${entry.author ?? 'unknown'}: ${entry.text}`, ''],
-        ),
+        ...replyLines(comment.replies, reply),
     ];
     let code = lines.join('\n');
 
@@ -195,3 +201,19 @@ export const attachCommentAsk = (
     const line = anchor?.line ?? 0;
     return addQuoteDraft(label.slice(0, 120), code, 'markdown', line, line);
 };
+
+/**
+ * The thread's replies as quote lines, nested ones marked by one '>' a
+ * level, so the reader can tell an answer to the comment from an answer to
+ * an answer. The chosen reply only stays in the head, not in this list.
+ */
+const replyLines = (replies: PullViewReply[], chosen: PullViewReply | undefined): string[] =>
+    replies.flatMap((entry) =>
+        entry === chosen
+            ? []
+            : [
+                `Reply by ${entry.author ?? 'unknown'}: ${entry.text}`,
+                '',
+                ...replyLines(entry.replies, chosen).map((line) => `> ${line}`),
+            ],
+    );

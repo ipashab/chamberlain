@@ -224,6 +224,22 @@ const authorNameOf = (author) => (author?.user ? personNameOf(author.user) : per
 const authorSlugOf = (author) => (author?.user ? personSlugOf(author.user) : personSlugOf(author));
 
 /**
+ * A reply, and its own replies: DC nests a thread arbitrarily deep, so the
+ * mapping walks the tree instead of reading one level. The reply's id rides
+ * along — the UI keys threads by it and quotes the author a deep reply
+ * actually answers, which the tree position is the only witness of (DC keeps
+ * parentId empty there).
+ */
+const repliesOf = (comments) => (comments ?? []).map((reply) => ({
+  id: reply.id ?? 0,
+  author: personNameOf(reply.author),
+  authorSlug: personSlugOf(reply.author),
+  text: reply.text ?? '',
+  createdAt: reply.createdDate ?? null,
+  replies: repliesOf(reply.comments),
+}));
+
+/**
  * The comment's place in the diff, in the shape the UI quotes by. An anchor
  * without a path anchors nothing: it reads back as null, and the comment
  * joins the pull-level crowd.
@@ -324,12 +340,7 @@ export const readPullView = async ({ request, config, ref }) => {
       // a comment of the overview carries no anchor and belongs to the pull
       // as a whole. The UI groups by this and quotes the anchored hunk.
       anchor: anchorOf(activity.commentAnchor ?? activity.comment?.anchor),
-      replies: (activity.comment?.comments ?? []).map((reply) => ({
-        author: personNameOf(reply.author),
-        authorSlug: personSlugOf(reply.author),
-        text: reply.text ?? '',
-        createdAt: reply.createdDate ?? null,
-      })),
+      replies: repliesOf(activity.comment?.comments),
     }))
     .sort((one, two) => (one.createdAt ?? 0) - (two.createdAt ?? 0));
 

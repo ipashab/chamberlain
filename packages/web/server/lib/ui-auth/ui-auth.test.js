@@ -212,6 +212,26 @@ describe('ui auth client credential seam', () => {
     });
     expect(mountedRawCalled).toBe(true);
 
+    // Integration avatars are read by an `img` element, which cannot attach a
+    // bearer header, so the session URL token has to open both proxy routes.
+    for (const avatarPath of [
+      '/api/openchamber/bitbucket/pulls/avatar?slug=a.ostaenkov&size=48',
+      '/api/openchamber/jira/avatar?path=%2Fsecure%2Fuseravatar%3FavatarId%3D10122',
+    ]) {
+      const avatarReq = {
+        method: 'GET',
+        path: avatarPath.split('?')[0],
+        url: `${avatarPath}${avatarPath.includes('?') ? '&' : '?'}oc_url_token=${encodeURIComponent(urlToken)}`,
+        headers: {},
+      };
+      const avatarRes = createResponse();
+      let avatarCalled = false;
+      await auth.requireAuth(avatarReq, avatarRes, () => {
+        avatarCalled = true;
+      });
+      expect(avatarCalled).toBe(true);
+    }
+
     const guestReq = { method: 'GET', path: '/api/guests/hello/panel/index.html', url: `/api/guests/hello/panel/index.html?oc_url_token=${encodeURIComponent(urlToken)}`, headers: {} };
     const guestRes = createResponse();
     let guestCalled = false;
@@ -237,6 +257,7 @@ describe('ui auth client credential seam', () => {
     for (const forbidden of [
       { method: 'GET', path: '/api/fs/raw', url: `/api/fs/raw?path=%2Ftmp%2Fimage.png&oc_url_token=${encodeURIComponent(guestToken)}` },
       { method: 'GET', path: '/api/event', url: `/api/event?oc_url_token=${encodeURIComponent(guestToken)}` },
+      { method: 'GET', path: '/api/openchamber/jira/avatar', url: `/api/openchamber/jira/avatar?path=x&oc_url_token=${encodeURIComponent(guestToken)}` },
       { method: 'GET', path: '/api/guests/other/panel/main.js', url: `/api/guests/other/panel/main.js?oc_url_token=${encodeURIComponent(guestToken)}` },
       { method: 'GET', path: '/api/guests', url: `/api/guests?oc_url_token=${encodeURIComponent(guestToken)}` },
     ]) {

@@ -58,7 +58,7 @@ const baseView: BitbucketPullView = {
             resolved: false,
             severity: 'MAJOR',
             anchor: { path: 'autotests/experiments/src/client.py', line: 42, lineType: 'ADDED' },
-            replies: [{ author: 'Анна', authorSlug: 'an', text: 'Добавлю.', createdAt: 4 }],
+            replies: [{ id: 201, author: 'Анна', authorSlug: 'an', text: 'Добавлю.', createdAt: 4, replies: [] }],
         },
         {
             id: 102,

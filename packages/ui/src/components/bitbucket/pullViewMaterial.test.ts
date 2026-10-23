@@ -40,7 +40,7 @@ const makeView = (over: {
         createdAt: 1789664696177,
         resolved: false,
         severity: null,
-        replies: [{ author: 'Sv Gorbunov', text: 'Acknowledged.', createdAt: 1789664999000 }],
+        replies: [{ id: 99002, author: 'Sv Gorbunov', text: 'Acknowledged.', createdAt: 1789664999000, replies: [] }],
     }],
     commits: [],
     truncated: over.truncated ?? { diff: false, comments: false, commits: false },

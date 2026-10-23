@@ -15,7 +15,7 @@
 
 import { z } from 'zod';
 
-import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
+import type { BitbucketPullView, PullViewReply } from '@/lib/bitbucket/pull-view-api';
 
 /** Which of the two readings the user asked for. */
 export type AnalysisScope = {
@@ -313,9 +313,15 @@ export const buildAnalysisPrompt = (
                     `${anchor ? `, ${anchor.path}${anchor.line ? `:${anchor.line}` : ''}` : ''}`,
                 comment.text,
             );
-            for (const reply of comment.replies) {
-                lines.push(`Ответ ${reply.author ?? 'неизвестно'}: ${reply.text}`);
-            }
+            // A reply to a reply steps one marker deeper: how far the thread
+            // went is part of what was discussed.
+            const replyLinesOf = (replies: PullViewReply[], depth: number) => {
+                for (const reply of replies) {
+                    lines.push(`${'>> '.repeat(Math.max(0, depth - 1))}Ответ ${reply.author ?? 'неизвестно'}: ${reply.text}`);
+                    replyLinesOf(reply.replies, depth + 1);
+                }
+            };
+            replyLinesOf(comment.replies, 1);
             lines.push('');
         }
         if (view.truncated.comments) {

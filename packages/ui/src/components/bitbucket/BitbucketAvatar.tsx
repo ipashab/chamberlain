@@ -1,5 +1,10 @@
 import React from 'react';
 
+import { getRuntimeUrlResolver } from '@/lib/runtime-url';
+
+/** The proxy route that reads one user's picture with the instance token. */
+const AVATAR_ROUTE = '/api/openchamber/bitbucket/pulls/avatar';
+
 /**
  * The pull rows' people. The instance serves each user a real avatar at
  * /users/<slug>/avatar.png — the server proxies it with the token the
@@ -37,7 +42,13 @@ export const BitbucketAvatar: React.FC<{
     }
     const hue = hash === 0 ? 210 : hash;
 
-    const avatarSrc = slug ? `/api/openchamber/bitbucket/pulls/avatar?slug=${encodeURIComponent(slug)}&size=48` : null;
+    // The URL comes from the runtime resolver. A packaged desktop shell answers
+    // a relative `/api/...` on its own scheme with 503, and an `img` element
+    // cannot attach the token as a header, so the URL carries it. Built on
+    // every render, because a runtime switch means a different server.
+    const avatarSrc = slug
+        ? getRuntimeUrlResolver().authenticatedAsset(AVATAR_ROUTE, { slug, size: '48' })
+        : null;
 
     const [verdict, setVerdict] = React.useState<'loading' | 'ready' | 'failed'>('loading');
     const [seenSrc, setSeenSrc] = React.useState(avatarSrc);

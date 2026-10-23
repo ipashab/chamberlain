@@ -115,9 +115,28 @@ describe('fetchBitbucketPullView', () => {
                             createdAt: 1789664696177,
                             resolved: true,
                             severity: null,
-                            // A comment of the overview carries no anchor.
+                            // A comment of the overview carries no anchor; its
+                            // reply tree nests as deep as the server nests it.
                             anchor: null,
-                            replies: [{ author: 'Sv Gorbunov', authorSlug: 'sgorbunov', text: 'Acknowledged.', createdAt: 1789664999000 }],
+                            replies: [
+                                {
+                                    id: 99003,
+                                    author: 'Sv Gorbunov',
+                                    authorSlug: 'sgorbunov',
+                                    text: 'Acknowledged.',
+                                    createdAt: 1789664999000,
+                                    replies: [
+                                        {
+                                            id: 99004,
+                                            author: 'AIR',
+                                            authorSlug: 'ci',
+                                            text: 'And the answer to the answer.',
+                                            createdAt: 1789665100000,
+                                            replies: [],
+                                        },
+                                    ],
+                                },
+                            ],
                         },
                     ],
                 }),
@@ -128,5 +147,11 @@ describe('fetchBitbucketPullView', () => {
         expect(result.view.comments[0]?.anchor?.line).toBe(15);
         expect(result.view.comments[0]?.anchor?.lineType).toBe('ADDED');
         expect(result.view.comments[1]?.anchor).toBeNull();
+        // The nested reply survives the parse whole: depth is data, and a
+        // schema that dropped it would flatten the thread.
+        const nested = result.view.comments[1]?.replies[0]?.replies[0];
+        if (!nested) throw new Error('expected the nested reply to parse');
+        expect(nested.author).toBe('AIR');
+        expect(nested.id).toBe(99004);
     });
 });

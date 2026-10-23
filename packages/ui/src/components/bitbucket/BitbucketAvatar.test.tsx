@@ -3,6 +3,8 @@ import { Window } from 'happy-dom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { clearRuntimeUrlAuthToken, setRuntimeUrlAuthToken } from '@/lib/runtime-auth';
+
 import { BitbucketAvatar } from './BitbucketAvatar';
 
 // The avatar answers through three windows — no slug at all, bytes that
@@ -11,6 +13,10 @@ import { BitbucketAvatar } from './BitbucketAvatar';
 // only its own complete flag tells the truth. All three flip the same
 // verdict: initials while loading, the photo once it is real, initials
 // again if a different person replaces it before their picture lands.
+//
+// The src comes from the runtime resolver. On a document the server does not
+// serve, it points at the runtime origin and carries a URL token, because an
+// img element cannot attach a header.
 
 const flushImgs = (container: HTMLElement) =>
     Array.from(container.querySelectorAll('img'));
@@ -116,5 +122,20 @@ describe('BitbucketAvatar', () => {
             secondImg?.dispatchEvent(new Event('load'));
         });
         expect(host.textContent).toBe('');
+    });
+
+    test('a document the server does not serve gets an absolute, token-carrying src', async () => {
+        Object.assign(windowInstance, { __OPENCHAMBER_API_BASE_URL__: 'http://127.0.0.1:57123' });
+        setRuntimeUrlAuthToken('oc_url_test-token', Date.now() + 60_000);
+        try {
+            await renderAvatar({ slug: 'a.ostaenkov' });
+            const src = new URL(flushImgs(host)[0]?.getAttribute('src') ?? '');
+            expect(src.origin).toBe('http://127.0.0.1:57123');
+            expect(src.pathname).toBe('/api/openchamber/bitbucket/pulls/avatar');
+            expect(src.searchParams.get('slug')).toBe('a.ostaenkov');
+            expect(src.searchParams.get('oc_url_token')).toBe('oc_url_test-token');
+        } finally {
+            clearRuntimeUrlAuthToken();
+        }
     });
 });

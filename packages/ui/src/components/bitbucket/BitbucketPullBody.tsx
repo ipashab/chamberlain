@@ -12,7 +12,7 @@ import { openExternalUrl } from '@/lib/url';
 import { formatDateTimeForPreference } from '@/lib/timeFormat';
 import { getLanguageFromExtension } from '@/lib/toolHelpers';
 import { useUIStore } from '@/stores/useUIStore';
-import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
+import type { BitbucketPullView, PullViewReply } from '@/lib/bitbucket/pull-view-api';
 import {
     attachCommentAsk,
     attachFileAsk,
@@ -839,22 +839,65 @@ const PullCommentCard: React.FC<{
                 <PullDiffExcerpt file={file} anchor={anchor} />
             ) : null}
             <SimpleMarkdownRenderer content={comment.text} disableLinkSafety variant="tool" enableFileReferences={false} />
-            {comment.replies.map((reply, index) => (
-                <div key={`${comment.id}-${index}`} className="ms-3 mt-1 border-s border-border ps-2">
+            <PullReplyList
+                view={view}
+                comment={comment}
+                replies={comment.replies}
+                parentAuthor={comment.author}
+                formatStamp={formatStamp}
+                reportAsk={reportAsk}
+                askButton={askButton}
+            />
+            {annotation ? <CommentAnnotation annotation={annotation} /> : null}
+        </div>
+    );
+};
+
+/**
+ * The replies of a thread, and their own replies: Data Center nests a
+ * discussion arbitrarily deep, and the card mirrors the tree — every level
+ * indents one step further, and a reply's "reply" ask quotes the author it
+ * actually answers, which only the tree position knows (the instance keeps
+ * parentId empty on nested replies).
+ */
+const PullReplyList: React.FC<{
+    view: BitbucketPullView;
+    comment: BitbucketPullView['comments'][number];
+    replies: PullViewReply[];
+    parentAuthor: string | null | undefined;
+    formatStamp: (timestamp: number) => string;
+    reportAsk: (result: PullAskResult) => boolean;
+    askButton: (label: string, aria: string, onClick: () => void) => React.ReactNode;
+}> = ({ view, comment, replies, parentAuthor, formatStamp, reportAsk, askButton }) => {
+    const { t } = useI18n();
+    if (replies.length === 0) return null;
+    return (
+        <>
+            {replies.map((reply) => (
+                <div key={`${parentAuthor ?? ''}-${reply.id}`} className="ms-3 mt-1 border-s border-border ps-2">
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <BitbucketAvatar name={reply.author} slug={reply.authorSlug} />
                         <span className="font-medium text-foreground">{reply.author ?? '—'}</span>
                         <span className="text-muted-foreground">{reply.createdAt ? formatStamp(reply.createdAt) : ''}</span>
                         {askButton(
                             t('chat.workStatus.teamBoard.pullView.replyAsk'),
                             t('chat.workStatus.teamBoard.pullView.replyAskAria', { author: reply.author ?? '—' }),
-                            () => reportAsk(attachCommentAsk(view, comment, reply)),
+                            () => reportAsk(attachCommentAsk(view, comment, reply, parentAuthor)),
                         )}
                     </div>
                     <SimpleMarkdownRenderer content={reply.text} disableLinkSafety variant="tool" enableFileReferences={false} />
+                    <PullReplyList
+                        view={view}
+                        comment={comment}
+                        replies={reply.replies}
+                        parentAuthor={reply.author}
+                        formatStamp={formatStamp}
+                        reportAsk={reportAsk}
+                        askButton={askButton}
+                    />
                 </div>
             ))}
-            {annotation ? <CommentAnnotation annotation={annotation} /> : null}
-        </div>
+        </>
     );
 };
 
@@ -1173,50 +1216,67 @@ const PullDiffExcerpt: React.FC<{
 
     if (window === null) return null;
 
+    // The card is the one code format the reader already knows: a fenced
+    // block of the comment's own text draws with the same frame, the same
+    // gutter and the same `--text-code` type, so an excerpt of the pull's
+    // diff and a quote from the comment read as one kind of thing.
+    // SAFETY: syntaxVars carries the `--md-syntax-*` custom properties the
+    // colored code spans read; React types only standard style keys.
+    const codeBodyStyle = syntaxVars as React.CSSProperties;
     return (
-        // SAFETY: these are the `--md-syntax-*` custom properties the colored
-        // code spans read; React types only standard style keys.
         <div
-            className="mt-2 overflow-x-auto rounded-md border border-border"
-            style={syntaxVars as React.CSSProperties}
+            className="my-2 overflow-hidden rounded-2xl border border-border/80 bg-[var(--surface-elevated)]"
             aria-label={t('chat.workStatus.teamBoard.pullView.excerptAria', { line: anchor.line ?? 0, file: file.path })}
         >
-            {window.rows.map(([row, rowIndex], index) => {
-                const color = rowColorOf(row.kind);
-                const isAnchor = index === window.anchorAt;
-                return (
-                    <div
-                        key={index}
-                        className="flex items-start gap-1.5 px-1 font-mono text-[11px] leading-4"
-                        style={{
-                            backgroundColor: isAnchor
-                                ? 'color-mix(in srgb, var(--primary-base) 16%, transparent)'
-                                : color
-                                    ? `color-mix(in srgb, ${color} 8%, transparent)`
-                                    : undefined,
-                            color: row.kind === 'meta' ? color ?? undefined : undefined,
-                        }}
-                    >
-                        <span className="w-7 shrink-0 select-none text-end text-[9px] text-muted-foreground/60">
-                            {row.oldLine ?? row.newLine ?? ''}
-                        </span>
-                        {row.kind === 'meta' ? (
-                            <span className="whitespace-pre">{row.text || ' '}</span>
-                        ) : (
-                            <span className="flex-1 min-w-0">
-                                <span className="shrink-0 select-none" style={{ color: color ?? undefined }}>
-                                    {row.text.slice(0, 1) || ' '}
-                                </span>
-                                <HighlightedCode
-                                    text={row.text.length > 1 ? row.text.slice(1) : ' '}
-                                    html={htmlOf(rowIndex)}
-                                    status={highlighted.status}
-                                />
+            <div className="flex items-center border-b border-border/70 px-3 py-1.5">
+                <span className="font-mono text-[13px] text-muted-foreground">
+                    {getLanguageFromExtension(file.path) ?? 'text'}
+                </span>
+            </div>
+            <div className="overflow-x-auto px-3 py-2.5 font-mono text-[length:var(--text-code)] leading-relaxed" style={codeBodyStyle}>
+                {window.rows.map(([row, rowIndex], index) => {
+                    const color = rowColorOf(row.kind);
+                    const isAnchor = index === window.anchorAt;
+                    return (
+                        <div
+                            key={index}
+                            className="flex items-start"
+                            style={{
+                                backgroundColor: isAnchor
+                                    ? 'color-mix(in srgb, var(--primary-base) 16%, transparent)'
+                                    : color
+                                        ? `color-mix(in srgb, ${color} 8%, transparent)`
+                                        : undefined,
+                                color: row.kind === 'meta' ? color ?? undefined : undefined,
+                            }}
+                        >
+                            <span
+                                className="w-8 shrink-0 select-none pe-3 text-end"
+                                style={{
+                                    color: 'color-mix(in srgb, var(--muted-foreground) 45%, transparent)',
+                                    fontVariantNumeric: 'tabular-nums',
+                                }}
+                            >
+                                {row.oldLine ?? row.newLine ?? ''}
                             </span>
-                        )}
-                    </div>
-                );
-            })}
+                            {row.kind === 'meta' ? (
+                                <span className="whitespace-pre border-s border-border/50 ps-3">{row.text || ' '}</span>
+                            ) : (
+                                <span className="min-w-0 flex-1 border-s border-border/50 ps-3">
+                                    <span className="shrink-0 select-none" style={{ color: color ?? undefined }}>
+                                        {row.text.slice(0, 1) || ' '}
+                                    </span>
+                                    <HighlightedCode
+                                        text={row.text.length > 1 ? row.text.slice(1) : ' '}
+                                        html={htmlOf(rowIndex)}
+                                        status={highlighted.status}
+                                    />
+                                </span>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };

@@ -337,6 +337,10 @@ const isUrlAuthReadableHttpPath = (pathname) => {
     || pathname === '/api/fs/raw'
     // GitLab pictures and clips in an issue or merge request, loaded by `img` and `video`.
     || pathname.startsWith('/api/source-control/gitlab/uploads/')
+    // Comment authors' pictures, loaded by `img`. Each integration avatar route
+    // answers one user, and the instance token never reaches the browser.
+    || pathname === '/api/openchamber/bitbucket/pulls/avatar'
+    || pathname === '/api/openchamber/jira/avatar'
     || pathname.startsWith('/api/preview/proxy/')
     || /^\/api\/projects\/[^/]+\/icon$/.test(pathname)
     || pathname === '/api/guests'

@@ -29,6 +29,33 @@ export type ViewErrorKind = (typeof VIEW_ERROR_KINDS)[number];
 
 export type BitbucketPullView = z.infer<typeof bitbucketPullViewSchema>;
 
+/**
+ * A reply, and its own replies: Data Center nests a comment thread
+ * arbitrarily deep, so the schema recurses — z.lazy breaks the cycle the
+ * same way the server's mapper does, one level at a time.
+ */
+// The reply schema: recursive, so it is a named const and the array
+// points back at it through z.lazy.
+const pullViewReplySchema: z.ZodType<{
+    id: number;
+    author?: string | null | undefined;
+    authorSlug?: string | null | undefined;
+    text: string;
+    createdAt?: number | null | undefined;
+    replies: PullViewReply[];
+}> = z.lazy(() =>
+    z.object({
+        id: z.number(),
+        author: z.string().nullish(),
+        authorSlug: z.string().nullish(),
+        text: z.string(),
+        createdAt: z.number().nullish(),
+        replies: z.array(pullViewReplySchema),
+    }),
+);
+
+export type PullViewReply = z.infer<typeof pullViewReplySchema>;
+
 export const bitbucketPullViewSchema = z.object({    pull: z.object({
         number: z.number(),
         url: z.string(),
@@ -73,12 +100,9 @@ export const bitbucketPullViewSchema = z.object({    pull: z.object({
                 lineType: z.string().nullish(),
             })
             .nullish(),
-        replies: z.array(z.object({
-            author: z.string().nullish(),
-            authorSlug: z.string().nullish(),
-            text: z.string(),
-            createdAt: z.number().nullish(),
-        })),
+        // A reply, and its own replies: DC nests a thread arbitrarily deep,
+        // so the reply schema recurses one step at a time.
+        replies: z.array(pullViewReplySchema),
     })),
     commits: z.array(z.object({
         sha: z.string(),

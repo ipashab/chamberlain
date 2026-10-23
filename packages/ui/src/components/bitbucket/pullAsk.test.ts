@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
+import type { BitbucketPullView, PullViewReply } from '@/lib/bitbucket/pull-view-api';
 import { parseDiffRows } from '@/lib/bitbucket/pullDiff';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useInlineCommentDraftStore } from '@/stores/useInlineCommentDraftStore';
@@ -38,7 +38,7 @@ const ANCHORED_COMMENT: PullComment = {
     resolved: false,
     severity: null,
     anchor: { path: 'src/client.py', line: 11, lineType: 'ADDED' },
-    replies: [{ author: 'Sv Gorbunov', text: 'Acknowledged.', createdAt: 1789664999000 }],
+    replies: [{ id: 2, author: 'Sv Gorbunov', text: 'Acknowledged.', createdAt: 1789664999000, replies: [] }],
 };
 
 const VIEW: BitbucketPullView = {
@@ -176,6 +176,32 @@ describe('pull asks', () => {
             expect(draft?.code).toContain('The reply:\nAcknowledged.');
             // The subject's own code window rides along with it.
             expect(draft?.code).toContain('## Diff context around src/client.py:11');
+        });
+
+        test('a nested reply names the reply it answers, not the thread root', () => {
+            // The card is the only place that knows the parent — the
+            // instance keeps parentId empty on nested replies — so the ask
+            // takes the parent's author instead of guessing the root.
+            const parent = ANCHORED_COMMENT.replies[0];
+            if (!parent) throw new Error('expected a reply in the fixture');
+            const nested: PullViewReply = {
+                id: 3,
+                author: 'AIR',
+                text: 'Follow-up.',
+                createdAt: 1789666000000,
+                replies: [],
+            };
+            const comment = { ...ANCHORED_COMMENT, replies: [{ ...parent, replies: [nested] }] };
+            const result = attachCommentAsk(VIEW, comment, nested, parent.author);
+            expect(result).toEqual({ ok: true });
+            const draft = draftOf();
+            expect(draft?.code).toContain('reply by AIR');
+            expect(draft?.code).toContain('In reply to Sv Gorbunov:');
+            expect(draft?.code).not.toContain('In reply to Robin Stone');
+            // The parent itself rides along as context; the chosen reply
+            // stays the subject, not a line of the context list.
+            expect(draft?.code).toContain('Reply by Sv Gorbunov');
+            expect(draft?.code).not.toContain('Reply by AIR');
         });
 
         test('a pull-level comment carries the pull\'s own material', () => {

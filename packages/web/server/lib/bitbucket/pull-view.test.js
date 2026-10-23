@@ -87,7 +87,17 @@ const ACTIVITY_WITH_COMMENT = {
         severity: null,
         createdDate: 1789664999000,
         author: { displayName: 'Sv Gorbunov', slug: 'sgorbunov' },
-        comments: [],
+        comments: [
+          {
+            id: 99003,
+            text: 'And an answer to the answer.',
+            threadResolved: null,
+            severity: null,
+            createdDate: 1789665100000,
+            author: { displayName: 'AIR', name: 'ci', slug: 'ci' },
+            comments: [],
+          },
+        ],
       },
     ],
   },
@@ -304,9 +314,24 @@ describe('readPullView', () => {
         createdAt: 1789664696177,
         resolved: false,
         severity: null,
-        // A comment of the overview: nothing to quote by.
+        // A comment of the overview: nothing to quote by. The reply tree
+        // nests as deep as the instance nests it, ids riding along.
         anchor: null,
-        replies: [{ author: 'Sv Gorbunov', authorSlug: 'sgorbunov', text: 'Acknowledged.', createdAt: 1789664999000 }],
+        replies: [{
+          id: 99002,
+          author: 'Sv Gorbunov',
+          authorSlug: 'sgorbunov',
+          text: 'Acknowledged.',
+          createdAt: 1789664999000,
+          replies: [{
+            id: 99003,
+            author: 'AIR',
+            authorSlug: 'ci',
+            text: 'And an answer to the answer.',
+            createdAt: 1789665100000,
+            replies: [],
+          }],
+        }],
       },
       {
         id: 99010,

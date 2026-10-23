@@ -9,7 +9,7 @@
 // an explicit truncation note, so the reader knows the cut happened and
 // can ask for the rest by opening the view again.
 
-import type { BitbucketPullView } from '@/lib/bitbucket/pull-view-api';
+import type { BitbucketPullView, PullViewReply } from '@/lib/bitbucket/pull-view-api';
 
 const MATERIAL_CAP = 48_000;
 
@@ -58,13 +58,18 @@ const fileLines = (view: BitbucketPullView): string[] => {
 const commentLines = (view: BitbucketPullView): string[] => {
   if (view.comments.length === 0) return [];
   const lines = [`## Comments (${view.comments.length})`];
+  // A nested reply quotes one level deeper: the thread's depth is part of
+  // what happened, DC flattens nothing.
+  const replyLinesOf = (replies: PullViewReply[], depth: number): string[] =>
+      replies.flatMap((reply) => [
+          `${'> '.repeat(depth)}${reply.author ?? 'unknown'} (${stampOf(reply.createdAt)}): ${reply.text}`,
+          ...replyLinesOf(reply.replies, depth + 1),
+      ]);
   for (const comment of view.comments) {
     const who = comment.author ?? 'unknown';
     lines.push(`### ${who} — ${stampOf(comment.createdAt)}${comment.resolved ? ' (resolved)' : ''}`);
     lines.push(comment.text);
-    for (const reply of comment.replies) {
-      lines.push(`> ${reply.author ?? 'unknown'} (${stampOf(reply.createdAt)}): ${reply.text}`);
-    }
+    lines.push(...replyLinesOf(comment.replies, 1));
     lines.push('');
   }
   return lines;

@@ -1,5 +1,10 @@
 import React from 'react';
 
+import { getRuntimeUrlResolver } from '@/lib/runtime-url';
+
+/** The proxy route that reads one image with the instance token. */
+const AVATAR_ROUTE = '/api/openchamber/jira/avatar';
+
 /**
  * The issue rows' people and the issue's own type icon. The instance
  * serves each at its own image path — the server proxies them with the
@@ -37,7 +42,12 @@ export const JiraAvatar: React.FC<{
     }
     const hue = hash === 0 ? 210 : hash;
 
-    const avatarSrc = imagePath ? `/api/openchamber/jira/avatar?path=${encodeURIComponent(imagePath)}` : null;
+    // The runtime resolver builds the URL. A packaged desktop shell answers a
+    // relative `/api/...` on its own scheme with 503, and an `img` element
+    // cannot attach the token as a header.
+    const avatarSrc = imagePath
+        ? getRuntimeUrlResolver().authenticatedAsset(AVATAR_ROUTE, { path: imagePath })
+        : null;
 
     const [verdict, setVerdict] = React.useState<'loading' | 'ready' | 'failed'>('loading');
     const [seenSrc, setSeenSrc] = React.useState(avatarSrc);
