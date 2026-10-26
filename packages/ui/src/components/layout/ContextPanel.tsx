@@ -21,6 +21,7 @@ const BitbucketPullsPanel = lazyWithChunkRecovery(() => import('@/components/bit
 const JiraIssuesPanel = lazyWithChunkRecovery(() => import('@/components/jira/JiraIssuesPanel').then((m) => ({ default: m.JiraIssuesPanel })));
 const ConfluencePagesPanel = lazyWithChunkRecovery(() => import('@/components/confluence/ConfluencePagesPanel').then((m) => ({ default: m.ConfluencePagesPanel })));
 const ReviewDashboard = lazyWithChunkRecovery(() => import('@/components/review/ReviewDashboard').then((m) => ({ default: m.ReviewDashboard })));
+const WorkflowsPanel = lazyWithChunkRecovery(() => import('@/components/chat/workflows/WorkflowsPanel').then((m) => ({ default: m.WorkflowsPanel })));
 import { areTitleMapsEqual, buildSessionTitleMap, EMPTY_SESSION_TITLE_MAP, getSessionIDFromDedupeKey } from './contextPanelSessionTitles';
 import { ProjectContextPanel } from './RightSidebarTabs';
 import { TeamBoardView } from '@/components/chat/work-status/TeamBoardView';
@@ -105,6 +106,7 @@ const getModeLabel = (
   if (mode === 'jira') return t('contextPanel.mode.jira');
   if (mode === 'confluence') return t('contextPanel.mode.confluence');
   if (mode === 'review') return t('contextPanel.mode.review');
+  if (mode === 'workflows') return t('contextPanel.mode.workflows');
   if (mode === 'board') return t('contextPanel.mode.board');
   if (mode === 'mcp-console') return t('contextPanel.mode.mcp-console');
   if (isPluginContextPanelMode(mode)) {
@@ -246,6 +248,10 @@ const getTabIcon = (
     return <Icon name="donut-chart-fill" className="h-3.5 w-3.5" />;
   }
 
+  if (tab.mode === 'workflows') {
+    return <Icon name="flow-chart" className="h-3.5 w-3.5" />;
+  }
+
   if (tab.mode === 'chat') {
     const sessionId = getSessionIDFromDedupeKey(tab.dedupeKey);
     return sessionId
@@ -340,7 +346,7 @@ const truncateTabLabel = (value: string, maxChars: number): string => {
 // Surfaces rendered by the region itself and remounted on every switch; the
 // rest stay alive in ContextSurfacePanes.
 const isRemountedSurface = (mode: ContextPanelMode): boolean => (
-  mode === 'context' || mode === 'git' || mode === 'pr' || mode === 'notes'
+  mode === 'context' || mode === 'git' || mode === 'pr' || mode === 'notes' || mode === 'workflows'
     || mode === 'team' || mode === 'pulls' || mode === 'jira' || mode === 'confluence' || mode === 'review'
 );
 
@@ -547,6 +553,8 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
                 ? <React.Suspense fallback={null}><ConfluencePagesPanel /></React.Suspense>
             : activeTab?.mode === 'review'
                 ? <React.Suspense fallback={null}><ReviewDashboard /></React.Suspense>
+            : activeTab?.mode === 'workflows'
+                ? <React.Suspense fallback={null}><ContextPanelHeaderSlotProvider value={headerSlotEl}><WorkflowsPanel directory={effectiveDirectory || null} /></ContextPanelHeaderSlotProvider></React.Suspense>
             : null;
 
   const isFileTabActive = activeTab?.mode === 'file';

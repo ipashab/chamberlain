@@ -17,6 +17,7 @@ const BUILT_IN_CONTEXT_PANEL_MODES = [
   'review',
   'board',
   'mcp-console',
+  'workflows',
 ] as const;
 
 type BuiltInContextPanelMode = (typeof BUILT_IN_CONTEXT_PANEL_MODES)[number];

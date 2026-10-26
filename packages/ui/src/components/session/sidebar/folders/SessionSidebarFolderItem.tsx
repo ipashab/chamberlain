@@ -7,15 +7,13 @@ import type { SessionNode } from '../types';
 import { useCollapsedSessionActivityState } from '../sessions/collapsedActivityState';
 
 type Props = React.ComponentProps<typeof SessionFolderItem<SessionNode>> & {
-  notifyOnSubtasks: boolean;
   activityNodes: readonly SessionNode[];
 };
 
 /** Keep activity subscriptions on the mounted folder row, not the entire list. */
-export function SessionSidebarFolderItem({ notifyOnSubtasks, activityNodes, folder, displayName, ...props }: Props): React.ReactNode {
+export function SessionSidebarFolderItem({ activityNodes, folder, displayName, ...props }: Props): React.ReactNode {
   const collapsedActivityState = useCollapsedSessionActivityState({
     nodes: activityNodes,
-    includeUnreadSubtasks: notifyOnSubtasks,
     enabled: props.isCollapsed && !props.archivedBucket,
   });
   // A preset with no agent does not mark the row: `getFolderPreset` hides it,

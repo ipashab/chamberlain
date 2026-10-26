@@ -11,6 +11,8 @@ import { ChildStoreManager } from '@/sync/child-store';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
+import { githubLikeDescriptor } from '@/lib/source-control/providers/descriptor.fixture';
+import { useSourceControlProviderRegistry } from '@/lib/source-control/providers/registry';
 import type { SessionGroupSectionProps } from './SessionGroupSection';
 
 const browser = new Window({ url: 'http://localhost/' });
@@ -24,6 +26,9 @@ Object.assign(globalThis, {
 
 // The system browser is where a misrouted chip would end up.
 const childStores = new ChildStoreManager();
+// A linked issue reads as GitHub's through the served provider's URL patterns.
+const github = githubLikeDescriptor();
+useSourceControlProviderRegistry.setState({ ordered: [github], byId: new Map([[github.id, github]]), status: 'ready', holdsList: true });
 
 mock.module('@/components/ui/button', () => ({
   Button: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
@@ -122,7 +127,6 @@ const createProps = (): SessionGroupSectionProps => ({
   openNewSessionDraft: () => undefined,
   pinnedSessionIds: new Set(),
   sessionOrderIndex: new Map(),
-  notifyOnSubtasks: false,
   expandedParents: new Set(),
   editingId: null,
   editingRowKey: null,

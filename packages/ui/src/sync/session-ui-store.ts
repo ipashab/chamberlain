@@ -32,7 +32,7 @@ import { useSessionFoldersStore } from "@/stores/useSessionFoldersStore"
 import { useSessionGroupPresetsStore } from "@/stores/useSessionGroupPresetsStore"
 import { useSessionTabsStore } from "@/stores/useSessionTabsStore"
 import { selectCommandsForDirectory, useCommandsStore } from "@/stores/useCommandsStore"
-import { selectSkillsForDirectory, useSkillsStore } from "@/stores/useSkillsStore"
+import { selectAvailableSkillsForDirectory, useSkillsStore } from "@/stores/useSkillsStore"
 import { getDeferredSafeStorage } from "@/stores/utils/safeStorage"
 import { markPendingUserSendAnimation } from "@/lib/userSendAnimation"
 import { prepareUserMessageResume } from "./user-message-resume"
@@ -97,6 +97,7 @@ import { getAttachedSessionDirectory } from "./session-worktree-contract"
 import { setSessionOpener } from "./session-navigation"
 import { getRuntimeKey, isTransientRuntimeKey } from "@/lib/runtime-switch"
 import { clearLastActiveSession, persistLastActiveSession, readLastActiveSession } from "./last-session-cache"
+import { createSessionDraftId, useSessionDraftsStore } from "@/stores/useSessionDraftsStore"
 import { persistWorktreeTopology, readPersistedWorktreeTopology } from "./worktree-topology-cache"
 import { rememberRuntimeLiveStatus } from "./runtime-live-memory"
 import {
@@ -240,7 +241,7 @@ export async function routeMessage(params: {
     // them as prompt attachments rather than commands.
     let matchedCommand = selectCommandsForDirectory(useCommandsStore.getState(), requestDirectory)
       .find((c) => c.name === cmdName)
-    let matchedSkill = selectSkillsForDirectory(useSkillsStore.getState(), requestDirectory)
+    let matchedSkill = selectAvailableSkillsForDirectory(useSkillsStore.getState(), requestDirectory)
       .find((s) => s.name === cmdName)
 
     // The command list is no longer pre-warmed at bootstrap (listing it
@@ -263,7 +264,7 @@ export async function routeMessage(params: {
         if (!skillsLoaded) {
           throw new Error(`Could not load skills to resolve /${cmdName}`)
         }
-        matchedSkill = selectSkillsForDirectory(useSkillsStore.getState(), requestDirectory)
+        matchedSkill = selectAvailableSkillsForDirectory(useSkillsStore.getState(), requestDirectory)
           .find((s) => s.name === cmdName)
       }
     }
@@ -424,6 +425,12 @@ export type NewSessionDraftState = {
   projectContextPins?: { notes: string[]; plans: string[] }
   target: NewSessionDraftTarget
   preparedChatDirectory?: string | null
+  /**
+   * The draft's id in the server's shared drafts, which the sidebar lists
+   * once the user leaves it. Set for every opened draft; a draft reopened
+   * from the sidebar carries the id it was saved under.
+   */
+  workDraftId?: string
 }
 
 export type SessionUIState = {
@@ -1529,6 +1536,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
 
     const nextDraft: NewSessionDraftState = {
       draftId: nextDraftId++,
+      workDraftId: options?.workDraftId ?? createSessionDraftId(),
       open: true,
       target,
       preparedChatDirectory: null,
@@ -1903,6 +1911,8 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
           variant,
         }, options?.draftSnapshot)
         if (!createdDraftSession) throw new Error("Failed to create session")
+        // The draft is a session now: it leaves the drafts every client lists.
+        if (draft.workDraftId) void useSessionDraftsStore.getState().discard(draft.workDraftId, { final: true }).catch(() => undefined)
 
         const draftParts: Array<{ text: string; attachments?: AttachedFile[]; synthetic?: boolean; metadata?: ContextPartMetadata }> | undefined = createdDraftSession.syntheticParts?.length
           ? [...(additionalParts || []), ...createdDraftSession.syntheticParts]
@@ -2111,7 +2121,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
   // updateSessionTitle — calls SDK, SSE event updates child store
   // ---------------------------------------------------------------------------
   updateSessionTitle: async (sessionId, title) => {
-    await updateSessionTitleAction(sessionId, title)
+    await updateSessionTitleAction(sessionId, title, { byUser: true })
   },
 
   // ---------------------------------------------------------------------------

@@ -9,32 +9,35 @@ import { useGuestsStore } from '@/lib/guests/store';
 import { isGuestActive } from '@/lib/guests/capabilities';
 import { isMobileSurfaceRuntime } from '@/lib/runtimeSurface';
 import { useEnterpriseMode } from '@/stores/useEnterprisePolicyStore';
-import { GitHubIntegration } from './GitHubIntegration';
-import { GitLabSettings } from '@/components/sections/openchamber/GitLabSettings';
+import { useSourceControlProviders } from '@/lib/source-control/providers/registry';
+import { useTrackerDescriptors } from '@/lib/trackers/registry';
+import { SourceControlProviderCard } from './SourceControlProviderCard';
+import { TrackerSettings } from './TrackerSettings';
 import { BitbucketSettings } from '@/components/sections/openchamber/BitbucketSettings';
 import { JiraSettings } from '@/components/sections/openchamber/JiraSettings';
 import { ConfluenceSettings } from '@/components/sections/openchamber/ConfluenceSettings';
-import { LinearSettings } from './LinearSettings';
 import { ThirdPartyIntegrationsSection } from './ThirdPartyIntegrationsSection';
 import { CatalogExtensionsSection } from './CatalogExtensionsSection';
 
 export const IntegrationsPage: React.FC = () => {
   const { t } = useI18n();
-  // GitHub sign-in is an OpenChamber server feature; the VS Code extension
-  // uses the editor's own GitHub session instead.
-  // Hosting providers are OpenChamber server features; VS Code uses its own Git integration.
-  const hasGitHub = !isVSCodeRuntime();
-  const hasGitLab = !isVSCodeRuntime();
+  // Source-control sign-in is an OpenChamber server feature; VS Code uses the
+  // editor's own Git and GitHub integration instead.
+  const sourceControlProviders = useSourceControlProviders();
+  const servedSourceControl = isVSCodeRuntime() ? [] : sourceControlProviders;
+  // Trackers exist where the runtime has the API; the server says which.
+  const trackerDescriptors = useTrackerDescriptors();
+  const servedTrackers = getRegisteredRuntimeAPIs()?.trackers ? trackerDescriptors : [];
+  // The fork's own integrations are separate cards; VS Code uses its own Git integration.
   const hasBitbucket = !isVSCodeRuntime();
   const hasJira = !isVSCodeRuntime();
   const hasConfluence = !isVSCodeRuntime();
-  const hasLinear = Boolean(getRegisteredRuntimeAPIs()?.linear);
   const guests = useGuestsStore((state) => state.guests);
   const runtimeKey = useGuestsStore((state) => state.runtimeKey);
   const builtInGuests = !isVSCodeRuntime() && !isMobileSurfaceRuntime()
     ? guests.filter((guest) => guest.source === 'bundled' && guest.integration && isGuestActive(guest))
     : [];
-  const hasBuiltIn = hasGitHub || hasGitLab || hasBitbucket || hasJira || hasConfluence || hasLinear || builtInGuests.length > 0;
+  const hasBuiltIn = servedSourceControl.length > 0 || servedTrackers.length > 0 || hasBitbucket || hasJira || hasConfluence || builtInGuests.length > 0;
   // Each card here installs a plugin that adds a model provider. In enterprise
   // mode providers come from the administrator's OpenCode config, whose
   // `provider.use` policy also governs plugin providers, so none is offered.
@@ -54,12 +57,15 @@ export const IntegrationsPage: React.FC = () => {
           settingsItem="integrations.first-party"
           contentClassName="space-y-3"
         >
-          {hasGitHub ? <GitHubIntegration /> : null}
-          {hasGitLab ? <GitLabSettings /> : null}
+          {servedSourceControl.map((descriptor) => (
+            <SourceControlProviderCard key={descriptor.id} descriptor={descriptor} />
+          ))}
+          {servedTrackers.map((descriptor) => (
+            <TrackerSettings key={descriptor.id} descriptor={descriptor} />
+          ))}
           {hasBitbucket ? <BitbucketSettings /> : null}
           {hasJira ? <JiraSettings /> : null}
           {hasConfluence ? <ConfluenceSettings /> : null}
-          {hasLinear ? <LinearSettings /> : null}
           {builtInGuests.map((guest) => <GuestIntegrationCard key={`${runtimeKey}:${guest.id}`} guest={guest} />)}
         </SettingsSection>
       ) : null}

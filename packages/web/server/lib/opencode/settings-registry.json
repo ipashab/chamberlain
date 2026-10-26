@@ -183,6 +183,9 @@
     "agentKnowledgeToolEnabled": {
       "scope": "instance"
     },
+    "agentWorkflowToolEnabled": {
+      "scope": "instance"
+    },
     "isolatedSpacesEnabled": {
       "scope": "instance"
     },
@@ -193,6 +196,14 @@
       "scope": "instance"
     },
     "agentMemoryFeatureAvailable": {
+      "scope": "instance",
+      "computed": true
+    },
+    "agentWorkflowFeatureAvailable": {
+      "scope": "instance",
+      "computed": true
+    },
+    "overviewFeatureAvailable": {
       "scope": "instance",
       "computed": true
     },
@@ -216,6 +227,9 @@
       "scope": "instance"
     },
     "mergedWorktreeCleanupEnabled": {
+      "scope": "instance"
+    },
+    "worktreeArchiveOnDoneEnabled": {
       "scope": "instance"
     },
     "terminalShell": {
@@ -249,6 +263,9 @@
       "scope": "instance"
     },
     "tunnelMode": {
+      "scope": "instance"
+    },
+    "tunnelHttpsPort": {
       "scope": "instance"
     },
     "tunnelBootstrapTtlMs": {
@@ -292,10 +309,15 @@
       "scope": "profile",
       "perSurface": true
     },
-    "sidebarProjectSortOrder": {
-      "scope": "profile"
+    "sidebarGrouping": {
+      "scope": "profile",
+      "perSurface": true
     },
-    "sidebarWorktreeSortOrder": {
+    "sidebarKeepWorkInPlace": {
+      "scope": "profile",
+      "perSurface": true
+    },
+    "sidebarProjectSortOrder": {
       "scope": "profile"
     },
     "sidebarShowChatsSection": {
@@ -492,7 +514,7 @@
     "enterToSendConfigured": {
       "scope": "profile"
     },
-    "persistChatDraft": {
+    "mobileReturnKeySends": {
       "scope": "profile"
     },
     "largeTextPasteBehavior": {
@@ -575,7 +597,22 @@
     "smallModelOverride": {
       "scope": "profile"
     },
+    "smallModelVariant": {
+      "scope": "profile"
+    },
     "walkthroughModelOverride": {
+      "scope": "profile"
+    },
+    "walkthroughModelVariant": {
+      "scope": "profile"
+    },
+    "fallbackModel": {
+      "scope": "profile"
+    },
+    "fallbackVariant": {
+      "scope": "profile"
+    },
+    "accountSwitchProviders": {
       "scope": "profile"
     },
     "zenModel": {
@@ -776,6 +813,10 @@
       "scope": "device",
       "local": true
     },
+    "sidebarFoldedForExpandedZone": {
+      "scope": "device",
+      "local": true
+    },
     "sidebarWidth": {
       "scope": "device",
       "local": true
@@ -797,6 +838,10 @@
       "local": true
     },
     "mobileWorkspaceHiddenTabs": {
+      "scope": "device",
+      "local": true
+    },
+    "mobileWorkStatusHiddenSections": {
       "scope": "device",
       "local": true
     },

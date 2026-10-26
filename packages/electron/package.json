@@ -1,6 +1,6 @@
 {
   "name": "@openchamber/electron",
-  "version": "2.5.0-fork8",
+  "version": "2.5.2",
   "private": true,
   "description": "Electron desktop runtime for OpenChamber",
   "author": "OpenChamber",
@@ -8,7 +8,7 @@
   "type": "module",
   "main": "./dist-bundle/entry.mjs",
   "opencodeCli": {
-    "version": "2.0.32"
+    "version": "2.1.4"
   },
   "dependencies": {
     "@openchamber/web": "workspace:*",
@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
-    "electron": "^44.9.0",
+    "electron": "^44.9.3",
     "electron-builder": "^26.0.0",
     "node-abi": "^4.33.0"
   },
@@ -53,7 +53,6 @@
     "updater:e2e:fixture": "node ./scripts/updater-e2e-fixture.mjs",
     "verify:update-manifest": "node ./scripts/verify-update-manifest.mjs",
     "package": "bun run build:web-assets && bun run prepare:opencode-cli && bun run prepare:ripgrep && bun run bundle:main && bun run rebuild:native && node ./scripts/package.mjs",
-    "package:beta": "bun run build:web-assets && bun run prepare:opencode-cli && bun run prepare:ripgrep && bun run bundle:main && bun run rebuild:native && node ./scripts/package-beta.mjs",
     "finalize:latest-yml": "node ./scripts/finalize-latest-yml.mjs",
     "type-check": "node --check ./entry.mjs && node --check ./early-startup.mjs && node --check ./main.mjs && node --check ./preload.mjs && node --check ./browser-panel-preload.cjs",
     "lint": "node -e \"process.exit(0)\""

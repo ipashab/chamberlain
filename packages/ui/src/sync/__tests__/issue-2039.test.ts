@@ -214,6 +214,7 @@ mock.module("@/stores/useSkillsStore", () => ({
     }),
   },
   selectSkillsForDirectory: () => [],
+  selectAvailableSkillsForDirectory: () => [],
 }))
 
 mock.module("@/components/ui", () => ({
@@ -364,6 +365,7 @@ mock.module("../session-actions", () => ({
 
 mock.module("@/lib/git/branchNameGenerator", () => ({
   generateBranchName: () => "generated-branch",
+  generatedBranchPrefix: (name: string) => (name === "generated-branch" ? "" : null),
 }))
 
 mock.module("@/lib/openchamberConfig", () => ({

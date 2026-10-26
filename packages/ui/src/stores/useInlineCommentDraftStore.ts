@@ -1,11 +1,13 @@
 import type { SourceControlProvider } from '@/lib/source-control/types';
 import { create } from 'zustand';
 import { z } from 'zod';
+import { sourceControlProviderIdSchema } from '@/lib/source-control/providers/descriptor';
 import { devtools, persist } from 'zustand/middleware';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { normalizePath } from '@/lib/pathNormalization';
 import { createDeferredSafeJSONStorage } from './utils/safeStorage';
 import { chatQuoteAnchorSchema, type ChatQuoteAnchor } from '@/lib/chatQuoteAnchor';
+import { diffCommentOriginSchema, type DiffCommentOrigin } from '@/lib/diffCommentOrigin';
 
 export type InlineCommentSource = 'diff' | 'plan' | 'file' | 'preview-annotation' | 'terminal' | 'pr-comment' | 'pr-check' | 'chat-quote' | 'file-quote' | 'debug-variable';
 
@@ -33,6 +35,8 @@ export interface InlineCommentDraft {
   provider?: SourceControlProvider;
   /** The debug variable this value came from; set only for `source: 'debug-variable'`. */
   debugVariable?: { name: string; type: string | null };
+  /** The diff a `diff` comment was written on; absent for uncommitted changes. */
+  origin?: DiffCommentOrigin;
   createdAt: number;
 }
 
@@ -192,8 +196,9 @@ const persistedDraftSchema = z.object({
   text: z.string(),
   terminalId: z.string().optional(),
   anchor: chatQuoteAnchorSchema.optional(),
-  provider: z.enum(['github', 'gitlab']).optional(),
+  provider: sourceControlProviderIdSchema.optional(),
   debugVariable: z.object({ name: z.string(), type: z.string().nullable() }).optional(),
+  origin: diffCommentOriginSchema.optional(),
   createdAt: z.number(),
 });
 
