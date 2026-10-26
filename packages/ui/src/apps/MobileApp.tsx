@@ -441,12 +441,6 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
     if (reason === 'file') openFilesSurface();
   }, [closeSurface, openFilesSurface]);
 
-  // A session started from the board replaces the page: back to the chat.
-  const leaveSourceBoard = React.useCallback(() => {
-    closeSurface();
-    setSessionsSheetOpen(false);
-  }, [closeSurface]);
-
   // A session opened from the overview replaces the page: back to the chat.
   const leaveOverview = React.useCallback(() => {
     closeSurface();

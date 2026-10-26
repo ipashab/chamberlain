@@ -1441,6 +1441,8 @@ export const extensionsSettingsI18n = {
     'settings.extensions.detail.field.location': 'Розташування',
   },
   ru: {
+    'settings.extensions.browse.label': 'Каталог расширений',
+    'settings.extensions.browse.hint': 'Список сообщества на openchamber.dev',
     'settings.extensions.actions.openSource': 'Открыть исходники',
     'settings.extensions.builtIn.info': 'Входит в OpenChamber и обновляется вместе с приложением. Заявленные разрешения выдаются автоматически. Выключение сохраняет его данные и подключённые аккаунты.',
     'settings.extensions.toast.reservedId': 'Этот ID расширения зарезервирован для встроенного расширения.',

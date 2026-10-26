@@ -35,7 +35,6 @@ import { useSessionFoldersStore } from '@/stores/useSessionFoldersStore';
 import { useSessionGroupPresetsStore } from '@/stores/useSessionGroupPresetsStore';
 import { offerFolderAgentToSession } from '@/lib/session-groups/offerFolderAgent';
 import { opencodeClient } from '@/lib/opencode/client';
-import { useFreshestSourceControlVisualSummaryForBranch } from '@/stores/useGitHubPrStatusStore';
 
 type FolderScope = { scopeKey: string; directory: string | null };
 import { useOpenTrackerItem } from '@/components/sourceBoard/openTrackerItem';

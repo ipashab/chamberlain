@@ -1,6 +1,5 @@
 import React from 'react';
 import { backlogApi } from '@/lib/session-backlog/backlogApi';
-import { formatChangeRequestReference } from '@/lib/source-control/identity';
 import { formatChangeRequestLabel } from '@/lib/source-control/providers/terminology';
 import { useSourceControlDescriptorOf, useSourceControlProvider } from '@/lib/source-control/providers/registry';
 import { ProviderIcon } from '@/components/sourceControl/ProviderIcon';
@@ -4896,7 +4895,6 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({
                         canAbort={canAbort}
                         hasContent={Boolean(hasContent)}
                         canStageToBacklog={canStageToBacklog}
-                        isExpandedInput={isExpandedInput}
                         permissionMode={shownPermissionMode}
                         isPermissionAutoAcceptInteractive={isPermissionAutoAcceptInteractive}
                         dictationActive={mobileShell.dictationActive}

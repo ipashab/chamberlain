@@ -1600,6 +1600,7 @@ export const dict = {
   'contextPanel.mode.pr': "Tracker",
   'contextPanel.mode.mr': 'Merge request',
   'contextRail.surface.mr.description': 'Maak, beoordeel en merge de merge request voor de huidige branch',
+  'contextRail.surface.change.description': 'De wijziging van de huidige branch, plus de issues, wijzigingen en tickets die vanuit je sessies zijn geopend',
   'contextPanel.tracker.branchTab': "Huidige branch",
   'contextPanel.tracker.loadFailed': "Dit item kon niet worden geladen.",
   'contextPanel.tracker.unavailable': "OpenChamber kan dit item hier niet lezen.",

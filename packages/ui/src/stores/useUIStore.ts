@@ -29,6 +29,7 @@ import {
   settleZones,
   withZoneView,
   zoneOfMode,
+  carrySurfaceToZone,
   CLOSED_ZONE_VIEW,
   CONTEXT_ZONE_DEFAULT_WIDTH,
   CONTEXT_ZONES,
@@ -181,6 +182,8 @@ type ContextPanelDirectoryState = {
    * and loads the incoming one without ever dropping a tab.
    */
   modeLayouts: WorkspaceModeLayouts;
+  touchedAt: number;
+};
 
 type PendingFileNavigation = {
   path: string;
@@ -1414,6 +1417,8 @@ interface UIStore {
   toggleContextPanelExpanded: (directory: string, zone?: ContextZone) => void;
   /** Width for a side zone, height for the bottom one; shared by its surfaces and folders. */
   setContextZoneSize: (zone: ContextZone, size: number) => void;
+  /** Moves a surface to another zone: left, right or bottom. */
+  moveContextSurfaceToZone: (mode: ContextPanelMode, zone: ContextZone) => void;
   /**
    * Splits one region of the layout in two: a layout leaf by its id, or
    * `'chat'` for the chat's region. The new region starts empty at
@@ -2726,14 +2731,23 @@ export const useUIStore = create<UIStore>()(
             if (from === zone) {
               return state;
             }
-            newLeafId = split.newLeaf.id;
-            const byDirectory = {
-              ...state.contextPanelByDirectory,
-              [normalizedDirectory]: { ...current, layout: split.tree },
-            };
-            return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+
+            const placement: ContextZonePlacement = { ...state.contextSurfaceZones };
+            if (zone === 'right') {
+              delete placement[mode];
+            } else {
+              placement[mode] = zone;
+            }
+
+            // Every project's panel follows, so the surface is where the user
+            // put it whichever project they switch to.
+            const byDirectory: Record<string, ContextPanelDirectoryState> = {};
+            for (const [directory, panel] of Object.entries(state.contextPanelByDirectory)) {
+              byDirectory[directory] = carrySurfaceToZone(panel, mode, from, zone, placement);
+            }
+
+            return { contextSurfaceZones: placement, contextPanelByDirectory: byDirectory };
           });
-          return newLeafId;
         },
 
         closeLayoutRegion: (directory, leafId) => {

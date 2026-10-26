@@ -65,6 +65,8 @@ const mergeRequestCopy = new Map<I18nKey, I18nKey>([
 
 /** The same messages for a review host's changes. */
 const changeCopy = new Map<I18nKey, I18nKey>([
+  ['contextPanel.mode.pr', 'gitView.change.title'],
+  ['contextRail.surface.pr.description', 'contextRail.surface.change.description'],
   ['gitView.header.openPullRequest', 'gitView.change.openChange'],
   ['gitView.pr.actions.createPr', 'gitView.change.actions.create'],
   ['gitView.pr.actions.openOnProviderAria', 'gitView.change.actions.openOnProviderAria'],

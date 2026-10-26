@@ -1625,6 +1625,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.pr': "追蹤",
   'contextPanel.mode.mr': '合併請求',
   'contextRail.surface.mr.description': '建立、審查並合併目前分支的合併請求',
+  'contextRail.surface.change.description': '目前分支的變更，以及從工作階段開啟的 issue、變更和工單',
   'contextPanel.tracker.branchTab': "目前分支",
   'contextPanel.tracker.loadFailed': "無法載入此項目。",
   'contextPanel.tracker.unavailable': "OpenChamber 無法在此讀取此項目。",

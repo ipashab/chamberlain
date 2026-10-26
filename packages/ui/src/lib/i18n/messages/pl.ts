@@ -1982,6 +1982,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.pr': "Tracker",
   'contextPanel.mode.mr': 'Merge Request',
   'contextRail.surface.mr.description': 'Twórz, przeglądaj i scalaj merge request bieżącej gałęzi',
+  'contextRail.surface.change.description': 'Zmiana bieżącej gałęzi oraz issues-y, zmiany i tickety otwarte z Twoich sesji',
   'contextPanel.tracker.branchTab': "Bieżąca gałąź",
   'contextPanel.tracker.loadFailed': "Nie udało się wczytać tego elementu.",
   'contextPanel.tracker.unavailable': "OpenChamber nie może tu odczytać tego elementu.",

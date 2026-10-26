@@ -364,7 +364,7 @@ export const ContextPanelRail: React.FC = () => {
       return;
     }
     closeContextSurfaceTabs(directoryKey, 'pr');
-  }, [closeContextSurfaceTabs, directoryKey, githubAuthChecked, hasTrackerItems, shownModes, sourceControlConnected]);
+  }, [closeContextSurfaceTabs, directoryKey, defaultInstanceAuthChecked, hasTrackerItems, shownModes, sourceControlConnected]);
 
   const [isSurfacesDialogOpen, setIsSurfacesDialogOpen] = React.useState(false);
 

@@ -1344,6 +1344,7 @@ export const dict = {
   'contextPanel.mode.chat': 'Chat',
   'contextPanel.mode.mr': 'MR',
   'contextRail.surface.mr.description': 'MR-Kontext',
+  'contextRail.surface.change.description': 'Die Änderung des aktuellen Branches sowie die aus Ihren Sitzungen geöffneten Issues, Änderungen und Tickets',
   'contextPanel.mode.team': 'Team-Board',
   'contextPanel.mode.pulls': 'Pull Requests',
   'contextPanel.mode.jira': 'Jira-Vorgänge',

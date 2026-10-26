@@ -1602,6 +1602,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.pr': "トラッカー",
   'contextPanel.mode.mr': 'マージリクエスト',
   'contextRail.surface.mr.description': '現在のブランチのマージリクエストを作成・確認・マージ',
+  'contextRail.surface.change.description': '現在のブランチの変更と、セッションから開いた issue・変更・チケット',
   'contextPanel.tracker.branchTab': "現在のブランチ",
   'contextPanel.tracker.loadFailed': "この項目を読み込めませんでした。",
   'contextPanel.tracker.unavailable': "OpenChamber はここでこの項目を読み取れません。",

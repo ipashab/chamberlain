@@ -1597,6 +1597,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.pr': "Трекер",
   'contextPanel.mode.mr': 'Merge Request',
   "contextRail.surface.mr.description": "Створюйте, переглядайте та зливайте merge request поточної гілки",
+  "contextRail.surface.change.description": "Зміна поточної гілки, а також задачі, зміни та тикети, відкриті з ваших сесій",
   'contextPanel.tracker.branchTab': "Поточна гілка",
   'contextPanel.tracker.loadFailed': "Не вдалося завантажити цей елемент.",
   'contextPanel.tracker.unavailable': "OpenChamber не може прочитати цей елемент тут.",

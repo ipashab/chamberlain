@@ -53,6 +53,10 @@ const ALLOWLIST = {
     rule: 'comparison',
     reason: 'OpenCode tool names of the Linear MCP server (`linear`, `linear_*`), not a tracker id.',
   },
+  'components/chat/work-status/TeamTaskDetailsDialog.tsx': {
+    rule: 'comparison',
+    reason: 'Fork: the Bitbucket pull view the team board embeds; other providers keep the plain state.',
+  },
 } satisfies Record<string, AllowlistEntry>;
 
 const isTestSource = (path: string): boolean => (

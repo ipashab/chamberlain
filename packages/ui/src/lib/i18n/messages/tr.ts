@@ -1487,6 +1487,7 @@ export const dict = {
   'contextPanel.mode.pr': "Takip",
   'contextPanel.mode.mr': 'Merge request',
   'contextRail.surface.mr.description': 'Geçerli branch\'in merge request\'ini oluştur, incele ve merge et',
+  'contextRail.surface.change.description': 'Geçerli dalın değişikliği ve oturumlarınızdan açılan konular, değişiklikler ve biletler',
   'contextPanel.tracker.branchTab': "Geçerli branch",
   'contextPanel.tracker.loadFailed': "Bu öğe yüklenemedi.",
   'contextPanel.tracker.unavailable': "OpenChamber bu öğeyi burada okuyamıyor.",

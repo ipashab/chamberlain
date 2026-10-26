@@ -1423,6 +1423,7 @@ export const dict = {
   'contextPanel.mode.pr': "Suivi",
   'contextPanel.mode.mr': 'Merge Request',
   'contextRail.surface.mr.description': 'Créer, relire et fusionner la merge request de la branche actuelle',
+  'contextRail.surface.change.description': 'La modification de la branche actuelle, ainsi que les issues, modifications et tickets ouverts depuis vos sessions',
   'contextPanel.tracker.branchTab': "Branche actuelle",
   'contextPanel.tracker.loadFailed': "Impossible de charger cet élément.",
   'contextPanel.tracker.unavailable': "OpenChamber ne peut pas lire cet élément ici.",

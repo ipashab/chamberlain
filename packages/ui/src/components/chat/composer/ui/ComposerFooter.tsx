@@ -55,7 +55,6 @@ interface ComposerFooterProps {
     hasContent: boolean;
     /** Whether the draft holds text the stage button can park in the backlog. */
     canStageToBacklog: boolean;
-    isExpandedInput: boolean;
     permissionMode: PermissionMode;
     isPermissionAutoAcceptInteractive: boolean;
     dictationActive: boolean;
@@ -129,7 +128,6 @@ function ComposerFooterView(props: ComposerFooterProps) {
         canAbort,
         hasContent,
         canStageToBacklog,
-        isExpandedInput,
         permissionMode,
         isPermissionAutoAcceptInteractive,
         dictationActive,

@@ -109,7 +109,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'debug',
     descriptionKey: 'contextRail.surface.debug.description',
-    width: 'wide',
     mode: 'debug',
     icon: 'bug',
     labelKey: 'contextPanel.mode.debug',
@@ -152,7 +151,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     // needs its session: the rail shows it only while a board tab is open.
     id: 'team',
     descriptionKey: 'contextRail.surface.team.description',
-    width: 'wide',
     mode: 'team',
     icon: 'layout-column',
     labelKey: 'contextPanel.mode.team',
@@ -165,7 +163,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     // address input and the recently read pulls.
     id: 'pulls',
     descriptionKey: 'contextRail.surface.pulls.description',
-    width: 'wide',
     mode: 'pulls',
     icon: 'git-pull-request',
     labelKey: 'contextPanel.mode.pulls',
@@ -178,7 +175,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     // address input and the recently viewed issues.
     id: 'jira',
     descriptionKey: 'contextRail.surface.jira.description',
-    width: 'wide',
     mode: 'jira',
     icon: 'task',
     labelKey: 'contextPanel.mode.jira',
@@ -187,7 +183,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'confluence',
     descriptionKey: 'contextRail.surface.confluence.description',
-    width: 'wide',
     mode: 'confluence',
     icon: 'booklet',
     labelKey: 'contextPanel.mode.confluence',
@@ -196,7 +191,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
   {
     id: 'review',
     descriptionKey: 'contextRail.surface.review.description',
-    width: 'wide',
     mode: 'review',
     icon: 'list-check-2',
     labelKey: 'contextPanel.mode.review',
@@ -208,7 +202,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     // split can host.
     id: 'board',
     descriptionKey: 'contextRail.surface.board.description',
-    width: 'wide',
     mode: 'board',
     icon: 'clipboard',
     labelKey: 'contextPanel.mode.board',
@@ -221,7 +214,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     // place its frames through the console store.
     id: 'mcp-console',
     descriptionKey: 'contextRail.surface.mcp-console.description',
-    width: 'regular',
     mode: 'mcp-console',
     icon: 'server',
     labelKey: 'contextPanel.mode.mcp-console',

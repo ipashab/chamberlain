@@ -14,15 +14,18 @@ import { useDeviceInfo } from '@/lib/device';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { useSourceControlAuthStore } from '@/stores/useSourceControlAuthStore';
 import { useGuestSurfaces } from '@/hooks/useGuestSurfaces';
-import { useUIStore } from '@/stores/useUIStore';
+import { useUIStore, type ContextPanelTab } from '@/stores/useUIStore';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { CONTEXT_SURFACES, getVisibleContextRailSurfaces } from '@/lib/surfaces/registry';
+import { useWorkflowsSurfaceShown } from '@/lib/workflows/panel';
 import { useI18n } from '@/lib/i18n';
 import { useShallow } from 'zustand/react/shallow';
 import type { Session } from '@/lib/opencode/model';
 import { pickRegionPickerSessionsForDirectory } from './regionPickerSessions';
 
 type Args = { leafId: string; directoryKey: string | null };
+
+const NO_TABS: ContextPanelTab[] = [];
 
 /**
  * The picker for an empty region: the same surface list the rail composes,
@@ -51,16 +54,19 @@ export const RegionSurfaceMenu: React.FC<Args> = ({ leafId, directoryKey }) => {
     .some((entry) => entry.status?.status === 'connected'));
   const guestSurfaces = useGuestSurfaces();
   const { screenWidth } = useDeviceInfo();
+  const tabs = panelState?.tabs;
+  const workflowsShown = useWorkflowsSurfaceShown(tabs, directoryKey);
 
   const surfaces = React.useMemo(() => getVisibleContextRailSurfaces({
     railOrder: contextRailOrder,
     hiddenSurfaces: contextRailHiddenSurfaces,
     isVSCode: isVSCodeRuntime(),
     screenWidth,
-    tabs: panelState?.tabs ?? [],
+    tabs: tabs ?? NO_TABS,
     sourceControlConnected,
+    workflowsShown,
     extras: guestSurfaces,
-  }), [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, screenWidth, sourceControlConnected, panelState?.tabs]);
+  }), [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, screenWidth, sourceControlConnected, tabs, workflowsShown]);
 
   const chatSurface = React.useMemo(
     () => CONTEXT_SURFACES.find((surface) => surface.mode === 'chat') ?? null,

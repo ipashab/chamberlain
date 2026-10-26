@@ -1407,6 +1407,7 @@ export const dict = {
   'contextPanel.mode.chat': 'المحادثة',
   'contextPanel.mode.mr': 'طلب الدمج',
   'contextRail.surface.mr.description': 'إنشاء طلب الدمج للفرع الحالي ومراجعته ودمجه',
+  'contextRail.surface.change.description': 'تغيير الفرع الحالي، والمشكلات والتغييرات والتذاكر المفتوحة من جلساتك',
   'contextPanel.mode.team': 'لوحة الفريق',
   'contextPanel.mode.pulls': 'طلبات السحب',
   'contextPanel.mode.jira': 'مشكلات Jira',

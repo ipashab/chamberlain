@@ -108,7 +108,6 @@ export const createManagedConfigRuntime = ({
       directories.push(await agentToolRuntime.materializePlugin({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, includeDebugger, includeWorkflow, codeMode }));
       permissions = managedPermissionRules({ includeWorkflow });
     }
-    }
     // Only while an option is on: otherwise every limit error would cost the
     // plugin a round trip to hear "do nothing".
     if (agentToolRuntime && limitFailoverRuntime && isLimitFailoverConfigured(settings)) {

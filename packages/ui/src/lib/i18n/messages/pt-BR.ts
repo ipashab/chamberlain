@@ -1597,6 +1597,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.pr': "Acompanhamento",
   'contextPanel.mode.mr': 'Merge Request',
   "contextRail.surface.mr.description": "Crie, revise e faça merge do merge request do branch atual",
+  "contextRail.surface.change.description": "A mudança do branch atual, e os issues, mudanças e tíquetes abertos a partir das suas sessões",
   'contextPanel.tracker.branchTab': "Branch atual",
   'contextPanel.tracker.loadFailed': "Não foi possível carregar este item.",
   'contextPanel.tracker.unavailable': "O OpenChamber não consegue ler este item aqui.",

@@ -47,8 +47,15 @@ const prepareManagedEnv = async (runtime, options) => {
 // `hooks` collects the session hooks the plugin registers, by name, and
 // `removed` the ids of OpenCode's own tools it takes away.
 const loadTools = async (dataDir, tag, hooks = {}, removed = []) => {
+  // Every load has to read what materializePlugin just wrote: a rewrite
+  // followed by a load is the whole assertion. Runners key the module cache
+  // in their own way — Bun caches by file path and ignores a query string,
+  // which would make a removed tool look still there — so each load imports
+  // its own copy at a path no earlier load has used.
   const entrypoint = path.join(pluginDirectoryFor(dataDir), 'index.js');
-  const pluginModule = await import(`${pathToFileURL(entrypoint).href}?${tag}=${Date.now()}`);
+  const loadPath = path.join(dataDir, `index-${tag}-${crypto.randomUUID()}.js`);
+  await fs.copyFile(entrypoint, loadPath);
+  const pluginModule = await import(pathToFileURL(loadPath).href);
   const registered = {};
   await pluginModule.default.setup({
     tool: {
@@ -61,6 +68,23 @@ const loadTools = async (dataDir, tag, hooks = {}, removed = []) => {
     },
   });
   return registered;
+};
+
+/**
+ * Runs the callback until it stops throwing, and gives up with its last
+ * error once the deadline passes — `vi.waitFor`'s own semantics, spelled out
+ * here because Bun's drop-in `vitest` adapter ships a `vi` without it.
+ */
+const waitFor = async (callback, { interval = 10, timeout = 3_000 } = {}) => {
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    try {
+      return await callback();
+    } catch (error) {
+      if (Date.now() >= deadline) throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
 };
 
 describe('agent tool action allowlist', () => {
@@ -779,9 +803,9 @@ describe('managed agent tool runtime', () => {
     const tool = await loadTools(dataDir, 'backlog');
 
     expect(Object.keys(tool.openchamber_backlog.input.properties.parameters.properties).sort())
-      .toEqual(['itemID', 'text']);
+      .toEqual(['itemID', 'position', 'text']);
     const actions = tool.openchamber_backlog.input.properties.action.oneOf.map((entry) => entry.const);
-    expect(actions).toEqual(['backlog.list', 'backlog.add', 'backlog.remove', 'backlog.clear', 'backlog.run']);
+    expect(actions).toEqual(['backlog.list', 'backlog.add', 'backlog.remove', 'backlog.move', 'backlog.clear', 'backlog.run']);
     // The drain's pacing rides on the description, which the agent reads first.
     expect(tool.openchamber_backlog.description).toContain('each staged item is sent into this dialog as its own turn');
     // Backlog inputs must not leak into the control tool's schema.
@@ -1007,7 +1031,7 @@ describe('managed agent tool runtime', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     try {
       const answered = ask('call_1');
-      await vi.waitFor(() => service.answerPage({ sessionId: 'ses_caller', callId: 'call_1', summary: 'Layout B', data: { layout: 'b' } }));
+      await waitFor(() => service.answerPage({ sessionId: 'ses_caller', callId: 'call_1', summary: 'Layout B', data: { layout: 'b' } }));
       const result = await answered;
       expect(JSON.parse(result.content)).toMatchObject({ ok: true, data: { answer: { answered: true, summary: 'Layout B', data: { layout: 'b' } } } });
       expect(result.metadata.openchamber).toMatchObject({ ok: true, answer: { answered: true, summary: 'Layout B', data: { layout: 'b' } } });
@@ -1026,7 +1050,7 @@ describe('managed agent tool runtime', () => {
       expect(JSON.parse(closedResult.content)).toMatchObject({ ok: true, data: { answer: { answered: false, reason: 'chat' } } });
       expect(closedResult.metadata.openchamber).toMatchObject({ ok: true, answer: { answered: false, reason: 'chat' } });
       // The server let go of the page too, so a late answer finds nothing.
-      await vi.waitFor(() => expect(() => service.answerPage({ sessionId: 'ses_caller', callId: 'call_2', summary: 'B' }))
+      await waitFor(() => expect(() => service.answerPage({ sessionId: 'ses_caller', callId: 'call_2', summary: 'B' }))
         .toThrow(expect.objectContaining({ statusCode: 404 })));
     } finally {
       fetchSpy.mockRestore();
@@ -1269,7 +1293,7 @@ describe('managed agent tool runtime', () => {
       .send({ input: { action: 'projects.list' }, sessionID: 'ses_other' })
       .then((response) => response);
     // Let both requests reach the service before cancelling one session.
-    await vi.waitFor(() => expect(executeAction).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(executeAction).toHaveBeenCalledTimes(2));
 
     expect(runtime.abortSession('ses_cancel')).toBe(1);
     const response = await pending;

@@ -9,6 +9,10 @@ import { SortableTabsStrip } from '@/components/ui/sortable-tabs-strip';
 import { PullRequestView } from '@/components/views/PullRequestView';
 import { TrackerItemView } from '@/components/views/TrackerItemView';
 import { trackerTargetOfUrl } from '@/components/sourceBoard/openTrackerItem';
+import { useRepositoryUrlMatcher } from '@/lib/source-control/repositoryUrlMatcher';
+import { useTrackerUrlMatcher } from '@/lib/trackers/matchTrackerUrl';
+import { trackerPresentation } from '@/lib/trackers/presentation';
+import { REPOSITORY_KIND_ICONS } from '@/components/references/referencePickerItems';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { getDisambiguatingFolders } from '@/lib/path-utils';
@@ -28,7 +32,7 @@ import { TeamBoardView } from '@/components/chat/work-status/TeamBoardView';
 import type { TeamMember } from '@/lib/team/team-board-api';
 import { ChatView } from '@/components/views/ChatView';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
-import { useRepositoryReferenceProvider } from '@/components/references/referenceSources';
+import { useChangeRequestTerm } from '@/lib/source-control/providers/registry';
 import { useGuestSurfaces } from '@/hooks/useGuestSurfaces';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
@@ -217,7 +221,7 @@ const getTabIcon = (
   }
 
   if (tab.mode === 'pr') {
-    return <Icon name={trackerTabIcon(tab.targetPath)} className="h-3.5 w-3.5" />;
+    return <TrackerTabIcon url={tab.targetPath} />;
   }
 
   if (tab.mode === 'notes') {
@@ -276,11 +280,14 @@ const getTabIcon = (
 };
 
 // The branch's own tab, then what each item is.
-const trackerTabIcon = (url: string | null): IconName => {
-  const target = url ? trackerTargetOfUrl(url) : null;
-  if (!target) return 'git-branch';
-  if (target.source === 'linear') return 'linear';
-  return target.kind === 'pull' ? 'git-pull-request' : 'record-circle';
+const TrackerTabIcon: React.FC<{ url: string | null }> = ({ url }) => {
+  const urls = useRepositoryUrlMatcher();
+  const trackerUrls = useTrackerUrlMatcher();
+  const target = url ? trackerTargetOfUrl(url, urls, trackerUrls) : null;
+  const name: IconName = !target ? 'git-branch'
+    : target.source === 'tracker' ? trackerPresentation(target.provider).icon
+      : REPOSITORY_KIND_ICONS[target.kind];
+  return <Icon name={name} className="h-3.5 w-3.5" />;
 };
 
 const browserFaviconFor = (url: string, faviconByOrigin: Record<string, string>): string => {
@@ -359,11 +366,11 @@ const isRemountedSurface = (mode: ContextPanelMode): boolean => (
 export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = ({ leafId, chatCovered }) => {
   const { t } = useI18n();
   const effectiveDirectory = useEffectiveDirectory() ?? '';
-  const repositoryProvider = useRepositoryReferenceProvider(effectiveDirectory || null);
+  const changeRequestTerm = useChangeRequestTerm(effectiveDirectory || null);
   // Tab names in this repository's words: a GitLab project's change request tab is a merge request.
   const tabT = React.useCallback<TranslateFn>(
-    (key, params) => t(changeRequestCopy(key, repositoryProvider), params),
-    [repositoryProvider, t],
+    (key, params) => t(changeRequestCopy(key, changeRequestTerm), params),
+    [changeRequestTerm, t],
   );
   const directoryKey = React.useMemo(() => normalizeDirectoryKey(effectiveDirectory), [effectiveDirectory]);
 
@@ -675,9 +682,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
         <div className="flex min-w-0 flex-1 items-center gap-1.5 px-3 group-has-[[data-context-panel-toolbar]]/panel-header:hidden">
           {activeTab ? getTabIcon(activeTab, faviconByOrigin) : null}
           <span className="truncate typography-ui-label text-foreground">
-            {activeTab?.mode === 'pr' && repositoryProvider === 'gitlab'
-              ? t('contextPanel.mode.mr')
-              : activeTab ? getModeLabel(activeTab.mode, tabT) : t('contextPanel.region.empty')}
+            {activeTab ? getModeLabel(activeTab.mode, tabT) : t('contextPanel.region.empty')}
           </span>
         </div>
         {/* The active surface's own toolbar lands here (contextPanelHeaderSlot). */}

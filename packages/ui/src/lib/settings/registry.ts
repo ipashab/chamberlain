@@ -673,6 +673,7 @@ export const LOCAL_DEVICE_KEYS = [
   'mobileWorkspaceHiddenTabs',
   'mobileWorkStatusHiddenSections',
   'contextSurfaceZones',
+  'contextZoneSizes',
   'contextEditorTreeVisible',
   'contextEditorVisible',
   'contextEditorTreeWidth',

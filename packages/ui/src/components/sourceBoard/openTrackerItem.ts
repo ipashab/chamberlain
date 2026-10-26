@@ -145,7 +145,7 @@ export function useShowTrackerItem() {
  * Opens the issues and PRs board on a project's repository; null in VS Code,
  * where there is no board.
  */
-export function useOpenProjectOnBoard(): ((projectId: string) => void) | null {
+export function useOpenProjectOnBoard(): (() => void) | null {
     const mobile = useMobileAppActions();
 
     const openProjectOnBoard = React.useCallback(() => {

@@ -29,12 +29,12 @@ type PanelTabs = readonly { mode: ContextPanelMode }[];
  * while the project has a run or a saved workflow, or a Workflows tab is open,
  * so an open panel never loses its icon.
  */
-export const useWorkflowsSurfaceShown = (tabs: PanelTabs, directory: string | null): boolean => {
+export const useWorkflowsSurfaceShown = (tabs: PanelTabs | undefined, directory: string | null): boolean => {
   const available = useUIStore((state) => state.agentWorkflowFeatureAvailable);
   const scope = useWorkflowProjectScope(directory);
   const runs = useProjectWorkflowRuns(scope);
   const saved = useSavedWorkflows(scope?.savedDirectory ?? null);
-  return available && (runs.length > 0 || saved.length > 0 || tabs.some((tab) => tab.mode === 'workflows'));
+  return available && (runs.length > 0 || saved.length > 0 || (tabs?.some((tab) => tab.mode === 'workflows') ?? false));
 };
 
 /** The same answer outside React, for the surface-switch shortcut. */

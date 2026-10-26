@@ -1606,6 +1606,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.pr': "跟踪",
   'contextPanel.mode.mr': '合并请求',
   'contextRail.surface.mr.description': '创建、审查并合并当前分支的合并请求',
+  'contextRail.surface.change.description': '当前分支的变更，以及从会话中打开的 issue、变更和工单',
   'contextPanel.tracker.branchTab': "当前分支",
   'contextPanel.tracker.loadFailed': "无法加载此项目。",
   'contextPanel.tracker.unavailable': "OpenChamber 无法在此读取该项目。",

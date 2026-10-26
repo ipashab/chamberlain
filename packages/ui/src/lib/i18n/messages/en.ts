@@ -1457,6 +1457,7 @@ export const dict = {
   'contextPanel.mode.chat': 'Chat',
   'contextPanel.mode.mr': 'Merge Request',
   'contextRail.surface.mr.description': 'Create, review, and merge the merge request for the current branch',
+  'contextRail.surface.change.description': 'The current branch\'s change, and the issues, changes and tickets opened from your sessions',
   'contextPanel.mode.team': 'Team board',
   'contextPanel.mode.pulls': 'Pull requests',
   'contextPanel.mode.jira': 'Jira issues',

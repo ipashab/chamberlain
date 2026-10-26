@@ -1606,6 +1606,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.mode.pr': "트래커",
   'contextPanel.mode.mr': '머지 리퀘스트',
   'contextRail.surface.mr.description': '현재 브랜치의 머지 리퀘스트를 생성, 검토, 병합',
+  'contextRail.surface.change.description': '현재 브랜치의 변경 사항과 세션에서 연 이슈, 변경 사항, 티켓',
   'contextPanel.tracker.branchTab': "현재 브랜치",
   'contextPanel.tracker.loadFailed': "이 항목을 불러오지 못했습니다.",
   'contextPanel.tracker.unavailable': "OpenChamber가 여기에서 이 항목을 읽을 수 없습니다.",

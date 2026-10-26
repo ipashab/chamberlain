@@ -1555,6 +1555,7 @@ export const dict = {
   'contextPanel.mode.pr': "מעקב",
   'contextPanel.mode.mr': 'בקשת מיזוג',
   'contextRail.surface.mr.description': 'יצירה, סקירה ומיזוג של בקשת המיזוג עבור הענף הנוכחי',
+  'contextRail.surface.change.description': 'השינוי של הענף הנוכחי, וגם הissues, השינויים והכרטיסים שנפתחו מההישיבות שלך',
   'contextPanel.tracker.branchTab': "הענף הנוכחי",
   'contextPanel.tracker.loadFailed': "לא ניתן לטעון את הפריט הזה.",
   'contextPanel.tracker.unavailable': "OpenChamber לא יכול לקרוא את הפריט הזה כאן.",

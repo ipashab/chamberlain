@@ -25,7 +25,7 @@ Object.assign(globalThis, {
     customElements: browser.customElements,
 });
 const requests: string[] = [];
-const bootstrapPaths = new Set(['/api/fs/home', '/api/location', '/api/session-folders', '/api/config/settings']);
+const bootstrapPaths = new Set(['/api/fs/home', '/api/location', '/api/session-folders', '/api/config/settings', '/api/openchamber/session-group-presets']);
 const fetchBoundary = spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = input instanceof Request ? input.url : String(input);
     requests.push(url);
@@ -33,6 +33,8 @@ const fetchBoundary = spyOn(globalThis, 'fetch').mockImplementation(async (input
     if (url.endsWith('/api/location')) return Response.json({ directory: '/project', project: { directory: '/project' } });
     if (new URL(url, browser.location.href).pathname === '/api/session-folders') return new Response(null, { status: 404 });
     if (new URL(url, browser.location.href).pathname === '/api/config/settings') return Response.json({});
+    // Fork: the session-group preset snapshot the store fetches at import.
+    if (new URL(url, browser.location.href).pathname === '/api/openchamber/session-group-presets') return Response.json({ version: 1, presets: {} });
     throw new Error(`Unexpected export request: ${url}`);
 });
 afterAll(() => { fetchBoundary.mockRestore(); return browser.happyDOM.abort(); });

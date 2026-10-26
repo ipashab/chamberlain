@@ -62,7 +62,8 @@ const flatLogoInlineMarkup = () => flatLogoInner({ color: 'currentColor', idPref
 
 const INLINE_LOGO_FILES = [
   'packages/web/index.html',
-  'packages/electron/early-startup.mjs',
+  // Форк: сплэш early-startup.mjs рисует собственную идентичность (Arch
+  // Monogram) и не содержит сгенерированной вставки — генератор его не ведёт.
   'packages/vscode/src/webviewHtml.ts',
   'packages/web/server/lib/opencode/static-routes-runtime.js',
 ];

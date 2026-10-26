@@ -1,14 +1,57 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `ad73d11a6` (v2.5.0), merged
-whole in `594d0d09f`. The fork numbers its own patches on top with the
-`forkN` marker. Each release's notes below carry only that release's
-changes; `fork1` was the fork's first release, so its section is the
-whole set that shipped then. Upstream's own notes for `2.5.0` live whole
-in `changelog/2.5.0.md`; the `2.5.0-fork1` section below names their
-highlights and carries the fork's own work on top.
+**Base:** upstream `openchamber/openchamber` @ `c4919abc1` (v2.5.2), merged
+whole. The fork numbers its own patches on top with the `forkN` marker —
+`2.5.2-fork1` on `v2.5.2`, and before that `2.5.0-forkN` on `v2.5.0`
+(`ad73d11a6`, merged whole in `594d0d09f`), then earlier tags below. Each
+release's notes below carry only that release's changes; `fork1` sections
+are that base's whole fork delta, so their base-move section names the
+upstream highlights and the release's own section the fork's work. The
+upstream releases' own notes live whole in `changelog/` — `2.5.2.md`,
+`2.5.1.md`, `2.5.0.md` and down.
 
 ---
+
+## `2.5.2-fork1` — upstream `2.5.2` whole: works in the sidebar
+
+**The base moves to upstream `v2.5.2`, and two upstream releases land at
+once.** `2.5.1` is "tea time for git": Gitea, Forgejo and Gerrit join
+GitHub and Bitbucket/GitLab as git hosts, pull requests stack, and usage
+limits can carry a session to the provider's next account or a fallback
+model. `2.5.2` redraws the sidebar around **works** — a worktree with all
+its sessions, or a session in the main checkout with its forks, reviews
+and subagents, as one row named by its task — adds **folder trust** (the
+app shows what a folder's own plugins, MCP servers and commands would run
+and asks before they do), GitHub Discussions beside issues and PRs,
+`@`-mentions of other sessions in the composer, per-project Magic Prompts,
+a diagnostics memory snapshot, and archiving that keeps a worktree's
+branch and sessions while dropping its folder. Upstream's own notes are
+whole in `changelog/2.5.1.md` and `changelog/2.5.2.md`.
+
+**The fork keeps its face.** The splash screen and app icons stay the
+Arch Monogram set — the brand generator no longer lists `early-startup.mjs`
+among the files it may overwrite. The team board, session-group presets,
+the debugger tool, the Bitbucket pull view in the team board, and the
+board's MR wording for GitLab repositories all moved onto the new base
+unchanged; each new upstream surface (the workflows tab among them) was
+wired into the fork's context-panel layout tree rather than the reverse.
+
+**Zone widths persist the upstream way.** The context panel's zone sizes
+now persist as upstream's v26 store model (`contextZoneSizes`) under the
+fork's layout; a v25 (or older) store migrates on first start. Three of
+upstream's own tagged tests were stale against their own release — the
+telemetry migration expected store version 25 while the store is 26, and
+the settings registry never listed the newly persisted key — and the
+merge stitching doubled one brace in the managed-config builder; all
+four are corrected here, with the fork's own tool flags folded into the
+tests upstream added.
+
+**Russian catches most of the new keys.** The upstream releases brought
+about seventy new interface strings. The reference picker, the source
+board and the git-host rail descriptions got Russian translations, and
+the ru dictionary now falls back to the English entry for anything it
+does not translate itself — the handful that missed this pass read in
+English until the next one.
 
 ## `2.5.0-fork8` — a face per person, on every surface
 

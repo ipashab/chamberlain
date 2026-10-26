@@ -73,7 +73,7 @@ describe('managed OpenCode config file', () => {
     temporaryDirectories.push(dataDir);
     const failoverDirectory = path.join(dataDir, 'limit-failover', 'openchamber-limit-failover');
     const titleDirectory = path.join(dataDir, 'session-title', 'openchamber-session-title');
-    const toolsOff = { agentControlToolEnabled: false, agentScheduleToolEnabled: false, agentWebToolEnabled: false, agentKnowledgeToolEnabled: false, agentRenderToolEnabled: false };
+    const toolsOff = { agentControlToolEnabled: false, agentScheduleToolEnabled: false, agentWebToolEnabled: false, agentKnowledgeToolEnabled: false, agentRenderToolEnabled: false, agentDebuggerToolEnabled: false };
     const current = { settings: toolsOff };
     const runtime = createManagedConfigRuntime({
       fsPromises: fs,
@@ -194,7 +194,7 @@ describe('managed OpenCode config file', () => {
 
     // On with every other default: turning the debugger off must not lose the rest.
     expect(agentToolRuntime.materializePlugin).toHaveBeenLastCalledWith(expect.objectContaining({ includeDebugger: true, includeRender: true }));
-    expect((await readConfigFile()).plugins).toHaveLength(2);
+    expect((await readConfigFile()).plugins).toHaveLength(3);
 
     current.settings = { agentDebuggerToolEnabled: false };
     await runtime.refreshManagedConfigFile();
@@ -284,7 +284,7 @@ describe('managed OpenCode config file', () => {
   });
 
   it('injects the workflow tool by default only in a build that has workflows', async () => {
-    const toolsOff = { agentControlToolEnabled: false, agentScheduleToolEnabled: false, agentWebToolEnabled: false, agentKnowledgeToolEnabled: false, agentRenderToolEnabled: false };
+    const toolsOff = { agentControlToolEnabled: false, agentScheduleToolEnabled: false, agentWebToolEnabled: false, agentKnowledgeToolEnabled: false, agentRenderToolEnabled: false, agentDebuggerToolEnabled: false };
     const absent = await createHarness({ settings: toolsOff });
     await absent.runtime.buildManagedChildEnv();
     expect(absent.agentToolRuntime.materializePlugin).not.toHaveBeenCalled();
