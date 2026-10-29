@@ -476,7 +476,9 @@ describe('managed agent tool runtime', () => {
     expect(Object.keys(tool.openchamber_web.input.properties.parameters.properties)).toContain('url');
     expect(Object.keys(tool.openchamber_web.input.properties.parameters.properties)).toContain('label');
     expect(Object.keys(tool.openchamber_web.input.properties.parameters.properties)).toContain('value');
-    expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('url');
+    expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('selector');
+    // The control tool's own `url` names the pull request pr.watch follows, not a page.
+    expect(tool.openchamber.input.properties.parameters.properties.url.description).toContain('pr.watch');
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).toContain('sessionId');
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).toContain('path');
     expect(Object.keys(tool.openchamber_web.input.properties.parameters.properties)).not.toContain('path');
@@ -712,9 +714,11 @@ describe('managed agent tool runtime', () => {
     // The reference forms ride on the description, the grammar the agent reads first.
     expect(tool.openchamber_tracker.description).toContain('pr://<full Bitbucket pull-request URL>');
     expect(tool.openchamber_tracker.description).toContain('issue://<Jira browse URL or bare issue key>');
-    // Tracker inputs must not leak into the control tool's schema.
+    // Tracker inputs must not leak into the control tool's schema. The control
+    // tool keeps the upstream pr.watch/pr.unwatch waits: those wait on GitHub
+    // and GitLab, while the tracker reads Bitbucket and Jira.
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('ref');
-    expect(tool.openchamber.input.properties.action.oneOf.map((entry) => entry.const).filter((action) => action.startsWith('pr.') || action.startsWith('issue.'))).toEqual([]);
+    expect(tool.openchamber.input.properties.action.oneOf.map((entry) => entry.const).filter((action) => (action.startsWith('pr.') || action.startsWith('issue.')) && action !== 'pr.watch' && action !== 'pr.unwatch')).toEqual([]);
   });
 
   it('exposes the contacts tool with the delegation grammar only', async () => {
@@ -891,6 +895,18 @@ describe('managed agent tool runtime', () => {
     const { runtime: plain, dataDir: plainDir } = await createRuntime();
     await prepareManagedEnv(plain, { includeControl: true, includeWeb: false, includeMemory: false });
     expect(Object.keys(await loadTools(plainDir, 'nonotify'))).toEqual(['openchamber', 'openchamber_team', 'openchamber_tracker', 'openchamber_contacts', 'openchamber_backlog']);
+  });
+
+  it('exposes image generation as its own tool only when switched on, never behind Code Mode', async () => {
+    const { runtime, dataDir } = await createRuntime();
+    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false, includeImage: true, codeMode: true });
+    const tool = await loadTools(dataDir, 'image');
+
+    expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_team', 'openchamber_tracker', 'openchamber_contacts', 'openchamber_backlog', 'openchamber_image']);
+    expect(Object.keys(tool.openchamber_image.input.properties.parameters.properties).sort())
+      .toEqual(['aspect', 'count', 'images', 'path', 'prompt', 'resolution']);
+    expect(tool.openchamber_image.options).toEqual({ codemode: false });
+    expect(tool.openchamber_image.description.length).toBeLessThanOrEqual(2048);
   });
 
   it('exposes render as its own tool carrying only the page and its title', async () => {

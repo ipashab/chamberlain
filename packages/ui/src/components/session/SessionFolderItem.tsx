@@ -262,7 +262,7 @@ const SessionFolderItemBase = <TSessionNode,>({
               <Tooltip>
                 <TooltipTrigger asChild>
                   {/* Like a worktree label: a step below full strength. */}
-                  <span className={cn('typography-ui-label font-medium truncate', isDropTarget ? 'text-primary' : 'text-foreground/85')}>
+                  <span className={cn('typography-ui-label font-medium truncate', isDropTarget ? 'text-primary' : 'oc-group-label')}>
                     {displayName ?? folder.name}
                   </span>
                 </TooltipTrigger>
@@ -270,7 +270,7 @@ const SessionFolderItemBase = <TSessionNode,>({
                   {displayName ?? folder.name}
                 </TooltipContent>
               </Tooltip>
-              <span className="typography-micro text-muted-foreground/70 flex-shrink-0">
+              <span className="typography-micro text-muted-foreground flex-shrink-0">
                 • {sessions.length}
               </span>
               {collapsedActivityState ? (
@@ -285,7 +285,7 @@ const SessionFolderItemBase = <TSessionNode,>({
         {!renaming && (!hideActions || archivedBucket) ? (
           <div
             className={cn(
-              'absolute inset-e-0.5 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5 transition-opacity',
+              'absolute inset-e-0.5 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5',
               alwaysShowActions
                 ? 'opacity-100'
                 : 'opacity-0 pointer-events-none group-hover/folder:opacity-100 group-hover/folder:pointer-events-auto group-has-[:focus-visible]/folder:opacity-100 group-has-[:focus-visible]/folder:pointer-events-auto',
@@ -363,7 +363,7 @@ const SessionFolderItemBase = <TSessionNode,>({
           {sessions.length > 0 ? (
             children
           ) : !subFolderItems ? (
-            <div className="py-1 ps-1.5 text-start typography-micro text-muted-foreground/70">
+            <div className="py-1 ps-1.5 text-start typography-micro text-muted-foreground">
               {t('sessions.sidebar.folderItem.emptyFolder')}
             </div>
           ) : null}

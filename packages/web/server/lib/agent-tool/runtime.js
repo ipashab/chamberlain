@@ -7,6 +7,8 @@ import {
   OPENCHAMBER_AGENT_TOOL_ACTIONS,
   OPENCHAMBER_DEBUGGER_ACTION_DEFINITIONS,
   OPENCHAMBER_DEBUGGER_ACTIONS,
+  OPENCHAMBER_IMAGE_ACTION_DEFINITIONS,
+  OPENCHAMBER_IMAGE_ACTIONS,
   OPENCHAMBER_KNOWLEDGE_ACTION_DEFINITIONS,
   OPENCHAMBER_KNOWLEDGE_ACTIONS,
   OPENCHAMBER_MEMORY_ACTION_DEFINITIONS,
@@ -68,6 +70,7 @@ const ACTIONS = new Set([
   ...OPENCHAMBER_NOTIFY_ACTIONS,
   ...OPENCHAMBER_RENDER_ACTIONS,
   ...OPENCHAMBER_DEBUGGER_ACTIONS,
+  ...OPENCHAMBER_IMAGE_ACTIONS,
   ...OPENCHAMBER_WORKFLOW_ACTIONS,
   ...OPENCHAMBER_WORKFLOW_ANSWER_ACTIONS,
 ]);
@@ -81,6 +84,7 @@ const AGENT_TOOL_ACTION_TITLES = Object.fromEntries(
     ...OPENCHAMBER_NOTIFY_ACTION_DEFINITIONS,
     ...OPENCHAMBER_RENDER_ACTION_DEFINITIONS,
     ...OPENCHAMBER_DEBUGGER_ACTION_DEFINITIONS,
+    ...OPENCHAMBER_IMAGE_ACTION_DEFINITIONS,
     ...OPENCHAMBER_WORKFLOW_ACTION_DEFINITIONS,
     ...OPENCHAMBER_WORKFLOW_ANSWER_ACTION_DEFINITIONS,
   ].map(({ action, title }) => [action, title]),
@@ -192,13 +196,17 @@ const pickParameters = (names) => Object.fromEntries(
   Object.entries(ALL_PARAMETER_PROPERTIES).filter(([name]) => names.includes(name)),
 );
 
-const CONTROL_PARAMETER_PROPERTIES = pickParameters(
-  Object.keys(ALL_PARAMETER_PROPERTIES).filter((name) => (
-    !WEB_PARAMETER_NAMES.includes(name)
-    && !MEMORY_ONLY_PARAMETER_NAMES.includes(name)
-    && !SCHEDULE_ONLY_PARAMETER_NAMES.includes(name)
-  )),
-);
+const CONTROL_PARAMETER_PROPERTIES = {
+  ...pickParameters(
+    Object.keys(ALL_PARAMETER_PROPERTIES).filter((name) => (
+      !WEB_PARAMETER_NAMES.includes(name)
+      && !MEMORY_ONLY_PARAMETER_NAMES.includes(name)
+      && !SCHEDULE_ONLY_PARAMETER_NAMES.includes(name)
+    )),
+  ),
+  // The web tool's `url` is a page to load; here it names what pr.watch follows.
+  url: { type: 'string', description: 'pr.watch: the pull or merge request address' },
+};
 const SCHEDULE_PARAMETER_PROPERTIES = {
   ...pickParameters(SCHEDULE_PARAMETER_NAMES),
   ...SCHEDULE_PARAMETER_OVERRIDES,
@@ -257,6 +265,15 @@ const DEBUGGER_PARAMETER_PROPERTIES = {
 
 const DEBUGGER_TOOL_DESCRIPTION = "The debug panel's debugpy run, to see real program state instead of guessing from code: start a pytest run or program with breakpoints, read the stopped frame's variables and output, step, resume, evaluate expressions. One action per call. Pick breakpoints from the code you are investigating, then debug.wait until stop (or exit for the verdict). When done, debug.stop: the session is one, shared with the panel the user may be watching. Use it to investigate, not to run every test — plain tests run faster in your shell.";
 
+
+const IMAGE_PARAMETER_PROPERTIES = {
+  prompt: { type: 'string', description: 'What to draw, or for images what to change in them. Up to 8000 characters' },
+  images: { type: 'array', items: { type: 'string' }, description: 'Paths of PNG, JPEG, GIF or WebP files to edit or to use as references, in order; at most 8' },
+  aspect: { type: 'string', description: 'width:height, such as 16:9. Default: the model\'s' },
+  resolution: { type: 'string', description: 'Size tier such as 1K, 2K or 4K. Default: the model\'s' },
+  count: { type: 'integer', description: 'How many images, 1 to 4. Default 1' },
+  path: { type: 'string', description: "Where to save, absolute or relative to the project; more images get -2, -3 before the extension. Default: OpenCode's temporary folder" },
+};
 
 // Where the agent saves a screenshot for a page, so it stays out of the
 // project. The image grant route (../markdown-image-grants/routes.js) reads a
@@ -376,6 +393,10 @@ const RENDER_TOOL_DESCRIPTION = "Draw a finished HTML page inline in the chat, a
   + "The page is part of your reply and sits on the chat's background: leave html, body and the outermost element without a background, add no outer card, border or banner title, and set boxes apart by tone. Style with the theme variables listed under html. "
   + "Read html before writing a page and awaitAnswer before asking on one.";
 
+const IMAGE_TOOL_DESCRIPTION = "Generate or edit images with the image model the user chose in OpenChamber's settings; your own model stays. "
+  + "The call returns the saved file paths, and the chat shows the images to the user, so do not repeat them in your reply. Read a file to look at it. "
+  + "Without path the files go to OpenCode's temporary folder: move one into the project when it belongs there. Every call costs the user money: make what was asked, not extra variations.";
+
 const WORKFLOW_TOOL_DESCRIPTION = 'Workflows: a script that fans a large task out to many agents, which OpenChamber runs in the background while you stay free. '
   + 'For work with many similar independent pieces (a review per file, an audit across many routes, a migration of many files, research cross-checked across sources) or a check that must run on every piece. A single feature or a few steps is not one: do it yourself or with a subagent. '
   + 'One action per call. Check a script with workflow.check, then workflow.run: the user approves the plan in the chat, and the report arrives as a message when the run ends. Read script before writing one.';
@@ -391,6 +412,7 @@ const BOOLEAN_PARAMETER_NAMES = [...new Set([
   NOTIFY_PARAMETER_PROPERTIES,
   TEAM_PARAMETER_PROPERTIES,
   RENDER_PARAMETER_PROPERTIES,
+  IMAGE_PARAMETER_PROPERTIES,
   WORKFLOW_PARAMETER_PROPERTIES,
 ].flatMap((properties) => Object.entries(properties)
   .filter(([, schema]) => schema.type === 'boolean')
@@ -694,7 +716,7 @@ ${answers ? ANSWER_WAIT_SETUP : ''}
  */
 const OPENCODE_TOOLS_REPLACED_BY_CONTROL = ['opencode_worktree_create', 'opencode_models'];
 
-const createPluginSource = ({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, includeDebugger, includeWorkflow, codeMode }) => {
+const createPluginSource = ({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, includeDebugger, includeImage, includeWorkflow, codeMode }) => {
   const entries = [];
   if (includeControl) {
     entries.push(`    for (const id of ${JSON.stringify(OPENCODE_TOOLS_REPLACED_BY_CONTROL)}) tools.remove(id)
@@ -822,6 +844,17 @@ const createPluginSource = ({ includeControl, includeSchedule, includeWeb, inclu
       answers: true,
     }));
   }
+  if (includeImage) {
+    entries.push(createToolEntry({
+      name: 'openchamber_image',
+      description: IMAGE_TOOL_DESCRIPTION,
+      definitions: OPENCHAMBER_IMAGE_ACTION_DEFINITIONS,
+      parameters: IMAGE_PARAMETER_PROPERTIES,
+      // Never behind Code Mode, like render: the chat draws the images from
+      // this tool's own call, which an execute script would hide.
+      codeMode: false,
+    }));
+  }
   if (includeWorkflow) {
     entries.push(createToolEntry({
       name: 'openchamber_workflow',
@@ -921,13 +954,13 @@ export const createAgentToolRuntime = (dependencies) => {
    * change while it runs, so the source on disk always matches the settings —
    * the running OpenCode reloads the directory it already has configured.
    */
-  const materializePlugin = async ({ includeControl = true, includeSchedule = false, includeWeb = true, includeMemory = true, includeKnowledge = false, includeNotify = false, includeRender = false, includeDebugger = false, includeWorkflow = false, codeMode = false } = {}) => {
-    if (!includeControl && !includeSchedule && !includeWeb && !includeMemory && !includeKnowledge && !includeNotify && !includeRender && !includeDebugger && !includeWorkflow) {
+  const materializePlugin = async ({ includeControl = true, includeSchedule = false, includeWeb = true, includeMemory = true, includeKnowledge = false, includeNotify = false, includeRender = false, includeDebugger = false, includeImage = false, includeWorkflow = false, codeMode = false } = {}) => {
+    if (!includeControl && !includeSchedule && !includeWeb && !includeMemory && !includeKnowledge && !includeNotify && !includeRender && !includeDebugger && !includeImage && !includeWorkflow) {
       throw new Error('At least one OpenChamber managed tool must be enabled to inject the plugin');
     }
     await fsPromises.mkdir(pluginDirectory, { recursive: true });
     await fsPromises.writeFile(pluginManifestPath, PLUGIN_PACKAGE_JSON, { mode: 0o600 });
-    await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, includeDebugger, includeWorkflow, codeMode }), { mode: 0o600 });
+    await fsPromises.writeFile(pluginPath, createPluginSource({ includeControl, includeSchedule, includeWeb, includeMemory, includeKnowledge, includeNotify, includeRender, includeDebugger, includeImage, includeWorkflow, codeMode }), { mode: 0o600 });
     return pluginDirectory;
   };
 

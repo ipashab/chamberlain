@@ -174,6 +174,12 @@
     "agentDebuggerToolEnabled": {
       "scope": "instance"
     },
+    "agentImageToolEnabled": {
+      "scope": "instance"
+    },
+    "agentImageModel": {
+      "scope": "instance"
+    },
     "agentToolsCodeMode": {
       "scope": "instance"
     },
@@ -259,6 +265,9 @@
     "sttLanguage": {
       "scope": "profile"
     },
+    "sttCorrectTranscript": {
+      "scope": "profile"
+    },
     "tunnelProvider": {
       "scope": "instance"
     },
@@ -335,6 +344,9 @@
     "sidebarDetailedZoneRows": {
       "scope": "profile",
       "perSurface": true
+    },
+    "sidebarWorktreeNameByBranch": {
+      "scope": "profile"
     },
     "workStatusSectionOrder": {
       "scope": "profile"
@@ -491,6 +503,14 @@
         "mobile"
       ]
     },
+    "terminalCloseOnExit": {
+      "scope": "profile",
+      "surfaces": [
+        "web",
+        "desktop",
+        "mobile"
+      ]
+    },
     "autoCreateWorktree": {
       "scope": "profile"
     },
@@ -500,6 +520,13 @@
         "web",
         "desktop",
         "vscode"
+      ]
+    },
+    "sessionTabsPerWorkspace": {
+      "scope": "profile",
+      "surfaces": [
+        "web",
+        "desktop"
       ]
     },
     "allowPromptingSubagentSessions": {
@@ -569,6 +596,9 @@
       "scope": "profile"
     },
     "customMonoFont": {
+      "scope": "profile"
+    },
+    "uiFontWeight": {
       "scope": "profile"
     },
     "padding": {
@@ -825,6 +855,10 @@
       "scope": "device",
       "local": true
     },
+    "contextZoneSizes": {
+      "scope": "device",
+      "local": true
+    },
     "contextRailOrder": {
       "scope": "device",
       "local": true
@@ -846,10 +880,6 @@
       "local": true
     },
     "contextSurfaceZones": {
-      "scope": "device",
-      "local": true
-    },
-    "contextZoneSizes": {
       "scope": "device",
       "local": true
     },
