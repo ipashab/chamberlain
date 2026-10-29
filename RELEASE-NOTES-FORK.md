@@ -1,16 +1,73 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `c4919abc1` (v2.5.2), merged
+**Base:** upstream `openchamber/openchamber` @ `95af6769` (v2.5.3), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.5.2-fork1` on `v2.5.2`, and before that `2.5.0-forkN` on `v2.5.0`
-(`ad73d11a6`, merged whole in `594d0d09f`), then earlier tags below. Each
-release's notes below carry only that release's changes; `fork1` sections
-are that base's whole fork delta, so their base-move section names the
-upstream highlights and the release's own section the fork's work. The
-upstream releases' own notes live whole in `changelog/` — `2.5.2.md`,
-`2.5.1.md`, `2.5.0.md` and down.
+`2.5.3-fork1` on `v2.5.3`, `2.5.2-fork1` on `v2.5.2`, and before that
+`2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
+earlier tags below. Each release's notes below carry only that release's
+changes; `fork1` sections are that base's whole fork delta, so their
+base-move section names the upstream highlights and the release's own
+section the fork's work. The upstream releases' own notes live whole in
+`changelog/` — `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
 
 ---
+
+## `2.5.3-fork1` — upstream `2.5.3` whole: snippets, pictures, agents that wait
+
+**The base moves to upstream `v2.5.3`.** **Snippets**: save a message, a
+piece of selected text or a draft as a snippet from its menu or the `#`
+picker, and rename, move and preview them in Settings. Agents can
+**generate images** — a second model of the user's choosing in Settings,
+off by default and costing its own money while on. **Auto-review** keeps
+going with the tab closed or the phone locked, stops after five rounds
+and notifies once. An agent can now **wait on its pull request**
+(`pr.watch`): it wakes when a check fails or passes, someone comments or
+reviews, the branch conflicts or falls behind, or it merges or closes —
+never with a sleep loop — and the composer shows the watched PR with a
+Stop watching control. Header tabs can keep a tab per project and
+worktree, a worktree can be **pinned** to the top of the sidebar, and
+worktree rows can lead with the branch name. A running session in a busy
+folder no longer sends about a gigabyte an hour to OpenCode, the vendored
+git library moves past four CVEs, provider connections work on the first
+try, and GitHub Enterprise and self-hosted GitLab behind a company
+certificate connect. OpenCode `2.2.0` is the oldest the app runs against
+now. Upstream's own notes are whole in `changelog/2.5.3.md`.
+
+**The fork keeps its face.** The splash screen and app icons stay the
+Arch Monogram set. The team board, the backlog strip, checkpoints, the
+advisor, the debugger tool, the tracker and contacts, and the board's MR
+wording for GitLab repositories all moved onto the new base unchanged;
+upstream's new surfaces — the snippet picker, the PR-watch row, the
+image tool — were wired into the fork's layout tree rather than the
+reverse. The composer's top row now carries the fork's backlog strip and
+upstream's PR-watch row side by side, the settings registry lists the
+fork's debugger flag beside the new image tool, and the plugin
+materialization ships both in one source.
+
+**The card measures the way upstream measures.** The work-status card's
+room measure adopts upstream's mechanics — width the panel was resized
+to, roomy beside the panel — while measuring what the fork's layout
+actually renders: the workspace row. A context-panel entry that carries
+the fork's layout tree answers from the tree; one that does not answers
+by its own open flag, with an open panel holding no tab displacing
+nothing either way.
+
+**The tag shipped stale against itself.** Upstream's release relabeled
+the diff header's open-in-editor button and the plan actions — an
+aria-labeled shared toolbar, Improve and Implement — but left its own
+tests hunting the old buttons; upstream repaired those selectors after
+the tag and the same repair lands here. The fork's always-on tools
+(team, tracker, contacts, backlog) are counted in upstream's new
+image-tool test, the control tool carries the upstream `pr.watch` and
+`pr.unwatch` waits beside the tracker's Bitbucket and Jira grammar, and
+the tracked menu gained the Russian line for upstream's new Suggest a
+Feature entry.
+
+**Russian catches up again.** The isolated-spaces surface gained a dozen
+new Russian strings, and about thirty keys upstream deleted between
+releases were swept out of the Russian dictionaries — the ru fallback
+reads English for anything still untranslated, and the easter-egg
+jokes stay in English for the Russian locale rather than dropping it.
 
 ## `2.5.2-fork1` — upstream `2.5.2` whole: works in the sidebar
 
