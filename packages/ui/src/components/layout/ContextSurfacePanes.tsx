@@ -27,7 +27,7 @@ import {
   leavesOf,
 } from '@/lib/workspace/layoutTree';
 import { useFilesViewTabsStore } from '@/stores/useFilesViewTabsStore';
-import { clampContextEditorTreeWidth, normalizeContextPanelDirectoryKey, useUIStore, type PendingDiffScope } from '@/stores/useUIStore';
+import { clampContextEditorTreeWidth, normalizeContextPanelDirectoryKey, useUIStore, type ContextPanelTab, type PendingDiffScope } from '@/stores/useUIStore';
 import { markSessionViewed } from '@/sync/notification-store';
 import { setExternallyViewedSession } from '@/sync/sync-context';
 import { ContextPanelHeaderSlotProvider } from './contextPanelHeaderSlot';
@@ -254,6 +254,143 @@ const RegionPane: React.FC<{
 };
 
 /**
+ * One regional chat, in the leaf that holds its tab. Every region carries its
+ * own conversation: a review beside the session it reviews, two forks of one
+ * task side by side. The pane is pinned to the tab's session and marks that
+ * session viewed while its region shows it.
+ */
+const ChatRegionPane: React.FC<{
+  tab: ContextPanelTab;
+  hostKey: string | null;
+  directoryKey: string;
+}> = ({ tab, hostKey, directoryKey }) => {
+  const { t } = useI18n();
+  const sessionID = getSessionIDFromDedupeKey(tab.dedupeKey);
+  // A chat opened from another project (or Chat) carries its own directory;
+  // tabs opened without one (subtasks, reviews) belong to this panel's.
+  const sessionDirectory = React.useMemo(() => {
+    const own = tab.targetDirectory ? normalizeContextPanelDirectoryKey(tab.targetDirectory) : '';
+    return own || directoryKey || null;
+  }, [directoryKey, tab.targetDirectory]);
+  const pinnedSession = React.useMemo(
+    () => (sessionID ? { sessionId: sessionID, directory: sessionDirectory } : null),
+    [sessionDirectory, sessionID],
+  );
+
+  React.useEffect(() => {
+    if (!sessionDirectory || !sessionID || typeof window === 'undefined') {
+      return;
+    }
+
+    const markChatViewed = () => {
+      if (document.visibilityState === 'hidden' || !document.hasFocus()) {
+        setExternallyViewedSession(sessionDirectory, sessionID, false);
+        return;
+      }
+
+      markSessionViewed(sessionID);
+      setExternallyViewedSession(sessionDirectory, sessionID, true);
+    };
+
+    markChatViewed();
+    const interval = window.setInterval(markChatViewed, 10_000);
+    window.addEventListener('focus', markChatViewed);
+    window.addEventListener('blur', markChatViewed);
+    document.addEventListener('visibilitychange', markChatViewed);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', markChatViewed);
+      window.removeEventListener('blur', markChatViewed);
+      document.removeEventListener('visibilitychange', markChatViewed);
+      setExternallyViewedSession(sessionDirectory, sessionID, false);
+    };
+  }, [sessionDirectory, sessionID]);
+
+  if (!pinnedSession) return null;
+  return (
+    <RegionPane hostKey={hostKey} visible directoryKey={directoryKey} className="absolute inset-0 bg-background">
+      <section
+        aria-label={t('contextPanel.iframe.sessionChatTitle', { sessionID })}
+        className="h-full"
+      >
+        <ChatView
+          pinnedSession={pinnedSession}
+          readOnly={tab.readOnly}
+        />
+      </section>
+    </RegionPane>
+  );
+};
+
+/**
+ * One regional file editor, in the region whose strip shows its tab. Every
+ * region carries its own file — the same editor cannot: it would show the
+ * one shared selection in both. The pane stays mounted while its tab exists,
+ * hidden and detached when no region shows it, because the editor's unsaved
+ * draft lives on the instance and must survive a region switch.
+ */
+const FileRegionPane: React.FC<{
+  tab: ContextPanelTab;
+  /** The region that holds the tab shows it; a restorable tab's pane parks hidden. */
+  shown: boolean;
+  hostKey: string | null;
+  directoryKey: string;
+  spacePreparing: boolean;
+  onCloseFile: (filePath: string) => void;
+}> = ({ tab, shown, hostKey, directoryKey, spacePreparing, onCloseFile }) => {
+  const { t } = useI18n();
+  const contextEditorTreeVisible = useUIStore((state) => state.contextEditorTreeVisible);
+  const contextEditorVisible = useUIStore((state) => state.contextEditorVisible);
+  const fileTreeSide = useUIStore((state) => state.fileTreeSide);
+  const filePath = tab.targetPath ?? null;
+  // The editor column is shown for an open file unless the user hid it; the
+  // tree never hides alongside it, so a hidden tree forces the editor back.
+  const showsEditor = filePath != null && (contextEditorVisible || !contextEditorTreeVisible);
+  return (
+    <RegionPane
+      hostKey={shown ? hostKey : null}
+      visible={shown}
+      directoryKey={directoryKey}
+      className={cn('absolute inset-0 flex', fileTreeSide === 'left' && 'flex-row-reverse', shown ? 'flex' : 'hidden')}
+    >
+      {spacePreparing ? (
+        <div className="h-full min-w-0 flex-1"><SpacePreparing /></div>
+      ) : filePath != null || !contextEditorTreeVisible ? (
+        // Hidden rather than unmounted so a hidden editor keeps its state.
+        <div className={cn('h-full min-w-0 flex-1', filePath != null && !showsEditor && 'hidden')}>
+          {filePath != null ? (
+            <React.Suspense fallback={null}>
+              <FilesView
+                mode="editor-only"
+                pinnedPath={filePath}
+                visible={shown && showsEditor}
+                onCloseFile={onCloseFile}
+              />
+            </React.Suspense>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+              <Icon name="file-code" className="h-12 w-12 text-muted-foreground/50" />
+              <div className="typography-ui-header text-foreground">{t('contextPanel.editorEmpty.title')}</div>
+              <div className="max-w-sm typography-micro text-muted-foreground">{t('contextPanel.editorEmpty.description')}</div>
+            </div>
+          )}
+        </div>
+      ) : null}
+      {/* The tree column only mounts where a region shows the file: the
+          expansion state lives in the store, so a remounted tree reopens
+          exactly where it was, and parked panes cost no directory listings.
+          What a remount does lose is the tree's own UX state (search,
+          scroll, cached listings): leaving a region for a chat and back
+          re-reads the directories. */}
+      {shown && !spacePreparing ? (
+        <EditorTreeColumn visible={contextEditorTreeVisible} active={shown} fill={!showsEditor} side={fileTreeSide} />
+      ) : null}
+    </RegionPane>
+  );
+};
+
+/**
  * Every keep-alive context surface, mounted once for the whole layout and
  * placed into the zone its surface lives in (`MovablePane`). The zone frames
  * (`ContextPanel`) render their chrome and the surfaces that remount on
@@ -264,7 +401,6 @@ const RegionPane: React.FC<{
  * to run before the panes attach and the settle step queues behind them.
  */
 export const ContextSurfacePanes: React.FC = () => {
-  const { t } = useI18n();
   const effectiveDirectory = useEffectiveDirectory() ?? '';
   const directoryKey = React.useMemo(
     () => (effectiveDirectory ? normalizeContextPanelDirectoryKey(effectiveDirectory) : ''),
@@ -287,9 +423,6 @@ export const ContextSurfacePanes: React.FC = () => {
   const openContextPanelTab = useUIStore((state) => state.openContextPanelTab);
   const openAgentBrowserTab = useUIStore((state) => state.openAgentBrowserTab);
   const openContextFile = useUIStore((state) => state.openContextFile);
-  const contextEditorTreeVisible = useUIStore((state) => state.contextEditorTreeVisible);
-  const contextEditorVisible = useUIStore((state) => state.contextEditorVisible);
-  const fileTreeSide = useUIStore((state) => state.fileTreeSide);
   const setSelectedFilePath = useFilesViewTabsStore((state) => state.setSelectedPath);
   const regionHosts = usePaneHostsStore((state) => state.byKey);
 
@@ -391,15 +524,11 @@ export const ContextSurfacePanes: React.FC = () => {
     setSelectedFilePath(normalizeContextPanelDirectoryKey(contentDirectory), fileActiveTab.targetPath, { allowOutsideRoot: !draftSpace && sameSide });
   }, [contentDirectory, draftSpace, fileActiveTab, setSelectedFilePath]);
 
-  const hasOpenEditorFile = React.useMemo(
-    () => tabs.some((tab) => tab.mode === 'file' && tab.targetPath),
-    [tabs],
-  );
-  const hasFileTabs = React.useMemo(() => tabs.some((tab) => tab.mode === 'file'), [tabs]);
-  // The editor column is shown for an open file unless the user hid it; the
-  // tree never hides alongside it, so a hidden tree forces the editor back.
-  const showsEditor = hasOpenEditorFile && (contextEditorVisible || !contextEditorTreeVisible);
-  const isFileTabActive = fileActiveTab !== null;
+  // Every file tab keeps its own pane: two regions show two files, each
+  // editor pinned to its tab's path. A restorable tab (not shown in any
+  // region) keeps its pane mounted and parked hidden, because the editor's
+  // unsaved draft lives on the instance.
+  const fileTabs = React.useMemo(() => tabs.filter((tab) => tab.mode === 'file'), [tabs]);
 
   // The editor's Cmd/Ctrl+W and its unsaved-changes prompt close the file's
   // tab here, so the strip and the next file follow as with the close button.
@@ -407,54 +536,12 @@ export const ContextSurfacePanes: React.FC = () => {
     if (directoryKey) closeContextFile(directoryKey, filePath);
   }, [closeContextFile, directoryKey]);
 
-  // The chat tab its region shows. There is one chat pane, so one region can
-  // hold the visible split chat at a time; repeated `find` keeps this stable
-  // whichever leaf it is.
-  const chatActiveTab = React.useMemo(
-    () => tabs.find((tab) => tab.mode === 'chat' && shownInRegion(tab.id)) ?? null,
+  // The chat tabs their regions show: one pane per region, so two forks of
+  // one task sit side by side.
+  const chatShownTabs = React.useMemo(
+    () => tabs.filter((tab) => tab.mode === 'chat' && shownInRegion(tab.id)),
     [shownInRegion, tabs],
   );
-  const activeChatSessionID = chatActiveTab ? getSessionIDFromDedupeKey(chatActiveTab.dedupeKey) : null;
-  // A chat opened from another project (or Chat) carries its own directory;
-  // tabs opened without one (subtasks, reviews) belong to this panel's.
-  const activeChatDirectory = React.useMemo(() => {
-    const own = chatActiveTab?.targetDirectory ? normalizeContextPanelDirectoryKey(chatActiveTab.targetDirectory) : '';
-    return own || directoryKey || null;
-  }, [chatActiveTab?.targetDirectory, directoryKey]);
-  const activeChatPinnedSession = React.useMemo(
-    () => (activeChatSessionID ? { sessionId: activeChatSessionID, directory: activeChatDirectory } : null),
-    [activeChatSessionID, activeChatDirectory],
-  );
-
-  React.useEffect(() => {
-    if (!activeChatDirectory || !activeChatSessionID || typeof window === 'undefined') {
-      return;
-    }
-
-    const markActiveChatViewed = () => {
-      if (document.visibilityState === 'hidden' || !document.hasFocus()) {
-        setExternallyViewedSession(activeChatDirectory, activeChatSessionID, false);
-        return;
-      }
-
-      markSessionViewed(activeChatSessionID);
-      setExternallyViewedSession(activeChatDirectory, activeChatSessionID, true);
-    };
-
-    markActiveChatViewed();
-    const interval = window.setInterval(markActiveChatViewed, 10_000);
-    window.addEventListener('focus', markActiveChatViewed);
-    window.addEventListener('blur', markActiveChatViewed);
-    document.addEventListener('visibilitychange', markActiveChatViewed);
-
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener('focus', markActiveChatViewed);
-      window.removeEventListener('blur', markActiveChatViewed);
-      document.removeEventListener('visibilitychange', markActiveChatViewed);
-      setExternallyViewedSession(activeChatDirectory, activeChatSessionID, false);
-    };
-  }, [activeChatDirectory, activeChatSessionID]);
 
   // The diff tab its region shows; the header slot follows the visible one.
   const diffActiveTab = React.useMemo(
@@ -575,57 +662,25 @@ export const ContextSurfacePanes: React.FC = () => {
 
   return (
     <>
-      {hasFileTabs ? (
-        // One editor instance for all file tabs: it lives in the region that
-        // shows the active file tab, and a second region showing another file
-        // shows the strip's state only until that file becomes the active one.
-        <RegionPane
-          hostKey={fileActiveTab ? leafOfTab(fileActiveTab.id)?.id ?? null : null}
-          visible={isFileTabActive}
+      {fileTabs.map((tab) => (
+        <FileRegionPane
+          key={tab.id}
+          tab={tab}
+          shown={shownInRegion(tab.id)}
+          hostKey={leafOfTab(tab.id)?.id ?? null}
           directoryKey={directoryKey}
-          className={cn('absolute inset-0 flex', fileTreeSide === 'left' && 'flex-row-reverse', isFileTabActive ? 'flex' : 'hidden')}
-        >
-          {spacePreparing ? (
-            <div className="h-full min-w-0 flex-1"><SpacePreparing /></div>
-          ) : hasOpenEditorFile || !contextEditorTreeVisible ? (
-            // Hidden rather than unmounted so a hidden editor keeps its state.
-            <div className={cn('h-full min-w-0 flex-1', hasOpenEditorFile && !showsEditor && 'hidden')}>
-              {hasOpenEditorFile ? (
-                <React.Suspense fallback={null}><FilesView mode="editor-only" visible={isFileTabActive && showsEditor} onCloseFile={handleCloseEditorFile} /></React.Suspense>
-              ) : (
-                <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                  <Icon name="file-code" className="h-12 w-12 text-muted-foreground/50" />
-                  <div className="typography-ui-header text-foreground">{t('contextPanel.editorEmpty.title')}</div>
-                  <div className="max-w-sm typography-micro text-muted-foreground">{t('contextPanel.editorEmpty.description')}</div>
-                </div>
-              )}
-            </div>
-          ) : null}
-          {spacePreparing ? null : <EditorTreeColumn visible={contextEditorTreeVisible} active={isFileTabActive} fill={!showsEditor} side={fileTreeSide} />}
-        </RegionPane>
-      ) : null}
-      {chatActiveTab && activeChatSessionID && activeChatPinnedSession ? (
-        // The chat renders in this app, pinned to its session: it shares
-        // the app's connection, stores and theme, and opens like a session
-        // switch instead of booting a second app.
-        <RegionPane
-          key={chatActiveTab.id}
-          hostKey={leafOfTab(chatActiveTab.id)?.id ?? null}
-          visible
+          spacePreparing={spacePreparing}
+          onCloseFile={handleCloseEditorFile}
+        />
+      ))}
+      {chatShownTabs.map((tab) => (
+        <ChatRegionPane
+          key={tab.id}
+          tab={tab}
+          hostKey={leafOfTab(tab.id)?.id ?? null}
           directoryKey={directoryKey}
-          className="absolute inset-0 bg-background"
-        >
-          <section
-            aria-label={t('contextPanel.iframe.sessionChatTitle', { sessionID: activeChatSessionID })}
-            className="h-full"
-          >
-            <ChatView
-              pinnedSession={activeChatPinnedSession}
-              readOnly={chatActiveTab.readOnly}
-            />
-          </section>
-        </RegionPane>
-      ) : null}
+        />
+      ))}
       {loadedBrowserTabs.map((tab) => {
         const shown = tab.directory === directoryKey && shownInRegion(tab.id);
         // A tab of the draft on screen browses the space it waits for once the space runs.

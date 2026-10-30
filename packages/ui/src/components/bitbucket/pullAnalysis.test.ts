@@ -170,6 +170,68 @@ describe('parseAnalysisResult', () => {
     test('an empty block reads as nothing', () => {
         expect(parseAnalysisResult('```json\n{}\n```')).toBeNull();
     });
+
+    test('reads findings back with all five fields', () => {
+        const text = '```json\n' + JSON.stringify({
+            findings: [
+                {
+                    path: ' autotests/experiments/src/model.py ',
+                    text: ' Не хватает таймаута ',
+                    snippet: ' client.get(url) ',
+                    justification: ' Ресурс может скрыться ',
+                    solution: ' Поставить timeout=30 ',
+                },
+            ],
+        }) + '\n```';
+        const analysis = parseAnalysisResult(text);
+        expect(analysis?.findings).toEqual([
+            {
+                path: 'autotests/experiments/src/model.py',
+                text: 'Не хватает таймаута',
+                snippet: 'client.get(url)',
+                justification: 'Ресурс может скрыться',
+                solution: 'Поставить timeout=30',
+            },
+        ]);
+    });
+
+    test('a finding without a place or a point is noise, not a finding', () => {
+        const text = '```json\n' + JSON.stringify({
+            findings: [
+                { path: '', text: 'без пути' },
+                { path: 'a.py', text: '' },
+                { path: 'a.py', text: 'годится', snippet: null, justification: undefined },
+            ],
+        }) + '\n```';
+        const analysis = parseAnalysisResult(text);
+        expect(analysis?.findings).toEqual([
+            { path: 'a.py', text: 'годится', snippet: '', justification: '', solution: '' },
+        ]);
+    });
+
+    test('one mistyped finding does not sink the block', () => {
+        const text = '```json\n' + JSON.stringify({
+            comments: { '101': { summary: 'Нет таймаута' } },
+            findings: [
+                { path: 42, text: 'путь не строкой' },
+                { path: 'a.py', text: 'годится', snippet: 7 },
+            ],
+            overall: { verdict: 'questions', notes: 'смесь' },
+        }) + '\n```';
+        const analysis = parseAnalysisResult(text);
+        expect(analysis?.comments.get(101)?.summary).toBe('Нет таймаута');
+        expect(analysis?.findings).toEqual([
+            { path: 'a.py', text: 'годится', snippet: '', justification: '', solution: '' },
+        ]);
+        expect(analysis?.overall?.verdict).toBe('questions');
+    });
+
+    test('a block of findings alone is still a reading', () => {
+        const text = '```json\n{"findings": [{"path": "a.py", "text": "пустой except"}]}\n```';
+        const analysis = parseAnalysisResult(text);
+        expect(analysis).not.toBeNull();
+        expect(analysis?.findings.length).toBe(1);
+    });
 });
 
 describe('buildAnalysisPrompt', () => {
@@ -254,10 +316,39 @@ describe('buildAnalysisPrompt', () => {
         expect(filesOnly).not.toContain('101');
     });
 
+    test('a full-scope reading asks for both sections under one item format', () => {
+        const prompt = buildAnalysisPrompt(baseView, allScope, defaultMethodology);
+        expect(prompt).toContain('раздел «Пояснения по существующим комментариям»');
+        expect(prompt).toContain('каждое открытое замечание (101)');
+        expect(prompt).toContain('раздел «Новые ненайденные замечания»');
+        // The item format is one for both sections: the five fields the
+        // findings panel hangs its cards on.
+        expect(prompt).toContain('-   путь до файла;');
+        expect(prompt).toContain('-   текст замечания;');
+        expect(prompt).toContain('-   кусок кода, на который ссылаемся;');
+        expect(prompt).toContain('-   обоснование;');
+        expect(prompt).toContain('-   предлагаемое решение.');
+        // The machine food carries the new findings alongside the footnotes.
+        expect(prompt).toContain('"findings": [ { "path": "путь файла"');
+    });
+
+    test('a half-scope reading asks for no findings it cannot honestly make', () => {
+        // Comments alone: no diffs to find issues in — no findings section.
+        const commentsOnly = buildAnalysisPrompt(baseView, { ...noScope, comments: true }, defaultMethodology);
+        expect(commentsOnly).not.toContain('Новые ненайденные замечания');
+        expect(commentsOnly).toContain('«findings»: не запрашивался — поле опущено.');
+
+        // Files alone: no comments to tell a new issue from a raised one.
+        const filesOnly = buildAnalysisPrompt(baseView, { ...noScope, files: true }, defaultMethodology);
+        expect(filesOnly).not.toContain('Новые ненайденные замечания');
+        expect(filesOnly).toContain('«findings»: не запрашивался — поле опущено.');
+    });
+
     test('a previous reading rides along as a framed digest, before the material', () => {
         const analysis: PullAnalysis = {
             comments: new Map([[101, { summary: 'Таймаута нет', justified: true, variants: [' Добавить'] }]]),
             files: new Map([['autotests/experiments/src/model.py', { verdict: 'questions', notes: 'Без теста' }]]),
+            findings: [],
             overall: { verdict: 'questions', notes: 'Черновик' },
         };
         const digest = previousReadingDigest(analysis);
@@ -301,6 +392,15 @@ describe('buildAnalysisPrompt', () => {
         const analysis: PullAnalysis = {
             comments: new Map([[101, { summary: 'Таймаута нет', justified: true, variants: ['Добавить'] }]]),
             files: new Map([['config.yaml', { verdict: 'ok', notes: 'Норм' }]]),
+            findings: [
+                {
+                    path: 'autotests/experiments/src/model.py',
+                    text: 'Нет обработки пустого списка',
+                    snippet: 'for row in rows:',
+                    justification: 'rows может быть None',
+                    solution: 'Проверить в начале',
+                },
+            ],
             overall: null,
         };
         const digest = JSON.parse(previousReadingDigest(analysis));
@@ -310,6 +410,16 @@ describe('buildAnalysisPrompt', () => {
             variants: ['Добавить'],
         });
         expect(digest.files['config.yaml']).toEqual({ verdict: 'ok', notes: 'Норм' });
+        // The findings ride by gist; the snippet stays behind — the next
+        // reading re-finds the code in the fresh material.
+        expect(digest.findings).toEqual([
+            {
+                path: 'autotests/experiments/src/model.py',
+                text: 'Нет обработки пустого списка',
+                justification: 'rows может быть None',
+                solution: 'Проверить в начале',
+            },
+        ]);
         expect(digest.overall).toBeNull();
     });
 

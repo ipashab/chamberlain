@@ -289,7 +289,7 @@ export const MiniChatLayout: React.FC<MiniChatLayoutProps> = ({ mode, autoOpenDr
   const { t } = useI18n();
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+    <div className="mini-chat-layout flex h-full min-h-0 flex-col bg-background text-foreground">
       <MiniChatHeader mode={mode} />
       <main className="min-h-0 flex-1">
         {unavailable ? (

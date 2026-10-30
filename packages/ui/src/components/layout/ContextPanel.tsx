@@ -56,6 +56,7 @@ import { ContextPanelHeaderSlotProvider } from './contextPanelHeaderSlot';
 import { closeZoneOnEscape } from './zoneEscape';
 import { setRegionBody, setRegionHeaderSlot } from './regionHosts';
 import { findLeaf, leavesOf } from '@/lib/workspace/layoutTree';
+import { runRegionHeaderDrop, trackRegionDrop } from './regionDropGesture';
 
 const CONTEXT_TAB_LABEL_MAX_CHARS = 24;
 type TranslateFn = ReturnType<typeof useI18n>['t'];
@@ -90,6 +91,13 @@ const getRelativePathLabel = (filePath: string | null, directory: string): strin
   }
   return normalizedFile;
 };
+
+// A region's header drag starts only after the pointer moves this far, so a
+// header click still clicks.
+const HEADER_DRAG_DISTANCE_PX = 8;
+// What a header drag lets pass to the pointer: controls and interactive
+// elements own their own gestures.
+const HEADER_DRAG_EXCLUDED = 'button, a, input, textarea, select, label, [role="button"], [role="tab"], [role="combobox"], [role="switch"], [role="slider"], [data-sortable-tab-id], [contenteditable="true"]';
 
 const getModeLabel = (
   mode: ContextPanelMode,
@@ -446,6 +454,39 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
     closeZoneOnEscape(event, true, handleClose);
   }, [handleClose]);
 
+  // A tab dragged out of the strip moves to another region: over its middle
+  // as a tab, over an edge as a split there. Inside the strip the pointer
+  // keeps the strip's own reordering.
+  const handleTabDragOut = React.useCallback(
+    (tabId: string, isOutside: (point: { x: number; y: number }) => boolean) => {
+      const tab = tabs.find((entry) => entry.id === tabId);
+      if (!tab || !directoryKey) return null;
+      const label = tab.label ?? tab.sessionTitleFallback ?? getModeLabel(tab.mode, tabT);
+      return trackRegionDrop({ kind: 'tab', directoryKey, tabId, label }, isOutside);
+    },
+    [directoryKey, tabT, tabs],
+  );
+
+  // A region is dragged by its header wherever nothing else takes the
+  // pointer: buttons, tabs (a strip's own drag moves the tab alone), fields.
+  // A native listener, not a React one: a surface's toolbar is portalled
+  // into the header, and React events from a portal never reach it.
+  const [headerEl, setHeaderEl] = React.useState<HTMLElement | null>(null);
+  const handleHeaderPointerDown = React.useCallback((event: PointerEvent) => {
+    if (!directoryKey || !activeTab || event.button !== 0 || event.pointerType === 'touch') return;
+    if (event.target instanceof Element && event.target.closest(HEADER_DRAG_EXCLUDED)) return;
+    const label = activeTab.label ?? activeTab.sessionTitleFallback ?? getModeLabel(activeTab.mode, tabT);
+    runRegionHeaderDrop(
+      { kind: 'region', directoryKey, sourceLeafId: leafId, label },
+      { x: event.clientX, y: event.clientY },
+      HEADER_DRAG_DISTANCE_PX,
+    );
+  }, [activeTab, directoryKey, leafId, tabT]);
+  React.useEffect(() => {
+    if (!headerEl) return undefined;
+    headerEl.addEventListener('pointerdown', handleHeaderPointerDown);
+    return () => headerEl.removeEventListener('pointerdown', handleHeaderPointerDown);
+  }, [handleHeaderPointerDown, headerEl]);
   // The panel takes focus when it gains content after being empty: the open
   // that lands a tab here is a reason to put the keyboard inside the region.
   const panelRef = React.useRef<HTMLElement | null>(null);
@@ -645,6 +686,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
 
   const header = (
     <header
+      ref={setHeaderEl}
       className="group/panel-header flex min-h-10 select-none items-stretch border-b border-border"
     >
       {isMultiInstanceMode && activeTab ? (
@@ -675,6 +717,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
           }}
           layoutMode="scrollable"
           variant="default"
+          onTabDragOut={handleTabDragOut}
           tabContextMenu={renderTabContextMenu}
         />
       ) : (

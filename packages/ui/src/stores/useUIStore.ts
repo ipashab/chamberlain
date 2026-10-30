@@ -1432,9 +1432,10 @@ interface UIStore {
    * Splits one region of the layout in two: a layout leaf by its id, or
    * `'chat'` for the chat's region. The new region starts empty at
    * `fraction` of the space. Answers the new region's leaf id, or null
-   * when nothing was split.
+   * when nothing was split. `placement` puts the fresh leaf at the start
+   * of the pair instead of its end.
    */
-  splitLayoutRegion: (directory: string, target: { leafId: string } | 'chat', axis: 'row' | 'column', fraction?: number) => string | null;
+  splitLayoutRegion: (directory: string, target: { leafId: string } | 'chat', axis: 'row' | 'column', fraction?: number, placement?: 'start' | 'end') => string | null;
   /** Closes a region. Its tabs stay in the strip and re-enter a region the next time they open. */
   closeLayoutRegion: (directory: string, leafId: string) => void;
   /** Ends a divider drag: the trailing child of the pair takes `trailingShare` of the pair. */
@@ -2671,7 +2672,7 @@ export const useUIStore = create<UIStore>()(
           });
         },
 
-        splitLayoutRegion: (directory, target, axis, fraction) => {
+        splitLayoutRegion: (directory, target, axis, fraction, placement = 'end') => {
           const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
           if (!normalizedDirectory) {
             return null;
@@ -2680,9 +2681,12 @@ export const useUIStore = create<UIStore>()(
           set((state) => {
             const prev = state.contextPanelByDirectory[normalizedDirectory];
             const current = touchContextPanelState(prev, state.contextSurfaceZones);
+            // A start placement puts the fresh region first: the new leaf on
+            // the inline-start side (row axis) or above (column axis) its
+            // neighbour, which is where a drop on that edge says it goes.
             const split = target === 'chat'
-              ? splitChat(current.layout, axis, { fraction })
-              : splitLeaf(current.layout, target.leafId, axis, { fraction });
+              ? splitChat(current.layout, axis, { fraction, chatLast: placement === 'start' })
+              : splitLeaf(current.layout, target.leafId, axis, { fraction, newLeafFirst: placement === 'start' });
             if (split === null) {
               return state;
             }

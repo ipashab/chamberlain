@@ -2425,7 +2425,7 @@ export const settingsDict = {
   'settings.magicPrompts.page.group.bitbucketPullAnalysis.title': 'Методология разбора pull request',
   'settings.magicPrompts.page.group.memoryTidy.title': 'Приведение памяти в порядок',
   'settings.magicPrompts.page.group.memoryTidy.description': 'Промпты кнопки «Привести в порядок» на панели памяти: видимое сообщение пользователю + скрытые инструкции, после которых идут все записи памяти. Агент удаляет устаревшее, объединяет дубликаты, переписывает изменившееся и отчитывается о сделанном.',
-  'settings.magicPrompts.page.group.bitbucketPullAnalysis.description': 'Инструкции оценивания, с которых начинается разбор pull request. Материал PR и контракт двухчастного ответа дописывает само приложение, поэтому сноски и чипы вердикта работают, что бы ни было в тексте.',
+  'settings.magicPrompts.page.group.bitbucketPullAnalysis.description': 'Инструкции оценивания, с которых начинается разбор pull request. Материал PR и контракт двухчастного ответа дописывает само приложение, поэтому сноски комментариев, блок новых замечаний и чипы вердикта работают, что бы ни было в тексте.',
   'settings.magicPrompts.page.group.jiraIssueSpec.title': 'Методология спецификации задачи Jira',
   'settings.magicPrompts.page.group.jiraIssueSpec.description': 'Инструкции, с которых начинается сессия черновика спецификации. Материал задачи и контракт двухчастного ответа дописывает само приложение, поэтому карточка спецификации работает, что бы ни было в тексте.',
   'settings.magicPrompts.page.actions.resetting': 'Сброс...',

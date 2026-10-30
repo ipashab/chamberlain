@@ -7,9 +7,18 @@ import { hasDesktopInvoke, invokeDesktop } from '@/lib/desktop';
  * A surface with a tab of its own (a file open in Files) registers here; the
  * desktop shell is told whether one is registered, and while one is, the
  * shortcut arrives as an `openchamber:close-tab` event instead of closing the
- * window. The last registered surface wins.
+ * window. The surface with keyboard focus wins; without one, the last
+ * registered surface wins. Several file panes can be registered at once —
+ * two layout regions, each showing its own file — and focus is what tells
+ * them apart.
  */
-const handlers: Array<() => void> = [];
+type CloseTabTarget = {
+  close: () => void;
+  /** Whether the registered node holds keyboard focus right now. */
+  ownsFocus?: () => boolean;
+};
+
+const handlers: Array<CloseTabTarget> = [];
 let listening = false;
 
 const report = (): void => {
@@ -18,18 +27,26 @@ const report = (): void => {
 };
 
 const handleCloseTab = (): void => {
-  handlers[handlers.length - 1]?.();
+  for (let index = handlers.length - 1; index >= 0; index -= 1) {
+    const target = handlers[index];
+    if (target.ownsFocus?.()) {
+      target.close();
+      return;
+    }
+  }
+  handlers[handlers.length - 1]?.close();
 };
 
-export const registerCloseTabTarget = (close: () => void): (() => void) => {
+export const registerCloseTabTarget = (close: () => void, ownsFocus?: () => boolean): (() => void) => {
   if (!listening) {
     window.addEventListener('openchamber:close-tab', handleCloseTab);
     listening = true;
   }
-  handlers.push(close);
+  const target: CloseTabTarget = { close, ownsFocus };
+  handlers.push(target);
   report();
   return () => {
-    const index = handlers.lastIndexOf(close);
+    const index = handlers.lastIndexOf(target);
     if (index >= 0) handlers.splice(index, 1);
     report();
   };

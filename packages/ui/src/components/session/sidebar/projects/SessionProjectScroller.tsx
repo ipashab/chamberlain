@@ -28,6 +28,8 @@ import { RunSidebarRow } from '../sessions/RunSidebarRow';
 import { computeNodeStructureKey, nodeContainsSessionId } from '../sessions/sessionNodeItemUtils';
 import { DroppableFolderWrapper, SessionFolderOwnersProvider } from '../folders/sessionFolderDnd';
 import { sessionFolderCollision } from '../folders/sessionFolderCollision';
+import { applyRegionDrop, resolveRegionDropTarget, trackRegionDrop, type RegionDropGesture } from '@/components/layout/regionDropGesture';
+import { resolveEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { FolderDeleteConfirmDialog, type DeleteFolderConfirmState } from '../shell/ConfirmDialogs';
 import { NewTeamDialog } from '../../team/NewTeamDialog';
 import type { SessionGroup } from '../types';
@@ -148,6 +150,16 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
   // works, ordered by activity like the rest.
   const [isProjectDragging, setProjectDragging] = React.useState(false);
   const scrollContainerRef = React.useRef<HTMLElement | null>(null);
+  // A session dragged out of the sidebar lands through the shared region
+  // gesture: a region's middle opens the chat there, an edge splits it.
+  const regionDropRef = React.useRef<RegionDropGesture | null>(null);
+  const cancelRegionDrop = () => {
+    regionDropRef.current?.cancel();
+    regionDropRef.current = null;
+  };
+  // An unmount mid-drag (a project switch) must not leave the gesture's
+  // pointer listener behind with a live payload in the shared store.
+  React.useEffect(() => () => cancelRegionDrop(), []);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
@@ -503,9 +515,60 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
         <DndContext sensors={sensors} collisionDetection={sessionFolderCollision} onDragStart={(event) => {
           // Session rows drag into folders and take no part in the header sort.
           setProjectDragging(projectDragIds.has(String(event.active.id)));
-        }} onDragCancel={() => setProjectDragging(false)} onDragEnd={(event) => {
+          // The workspace side of a session drag: from here the shared region
+          // gesture owns the layout — its targets, and the drop.
+          // SAFETY: drag payloads are created by this scroller's session rows.
+          const data = event.active.data.current as { type?: string; sessionId?: string; sessionDirectory?: string | null; sessionTitle?: string; archivedBucket?: boolean } | undefined;
+          if (data?.type === 'session' && data.sessionId && data.sessionDirectory && !data.archivedBucket) {
+            const panelDirectory = resolveEffectiveDirectory() || data.sessionDirectory;
+            regionDropRef.current?.cancel();
+            regionDropRef.current = trackRegionDrop({
+              kind: 'session',
+              directoryKey: panelDirectory,
+              sessionId: data.sessionId,
+              sessionDirectory: data.sessionDirectory,
+              label: data.sessionTitle ?? '',
+            }, () => true);
+          } else {
+            cancelRegionDrop();
+          }
+        }} onDragCancel={() => {
           setProjectDragging(false);
-          if (!event.over) return;
+          cancelRegionDrop();
+        }} onDragEnd={(event) => {
+          setProjectDragging(false);
+          // A live `over` means the sidebar's own drops answered (a folder, a
+          // header slot); the workspace gesture only takes the rest.
+          const regionDrop = regionDropRef.current;
+          regionDropRef.current = null;
+          if (!event.over) {
+            if (regionDrop?.finish()) return;
+            // Fallback: the gesture's own pointer tracking may miss the last
+            // move, so dnd-kit reports the exact release point — the drag
+            // started, moved by its delta, exact for a pointer drag.
+            // SAFETY: drag payloads are created by this scroller's session rows.
+            const activeData = event.active.data.current as { type?: string; sessionId?: string; sessionDirectory?: string | null; sessionTitle?: string; archivedBucket?: boolean } | undefined;
+            if (regionDrop && activeData?.type === 'session' && activeData.sessionId && activeData.sessionDirectory && !activeData.archivedBucket) {
+              const source = event.activatorEvent;
+              if (!source || !('clientX' in source)) return;
+              // SAFETY: MouseSensor activator events are mouse or touch
+              // events, and the `clientX` membership check above is what any
+              // other event fails.
+              const start = source as MouseEvent;
+              const target = resolveRegionDropTarget({ x: start.clientX + event.delta.x, y: start.clientY + event.delta.y });
+              if (!target) return;
+              const title = activeData.sessionTitle ?? '';
+              const panelDirectory = resolveEffectiveDirectory() || activeData.sessionDirectory;
+              applyRegionDrop(panelDirectory, {
+                kind: 'session',
+                directoryKey: panelDirectory,
+                sessionId: activeData.sessionId,
+                sessionDirectory: activeData.sessionDirectory,
+                label: title,
+              }, target);
+            }
+            return;
+          }
           // SAFETY: session and folder payloads are created by the sidebar's draggable and droppable row components.
           const activeData = event.active.data.current as { type?: string; sessionId?: string; ownerKey?: string | null; archivedBucket?: boolean } | undefined;
           // SAFETY: session and folder payloads are created by the sidebar's draggable and droppable row components.
@@ -513,7 +576,10 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
           if (activeData?.type === 'session' && activeData.sessionId && activeData.ownerKey && activeData.archivedBucket !== true && overData?.type === 'folder' && overData.folderId && overData.scopeKey && overData.ownerKey === activeData.ownerKey) {
             const dropTarget = model.rowModel.folderDropTargets.find((entry) => entry.folderId === overData.folderId && entry.scopeKey === overData.scopeKey && entry.ownerKey === activeData.ownerKey);
             const authority = model.rowModel.folderAuthorityByOwner.get(activeData.ownerKey);
-            if (!dropTarget?.enabled || authority?.complete !== true) return;
+            if (!dropTarget?.enabled || authority?.complete !== true) {
+              regionDrop?.cancel();
+              return;
+            }
             const store = useSessionFoldersStore.getState();
             for (const scopeKey of authority.scopeKeys) {
               if (scopeKey !== overData.scopeKey) store.removeSessionFromFolder(scopeKey, activeData.sessionId);
@@ -521,6 +587,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
             addSessionToFolder(overData.scopeKey, overData.folderId, activeData.sessionId);
             return;
           }
+          regionDrop?.cancel();
           if (view.hasSessionSearchQuery || model.state.editingId !== null || event.active.id === event.over.id) return;
           const activeId = String(event.active.id);
           const overId = String(event.over.id);

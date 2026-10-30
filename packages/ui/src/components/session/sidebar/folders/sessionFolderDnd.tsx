@@ -13,38 +13,12 @@ import {
 import { Icon } from "@/components/icon/Icon";
 import { sessionFolderCollision } from './sessionFolderCollision';
 import { getSessionFolderIdentityKey, isArchivedFolderScope } from '../sessions/sessionFolderIdentity';
-import { useUIStore } from '@/stores/useUIStore';
 import { resolveEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
+import { trackRegionDrop, applyRegionDrop, resolveRegionDropTarget, type RegionDropGesture } from '@/components/layout/regionDropGesture';
 
 /** Body class shown while a session row drag is live; CSS turns every
  * context-panel region into a visible drop target. */
 const SESSION_DRAG_BODY_CLASS = 'oc-session-dragging';
-
-/** The region under a viewport point, by its leaf id, if there is one. */
-const findSessionRegionLeaf = (x: number, y: number): string | null => {
-  const leaf = document.elementFromPoint(x, y)?.closest('[data-region-leaf]') ?? null;
-  const leafId = leaf?.getAttribute('data-region-leaf');
-  return leafId ? leafId : null;
-};
-
-/**
- * The region a session release aims at, if it aims at one: the context-panel
- * region under the release point. dnd-kit reports neither the live pointer
- * nor a final pointer event, so the release point is where the drag started,
- * moved by its delta — exact for a pointer drag, whose delta is the pointer's
- * own movement.
- */
-const findSessionRegionLeafAt = (event: {
-    activatorEvent?: Event | undefined;
-    delta: { x: number; y: number };
-}): string | null => {
-    const source = event.activatorEvent;
-    if (!source || !('clientX' in source)) return null;
-    // SAFETY: PointerSensor activator events are mouse or pointer events,
-    // and the `clientX` membership check above is what any other event fails.
-    const start = source as MouseEvent;
-    return findSessionRegionLeaf(start.clientX + event.delta.x, start.clientY + event.delta.y);
-};
 
 
 type SessionFolderDropTarget = {
@@ -81,10 +55,15 @@ export const DraggableSessionRow: React.FC<{
   children: React.ReactNode;
 }> = ({ sessionId, dragKey, ownerKey = null, sessionDirectory, sessionTitle, archivedBucket = false, children }) => {
   const folderOwners = React.useContext(SessionFolderOwnersContext);
-  const hasFolderToDropInto = folderOwners === null || (ownerKey !== null && folderOwners.has(ownerKey));
+  // A folder drop stays an owner affair; a workspace drop needs a directory
+  // the chat tab can resolve. A session that can land in neither never drags:
+  // such a drag had nowhere to land and only swallowed the click that
+  // started it.
+  const canLandInFolder = folderOwners === null || (ownerKey !== null && folderOwners.has(ownerKey));
+  const canLandOnWorkspace = !archivedBucket && sessionDirectory != null;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `session-drag:${dragKey ?? sessionId}`,
-    disabled: archivedBucket || !hasFolderToDropInto,
+    disabled: archivedBucket || (!canLandInFolder && !canLandOnWorkspace),
     data: { type: 'session', sessionId, ownerKey, sessionDirectory, sessionTitle, archivedBucket },
   });
 
@@ -144,7 +123,17 @@ export const SessionFolderDndScope: React.FC<{
   const [activeDragTitle, setActiveDragTitle] = React.useState<string>('Session');
   const [activeDragWidth, setActiveDragWidth] = React.useState<number | null>(null);
   const [activeDragHeight, setActiveDragHeight] = React.useState<number | null>(null);
-
+  // While a session is dragged, its release over the workspace lands through
+  // the shared region gesture: a region's middle opens the chat there, an
+  // edge splits the region and opens it beside what was already there.
+  const regionDropRef = React.useRef<RegionDropGesture | null>(null);
+  const cancelRegionDrop = () => {
+    regionDropRef.current?.cancel();
+    regionDropRef.current = null;
+  };
+  // An unmount mid-drag (a project switch) must not leave the gesture's
+  // pointer listener behind with a live payload in the shared store.
+  React.useEffect(() => () => cancelRegionDrop(), []);
   if (!scopeKey) {
     return <>{children}</>;
   }
@@ -163,7 +152,10 @@ export const SessionFolderDndScope: React.FC<{
     const activeData = active.data.current as { type?: string; sessionId?: string; ownerKey?: string | null; sessionDirectory?: string | null; sessionTitle?: string; archivedBucket?: boolean } | undefined;
     // SAFETY: both payloads are created by the draggable and droppable components in this module.
     const overData = (over?.data.current ?? null) as { type?: string; folderId?: string; scopeKey?: string; ownerKey?: string | null } | null;
-    if (activeData?.type !== 'session' || !activeData.sessionId) return;
+    if (activeData?.type !== 'session' || !activeData.sessionId) {
+      cancelRegionDrop();
+      return;
+    }
     const folderDrop = activeData.ownerKey
       && !activeData.archivedBucket
       && (!ownerKey || activeData.ownerKey === ownerKey)
@@ -174,6 +166,7 @@ export const SessionFolderDndScope: React.FC<{
       && !isArchivedFolderScope(overData.scopeKey)
       && overData.ownerKey === activeData.ownerKey;
     if (folderDrop && overData?.folderId && overData.scopeKey && overData.ownerKey) {
+      cancelRegionDrop();
       // SAFETY: the folderDrop guard above narrowed ownerKey to a string.
       const sourceOwnerKey = activeData.ownerKey as string;
       onSessionDroppedOnFolder(activeData.sessionId, {
@@ -183,27 +176,43 @@ export const SessionFolderDndScope: React.FC<{
       }, sourceOwnerKey);
       return;
     }
-    // No folder caught it: a release over a context-panel region opens the
-    // session's chat there. Folders stay sidebar affairs — the region path
-    // only needs a live session with a directory the tab can resolve.
-    if (!activeData.sessionDirectory || activeData.archivedBucket) return;
-    const regionLeafId = findSessionRegionLeafAt(event);
-    if (!regionLeafId) return;
+    // No folder caught it: the shared region gesture answers where the release
+    // sits on the layout — a region, its edge, or neither. Folders stay
+    // sidebar affairs — the region path only needs a live session with a
+    // directory the tab can resolve.
+    if (!activeData.sessionDirectory || activeData.archivedBucket) {
+      cancelRegionDrop();
+      return;
+    }
+    const regionDrop = regionDropRef.current;
+    regionDropRef.current = null;
+    if (regionDrop?.finish()) return;
+    // Fallback: the gesture's own pointer tracking may miss the last move, so
+    // dnd-kit reports the exact release point — the drag started, moved by
+    // its delta, exact for a pointer drag.
+    const source = event.activatorEvent;
+    if (!source || !('clientX' in source)) return;
+    // SAFETY: PointerSensor activator events are mouse or pointer events,
+    // and the `clientX` membership check above is what any other event fails.
+    const start = source as MouseEvent;
+    const target = resolveRegionDropTarget({ x: start.clientX + event.delta.x, y: start.clientY + event.delta.y });
+    if (!target) return;
     const title = activeData.sessionTitle ?? '';
-    const panelDirectory = resolveEffectiveDirectory() ?? activeData.sessionDirectory;
-    useUIStore.getState().openContextPanelTabToLeaf(panelDirectory, {
-      mode: 'chat',
-      dedupeKey: `session:${activeData.sessionId}`,
+    const panelDirectory = resolveEffectiveDirectory() || activeData.sessionDirectory;
+    applyRegionDrop(panelDirectory, {
+      kind: 'session',
+      directoryKey: panelDirectory,
+      sessionId: activeData.sessionId,
+      sessionDirectory: activeData.sessionDirectory,
       label: title,
-      sessionTitleFallback: title,
-      targetDirectory: activeData.sessionDirectory,
-    }, regionLeafId);
+    }, target);
   };
 
   const handleDragCancel = () => {
     setActiveDragId(null);
     setActiveDragWidth(null);
     setActiveDragHeight(null);
+    cancelRegionDrop();
     endSessionDragFeedback();
   };
 
@@ -213,7 +222,7 @@ export const SessionFolderDndScope: React.FC<{
       collisionDetection={sessionFolderCollision}
       onDragStart={(event) => {
         // SAFETY: drag payloads are created by DraggableSessionRow in this module.
-        const data = event.active.data.current as { type?: string; sessionId?: string; sessionTitle?: string } | undefined;
+        const data = event.active.data.current as { type?: string; sessionId?: string; sessionTitle?: string; sessionDirectory?: string | null; archivedBucket?: boolean } | undefined;
         if (data?.type === 'session' && data.sessionId) {
           setActiveDragId(data.sessionId);
           setActiveDragTitle(data.sessionTitle ?? 'Session');
@@ -222,13 +231,29 @@ export const SessionFolderDndScope: React.FC<{
           setActiveDragWidth(width ?? null);
           setActiveDragHeight(height ?? null);
           document.body.classList.add(SESSION_DRAG_BODY_CLASS);
+          // The workspace side of the same drag: from here the shared region
+          // gesture owns the layout side — its targets, and the drop.
+          if (data.sessionDirectory && !data.archivedBucket) {
+            const panelDirectory = resolveEffectiveDirectory() || data.sessionDirectory;
+            regionDropRef.current?.cancel();
+            regionDropRef.current = trackRegionDrop({
+              kind: 'session',
+              directoryKey: panelDirectory,
+              sessionId: data.sessionId,
+              sessionDirectory: data.sessionDirectory,
+              label: data.sessionTitle ?? '',
+            }, () => true);
+          }
         }
       }}
       onDragCancel={handleDragCancel}
       onDragEnd={handleDragEnd}
     >
       {children}
-      <DragOverlay>
+      {/* The drag ghost's own overlay must not own the pointer: without this
+          it sits fixed under the cursor and swallows the elementFromPoint the
+          region targets read, and the regions' hover highlight too. */}
+      <DragOverlay style={{ pointerEvents: 'none' }}>
         {/* The ghost now always shows: a drag can also land on a workspace
             region far from the sidebar, and half the gesture's meaning is
             seeing what is being carried there. */}

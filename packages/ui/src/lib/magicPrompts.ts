@@ -920,7 +920,7 @@ Nothing waits for approval. Keep the original text of what you changed in mind: 
     title: 'Pull Request Analysis Methodology',
     group: 'Integrations',
     description:
-      'The judging instructions the pull request analysis session opens with. The pull material and the two-part answer contract are always appended by the app, so the footnotes and verdict chips keep working whatever the text says.',
+      'The judging instructions the pull request analysis session opens with. The pull material and the two-part answer contract are always appended by the app, so the comment footnotes, the new-findings block and the verdict chips keep working whatever the text says.',
     placeholders: [
       {
         key: 'task_instruction',
@@ -930,6 +930,7 @@ Nothing waits for approval. Keep the original text of what you changed in mind: 
     ],
     template: `Разбираются только открытые (resolved — нет) замечания. Оцени каждое по существу: справедливо ли оно относительно выбранной строки/файла и контекста диффа; если замечание требует доработки — предложи конкретное решение.
 Проверь доработки на корректность относительно постановки задачи: решают ли диффы задачу, что недоработано, что лишнее.
+Найди и то, что не покрыто замечаниями: проблемы кода в диффах, которых не касается ни одно открытое замечание, — они пойдут отдельным разделом новых замечаний по тому же формату.
 {{task_instruction}}`,
   },
   {

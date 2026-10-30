@@ -2551,7 +2551,7 @@ export const settingsDict = {
   'settings.magicPrompts.page.group.sessionFusion.title': 'Fusion',
   'settings.magicPrompts.page.group.sessionFusion.description': 'Prompts used when combining multi-run outputs into one final answer: visible user message + hidden instructions before source results.',
   'settings.magicPrompts.page.group.bitbucketPullAnalysis.title': 'Pull Request Analysis Methodology',
-  'settings.magicPrompts.page.group.bitbucketPullAnalysis.description': 'The judging instructions the pull request analysis opens with. The pull material and the two-part answer contract are appended by the app itself, so the footnotes and verdict chips keep working whatever the text says.',
+  'settings.magicPrompts.page.group.bitbucketPullAnalysis.description': 'The judging instructions the pull request analysis opens with. The pull material and the two-part answer contract are appended by the app itself, so the comment footnotes, the new-findings block and the verdict chips keep working whatever the text says.',
   'settings.magicPrompts.page.group.jiraIssueSpec.title': 'Jira Issue Spec Methodology',
   'settings.magicPrompts.page.group.jiraIssueSpec.description': 'The instructions the spec-drafting session opens with. The issue material and the two-part answer contract are appended by the app itself, so the spec card keeps working whatever the text says.',
   'settings.magicPrompts.page.group.memoryTidy.title': 'Memory tidy-up',

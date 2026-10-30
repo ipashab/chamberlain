@@ -719,6 +719,13 @@ interface FilesViewProps {
   visible?: boolean;
   mode?: 'full' | 'editor-only';
   /**
+   * Pins the editor to one file: a context-panel region's file tab, whose
+   * pane hosts the view, pins it to the tab's own path so two regions show
+   * two files. Without a pin the shared per-root selection speaks for what
+   * is open. editor-only only.
+   */
+  pinnedPath?: string | null;
+  /**
    * For a host whose tab strip owns the open files (the context panel):
    * closing a file here, by Cmd/Ctrl+W or after the unsaved-changes prompt,
    * closes the host's tab, which picks the next file the way its close
@@ -780,7 +787,7 @@ const FilePositionEditor = ({
   );
 };
 
-export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = true, onCloseFile }) => {
+export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = true, pinnedPath = null, onCloseFile }) => {
   const { t } = useI18n();
   const { files, runtime, git } = useRuntimeAPIs();
   const { currentTheme, availableThemes, lightThemeId, darkThemeId } = useThemeSystem();
@@ -933,6 +940,14 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   );
   const getOpenFileFolder = (path: string) => openFileFolders.get(getDisplayPath(root, path));
   const effectiveSelectedPath = React.useMemo(() => {
+    // A pinned host (a region's file tab) shows the pinned file whatever the
+    // shared selection holds — two regions show two files that way; the
+    // shared selection stays the sidebar's own affair. Prefer the open
+    // tab's canonical path so position caches and saved-file reads agree.
+    if (pinnedPath) {
+      const comparablePinned = toComparablePath(pinnedPath);
+      return openPaths.find((path) => toComparablePath(path) === comparablePinned) ?? pinnedPath;
+    }
     if (selectedPath) {
       const comparableSelected = toComparablePath(selectedPath);
       if (openPaths.some((path) => toComparablePath(path) === comparableSelected)) {
@@ -940,20 +955,23 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
       }
     }
     return openPaths[0] ?? null;
-  }, [openPaths, selectedPath]);
+  }, [openPaths, pinnedPath, selectedPath]);
   const selectedFile = React.useMemo(() => (effectiveSelectedPath ? toFileNode(effectiveSelectedPath) : null), [effectiveSelectedPath, toFileNode]);
   const selectedFilePath = selectedFile?.path ?? '';
   const selectedFilePathRef = React.useRef(selectedFilePath);
   selectedFilePathRef.current = selectedFilePath;
 
   React.useEffect(() => {
+    // A pinned editor does not read the shared selection, so it must not heal
+    // it either: the heal would fight the other regions' reveals.
+    if (pinnedPath) return;
     if (!root || !selectedPath) return;
     const comparableSelected = toComparablePath(selectedPath);
     const selectedIsOpen = openPaths.some((path) => toComparablePath(path) === comparableSelected);
     if (!selectedIsOpen) {
       setSelectedPath(root, openPaths[0] ?? null);
     }
-  }, [openPaths, root, selectedPath, setSelectedPath]);
+  }, [openPaths, pinnedPath, root, selectedPath, setSelectedPath]);
 
   const selectedFileIsOutsideWorkspace = Boolean(root && selectedFilePath && !isPathWithinRoot(selectedFilePath, root));
   const selectedFileReadOptions = React.useMemo(
@@ -2046,7 +2064,11 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     const isCurrentLoad = () => {
       if (!root || getRuntimeKey() !== requestRuntime || fileScopeRef.current !== requestScope) return false;
       const rootState = useFilesViewTabsStore.getState().byRoot[root];
-      const currentPath = rootState?.selectedPath ?? rootState?.openPaths[0] ?? null;
+      // A pinned host's authority is its pinned path, matched the way the
+      // selection pass above resolves it; the shared selection says nothing.
+      const currentPath = pinnedPath
+        ? (rootState?.openPaths ?? []).find((path) => toComparablePath(path) === toComparablePath(pinnedPath)) ?? pinnedPath
+        : rootState?.selectedPath ?? rootState?.openPaths[0] ?? null;
       return activeFileLoadIdRef.current === loadId && currentPath === node.path;
     };
 
@@ -2152,7 +2174,9 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
         }
         if (isDirectoryReadError(error)) {
           setFileLoading(false);
-          if (root) {
+          // A pinned pane reports its own error; the shared selection says
+          // what the sidebar has open, and a pinned pane has no say in it.
+          if (root && !pinnedPath) {
             setSelectedPath(root, null);
           }
           setFileError(null);
@@ -2193,7 +2217,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
           setFileLoading(false);
         }
       });
-  }, [applyLoadedTextContent, expandPaths, isMobile, loadDirectory, readFile, readFileStat, root, runtime.isDesktop, searchQuery, setSelectedPath, t]);
+  }, [applyLoadedTextContent, expandPaths, isMobile, loadDirectory, pinnedPath, readFile, readFileStat, root, runtime.isDesktop, searchQuery, setSelectedPath, t]);
 
   const ensurePathVisible = React.useCallback(async (targetPath: string, includeTarget: boolean) => {
     if (!visible || !root) {
@@ -2608,10 +2632,18 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     handleCloseFileRef.current = handleCloseFile;
   }, [handleCloseFile]);
   const closeTargetPath = selectedFile?.path ?? null;
+  // With several file panes shown at once (two layout regions), Cmd/Ctrl+W
+  // must close the pane whose editor holds focus, not whichever pane mounted
+  // last, so the registration says whether focus is inside this pane.
+  const ownsEditorFocus = React.useCallback((): boolean => {
+    const active = document.activeElement;
+    if (!active) return false;
+    return Boolean(editorWrapperRef.current?.contains(active) || canvasWrapperRef.current?.contains(active));
+  }, []);
   React.useEffect(() => {
     if (!visible || !closeTargetPath) return;
-    return registerCloseTabTarget(() => handleCloseFileRef.current(closeTargetPath));
-  }, [closeTargetPath, visible]);
+    return registerCloseTabTarget(() => handleCloseFileRef.current(closeTargetPath), ownsEditorFocus);
+  }, [closeTargetPath, ownsEditorFocus, visible]);
 
   const openPathSet = React.useMemo(() => new Set(openPaths), [openPaths]);
   const statusIndex = React.useMemo(() => buildFileTreeStatusIndex(treeEnabled ? gitStatus?.files ?? [] : []), [gitStatus?.files, treeEnabled]);
@@ -3280,6 +3312,13 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
       pendingNavigationCycleRef.current = { key: '', attempts: 0, targetShown: false };
       return;
     }
+    // A pinned pane answers only jumps into its own file. Every file tab
+    // mounts one, so without this guard a hidden pane hijacks the jump:
+    // it selects its pinned file, and a dirty one throws its own unsaved
+    // prompt over the pane the jump was bound for.
+    if (pinnedPath && normalizePath(pinnedPath) !== targetPath) {
+      return;
+    }
 
     const navigationKey = `${targetPath}:${pendingFileNavigation.line}:${pendingFileNavigation.column ?? 1}`;
     if (pendingNavigationCycleRef.current.key !== navigationKey) {
@@ -3390,6 +3429,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     loadedFilePath,
     handleSelectFile,
     pendingFileNavigation,
+    pinnedPath,
     root,
     selectedFile?.path,
     setPendingFileNavigation,

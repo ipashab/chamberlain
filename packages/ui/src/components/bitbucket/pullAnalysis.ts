@@ -38,6 +38,20 @@ export type CommentAnalysis = {
     variants: string[];
 };
 
+/**
+ * One issue the reading found that no open comment covers: where it sits,
+ * what it is, the code it talks about, and what to do about it. Path, text
+ * and snippet are the person's way into the issue; justification and
+ * solution are the reading's own words about it.
+ */
+export type PullFinding = {
+    path: string;
+    text: string;
+    snippet: string;
+    justification: string;
+    solution: string;
+};
+
 /** One file's verdict chip and the notes behind it. */
 export type FileAnalysis = {
     verdict: 'ok' | 'questions' | 'concerns';
@@ -48,6 +62,7 @@ export type FileAnalysis = {
 export type PullAnalysis = {
     comments: ReadonlyMap<number, CommentAnalysis>;
     files: ReadonlyMap<string, FileAnalysis>;
+    findings: ReadonlyArray<PullFinding>;
     overall: { verdict: 'ok' | 'questions' | 'concerns'; notes: string } | null;
 };
 
@@ -60,6 +75,18 @@ const DIFF_LINE_CAP = 120;
 const DIFF_TOTAL_BUDGET = 3000;
 
 const verdictSchema = z.enum(['ok', 'questions', 'concerns']);
+
+// The one format every remark of the reading answers to, both the
+// explanations of the comments people left and the new issues the reading
+// found on its own. The five fields are the contract; the words are the
+// model's.
+const FINDING_ITEM_FORMAT = [
+    '-   путь до файла;',
+    '-   текст замечания;',
+    '-   кусок кода, на который ссылаемся;',
+    '-   обоснование;',
+    '-   предлагаемое решение.',
+].join('\n');
 
 const analysisBlockSchema = z
     .object({
@@ -79,6 +106,22 @@ const analysisBlockSchema = z
                 z.object({
                     verdict: verdictSchema,
                     notes: z.string().nullish(),
+                }),
+            )
+            .nullish(),
+        findings: z
+            .array(
+                z.object({
+                    // The findings are the loosest things the model writes:
+                    // a missing or mistyped field in one finding must not
+                    // sink the whole block — the comments and the verdicts
+                    // ride in it. Anything unreadable reads as absent, and
+                    // the parse loop drops the entries it leaves nothing of.
+                    path: z.string().nullish().catch(undefined),
+                    text: z.string().nullish().catch(undefined),
+                    snippet: z.string().nullish().catch(undefined),
+                    justification: z.string().nullish().catch(undefined),
+                    solution: z.string().nullish().catch(undefined),
                 }),
             )
             .nullish(),
@@ -134,15 +177,29 @@ const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string =
     // verdict demanded over unseen data is a verdict invited to invent.
     const commentIds = scope.comments ? openCommentsOf(view).map((comment) => comment.id).join(', ') : '';
     const filePaths = scope.files ? view.files.map((file) => `\`${file.path}\``).join(', ') : '';
+    // The "new findings" block needs both halves of the material: the diffs
+    // are where an issue is found, the comments are what tells it apart from
+    // an issue somebody already raised. With either half missing there is
+    // no honest "unfound" to report, so the block is not asked for at all.
+    const findingsInMaterial = scope.comments && scope.files;
 
     // What the readable half owes the person: exactly the bodies the scope
     // let into the material, in a fixed order, closing on the whole pull.
+    // The remarks the reading makes answer to one item format — the same
+    // five fields for the comments' explanations and for its own findings.
     const readable: string[] = [];
     if (scope.comments) {
         readable.push(
             commentIds
-                ? `- каждое открытое замечание (${commentIds}): суть в пару строк, справедливо ли оно относительно своей строки/файла — и что сделать, если доработка нужна;`
+                ? `- раздел «Пояснения по существующим комментариям»: каждое открытое замечание (${commentIds}) разобрано строго по формату:\n${FINDING_ITEM_FORMAT}`
                 : '- открытых замечаний в материале нет — этой части в разборе не будет;',
+        );
+    }
+    if (findingsInMaterial) {
+        readable.push(
+            '- раздел «Новые ненайденные замечания», отдельный от предыдущего: проблемы кода, которых не покрывает ни одно из существующих замечаний; каждая — строго по тому же формату:\n' +
+                FINDING_ITEM_FORMAT +
+                '\nЕсли таких нет — прямо скажи об этом в разделе;',
         );
     }
     if (scope.files) {
@@ -167,6 +224,11 @@ const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string =
         '  "comments": { "<id>": { "summary": "суть замечания одной-двумя строками",',
         '                              "justified": true | false,',
         '                              "variants": ["вариант доработки", "..."] } },',
+        '  "findings": [ { "path": "путь файла",',
+        '                  "text": "суть нового замечания",',
+        '                  "snippet": "кусок кода диффа, к которому относится",',
+        '                  "justification": "обоснование",',
+        '                  "solution": "предлагаемое решение" } ],',
         '  "files":    { "<path>": { "verdict": "ok" | "questions" | "concerns",',
         '                            "notes": "почему такой вердикт" } },',
         '  "overall":  { "verdict": "ok" | "questions" | "concerns", "notes": "..." }',
@@ -177,6 +239,9 @@ const outputContract = (view: BitbucketPullView, scope: AnalysisScope): string =
         commentIds
             ? `- «comments»: ключи — только id открытых комментариев из материала (${commentIds}); справедливость оценивается относительно строки/файла, к которым замечание прилинковано. «variants» — только если доработка нужна, иначе пустой список.`
             : '- «comments»: открытых комментариев в материале нет — поле опущено.',
+        findingsInMaterial
+            ? '- «findings»: только новые замечания из одноимённого раздела разбора — те, которых не покрывает ни один открытый комментарий; каждый объект несёт те же пять полей, что в примере. Если новых замечаний нет — пустой список или поле опущено.'
+            : '- «findings»: не запрашивался — поле опущено.',
         filePaths
             ? `- «files»: ключи — только пути файлов из материала (${filePaths}); «verdict» честный: усечённый диф не «ok» без слов о том.`
             : '- «files»: в материале нет файлов — поле опущено.',
@@ -201,9 +266,19 @@ export const previousReadingDigest = (analysis: PullAnalysis): string => {
     for (const [path, entry] of analysis.files) {
         files[path] = { verdict: entry.verdict, notes: entry.notes };
     }
+    // The findings ride along by their gist: what the last reading called
+    // a new issue, and the reasoning and fix it proposed. The snippet stays
+    // behind — the next reading re-finds the code in the fresh material.
+    const findings = analysis.findings.map((finding) => ({
+        path: finding.path,
+        text: finding.text,
+        justification: finding.justification,
+        solution: finding.solution,
+    }));
     return JSON.stringify({
         comments,
         files,
+        findings,
         overall: analysis.overall
             ? { verdict: analysis.overall.verdict, notes: analysis.overall.notes }
             : null,
@@ -403,10 +478,27 @@ export const parseAnalysisResult = (text: string): PullAnalysis | null => {
         files.set(key.trim(), { verdict: entry.verdict, notes: (entry.notes ?? '').trim() });
     }
 
+    // The findings are the reading's own: an entry without a place or a
+    // point is noise, and the panel cannot hang it anywhere. The schema's
+    // per-field catch keeps a mistyped entry from sinking its neighbors.
+    const findings: PullFinding[] = [];
+    for (const entry of parsed.data.findings ?? []) {
+        const path = (entry.path ?? '').trim();
+        const text = (entry.text ?? '').trim();
+        if (!path || !text) continue;
+        findings.push({
+            path,
+            text,
+            snippet: (entry.snippet ?? '').trim(),
+            justification: (entry.justification ?? '').trim(),
+            solution: (entry.solution ?? '').trim(),
+        });
+    }
+
     const overall = parsed.data.overall
         ? { verdict: parsed.data.overall.verdict, notes: (parsed.data.overall.notes ?? '').trim() }
         : null;
 
-    if (comments.size === 0 && files.size === 0 && overall === null) return null;
-    return { comments, files, overall };
+    if (comments.size === 0 && files.size === 0 && findings.length === 0 && overall === null) return null;
+    return { comments, files, findings, overall };
 };

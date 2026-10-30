@@ -29,7 +29,7 @@ import {
     parseDiffRows,
     type DiffRow,
 } from '@/lib/bitbucket/pullDiff';
-import type { AnalysisScope, CommentAnalysis } from './pullAnalysis';
+import type { AnalysisScope, CommentAnalysis, PullFinding } from './pullAnalysis';
 import { clickedLine, draggedOverLine, emptySpan, type SpanState } from './pullSpan';
 import { usePullAnalysis } from './usePullAnalysis';
 import { buildPullFileTree, type PullFileRow } from './pullFileTree';
@@ -570,6 +570,10 @@ export const BitbucketPullBody: React.FC<{ view: BitbucketPullView }> = ({ view 
                                 <SimpleMarkdownRenderer content={reading.analysis.overall.notes} disableLinkSafety variant="tool" enableFileReferences={false} />
                             </div>
                         </section>
+                    ) : null}
+
+                    {reading.analysis && reading.analysis.findings.length > 0 ? (
+                        <FindingsBlock findings={reading.analysis.findings} />
                     ) : null}
 
                     {reading.history.length > 1 ? (
@@ -1278,5 +1282,64 @@ const PullDiffExcerpt: React.FC<{
                 })}
             </div>
         </div>
+    );
+};
+
+/**
+ * The reading's own catches: the issues the reading found that no open
+ * comment covers, each card holding the five fields the answer contract
+ * demands — where (the path), what (the text), the code it talks about
+ * (the snippet), and the reading's own words on both the why and the fix.
+ * The snippet is plain quoted code, not a diff window: there is no line to
+ * anchor on, so it reads like the comment cards' own quoted code, in the
+ * same frame and the same `--text-code` type the excerpts use.
+ */
+const FindingsBlock: React.FC<{ findings: ReadonlyArray<PullFinding> }> = ({ findings }) => {
+    const { t } = useI18n();
+    return (
+        <section className="space-y-1.5">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t('chat.workStatus.teamBoard.pullView.newFindingsTitle')}
+            </div>
+            <div className="space-y-2">
+                {findings.map((finding, index) => (
+                    <article
+                        key={index}
+                        className="space-y-1.5 rounded-lg border border-border bg-[var(--surface-muted)]/40 px-2.5 py-2"
+                    >
+                        <div className="font-mono text-[12px] text-muted-foreground">{finding.path}</div>
+                        <SimpleMarkdownRenderer content={finding.text} disableLinkSafety variant="tool" enableFileReferences={false} />
+                        {finding.snippet ? (
+                            <div className="overflow-hidden rounded-2xl border border-border/80 bg-[var(--surface-elevated)]">
+                                <div className="flex items-center border-b border-border/70 px-3 py-1.5">
+                                    <span className="font-mono text-[13px] text-muted-foreground">
+                                        {getLanguageFromExtension(finding.path) ?? 'text'}
+                                    </span>
+                                </div>
+                                <pre className="overflow-x-auto px-3 py-2.5 font-mono text-[length:var(--text-code)] leading-relaxed">
+                                    <code>{finding.snippet}</code>
+                                </pre>
+                            </div>
+                        ) : null}
+                        {finding.justification ? (
+                            <div className="space-y-0.5 text-[12px]">
+                                <div className="text-[11px] font-medium text-muted-foreground">
+                                    {t('chat.workStatus.teamBoard.pullView.findingJustification')}
+                                </div>
+                                <SimpleMarkdownRenderer content={finding.justification} disableLinkSafety variant="tool" enableFileReferences={false} />
+                            </div>
+                        ) : null}
+                        {finding.solution ? (
+                            <div className="space-y-0.5 text-[12px]">
+                                <div className="text-[11px] font-medium text-muted-foreground">
+                                    {t('chat.workStatus.teamBoard.pullView.findingSolution')}
+                                </div>
+                                <SimpleMarkdownRenderer content={finding.solution} disableLinkSafety variant="tool" enableFileReferences={false} />
+                            </div>
+                        ) : null}
+                    </article>
+                ))}
+            </div>
+        </section>
     );
 };

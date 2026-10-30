@@ -118,6 +118,15 @@
     width: 100%;
   }
 
+  /* The mini-chat window is its own surface with no room for a centered
+     column: the transcript and the composer fill whatever width the user
+     gave the window. */
+  .mini-chat-layout .chat-column,
+  .mini-chat-layout .chat-input-column,
+  .mini-chat-layout .chat-message-column {
+    width: 100%;
+  }
+
   /* On a wide window the side padding follows the chat's own width (a
      percentage padding resolves against the parent's width), so a chat
      squeezed beside an expanded context panel takes 1rem instead of the
@@ -239,6 +248,10 @@
 }
 
 .wide-chat-layout .chat-message-column {
+  width: 100%;
+}
+
+.mini-chat-layout .chat-message-column {
   width: 100%;
 }
 

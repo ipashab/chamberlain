@@ -9,6 +9,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
   type Modifier,
 } from '@dnd-kit/core';
 import {
@@ -41,6 +42,8 @@ import { sessionTabChatsScope, sessionTabScopeFor, sessionTabSeedFor } from '@/l
 import { closeSessionTabAndActivateNeighbour } from '@/lib/sessionTabs';
 import { useGlobalSessionsStore, resolveGlobalSessionDirectory } from '@/stores/useGlobalSessionsStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
+import { trackRegionDrop, type RegionDropGesture } from './regionDropGesture';
+import { resolveEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { useSessionUnread } from '@/sync/session-unread';
 import { useIsSessionAiRenamePending } from '@/sync/use-session-ai-rename';
 import { useMultiRunMemberIds } from '@/lib/multirun/useMultiRuns';
@@ -48,6 +51,10 @@ import { SessionProjectIcon } from './SessionProjectIcon';
 import { SESSION_TAB_EDGE_FADE_PX, sessionTabRevealDelta } from './sessionTabReveal';
 
 const restrictToXAxis: Modifier = ({ transform }) => ({ ...transform, y: 0 });
+
+// How far past the strip's top and bottom a drag still counts as inside it;
+// the same slack the region tab strips use (sortable-tabs-strip).
+const DRAG_OUT_SLACK_PX = 16;
 
 // Firefox can report wheel deltas in lines rather than pixels.
 const WHEEL_LINE_PIXELS = 16;
@@ -414,11 +421,51 @@ export const SessionTabsStrip: React.FC<{
   );
 
   const handleDragEnd = React.useCallback((event: DragEndEvent) => {
+    // A tab dragged out over a workspace region opened its session there;
+    // the strip keeps its own order for the tabs that stayed.
+    const regionDrop = regionDropRef.current;
+    regionDropRef.current = null;
+    if (regionDrop?.finish()) return;
     const { active, over } = event;
     if (over && active.id !== over.id) {
       reorderTabs(String(active.id), String(over.id));
     }
   }, [reorderTabs]);
+
+  // A tab dragged past the strip opens its session on the workspace layout:
+  // the shared region gesture owns the targets, the split an edge names, and
+  // the drop itself.
+  const regionDropRef = React.useRef<RegionDropGesture | null>(null);
+  const handleDragStart = React.useCallback((event: DragStartEvent) => {
+    const strip = scrollRef.current;
+    const session = sessionsById.get(String(event.active.id));
+    if (!strip || !session) return;
+    const rect = strip.getBoundingClientRect();
+    const sessionDirectory = resolveGlobalSessionDirectory(session);
+    // A session with no directory cannot resolve a chat tab; the strip keeps
+    // its own reorder for such a drag.
+    if (!sessionDirectory) return;
+    const directoryKey = resolveEffectiveDirectory() || sessionDirectory;
+    regionDropRef.current?.cancel();
+    regionDropRef.current = trackRegionDrop({
+      kind: 'session',
+      directoryKey,
+      sessionId: session.id,
+      sessionDirectory,
+      label: session.title ?? '',
+    }, (point) => (
+      // The same slack the region tab strips use: a pointer level with the
+      // strip counts as inside it, so the reorder and the drop do not trade
+      // places over a 16px front of the strip.
+      point.x < rect.left || point.x > rect.right
+      || point.y < rect.top - DRAG_OUT_SLACK_PX || point.y > rect.bottom + DRAG_OUT_SLACK_PX
+    ));
+  }, [sessionsById]);
+  const handleDragCancel = React.useCallback(() => {
+    regionDropRef.current?.cancel();
+    regionDropRef.current = null;
+  }, []);
+  React.useEffect(() => () => regionDropRef.current?.cancel(), []);
 
   // Soft fade at the edges while more tabs hide behind them.
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
@@ -483,6 +530,8 @@ export const SessionTabsStrip: React.FC<{
           sensors={sensors}
           collisionDetection={closestCenter}
           modifiers={[restrictToXAxis]}
+          onDragStart={handleDragStart}
+          onDragCancel={handleDragCancel}
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={tabIdsInOrder} strategy={isRtl ? rectSortingStrategy : horizontalListSortingStrategy}>
