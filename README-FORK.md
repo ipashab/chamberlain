@@ -15,7 +15,7 @@ Fork base: upstream `733fa61` (2026-10-07, upstream version `2.2.0`) at
 the start; since `2.4.0-fork1` the app itself ships as **Chamberlain**,
 its own name, appId and icon beside stock OpenChamber. The fork keeps
 upstream's version and adds a prerelease marker, `forkN`, bumping on
-each fork patch: currently `2.5.3-fork1` on upstream `2.5.3`.
+each fork patch: currently `2.5.3-fork2` on upstream `2.5.3`.
 
 Owning docs that move with the code:
 
@@ -240,6 +240,29 @@ single-child folder chains fold, rows carry counts and state badges —
 and the picked file opens whole to its right, the diff scrolling while
 the tree stays put. Picking another file moves the reading pane, not the
 tree; a narrow host keeps the inline tree as before.
+
+### Regions hold chats and files, and drag — `b9f9e9dd0`
+
+A region of the docked layout hosts the session's own chat or a file
+opened into it. Every file tab keeps its own editor pane pinned to the
+tab's path, so two files read side by side in two regions, and a pane no
+region shows stays mounted and hidden — an unsaved draft survives the
+switch. A region drags by its header, a tab drags out of its strip, a
+session drags in from the sidebar: over a region's middle the dragged
+thing becomes a tab there, over a border quarter the region splits and
+it lands beside what was already there. A session that can land nowhere
+never drags; a folder drop no longer reads row edit state. The desktop
+window shows the splash at once on `ready` and the main bundle adopts it;
+the mini-chat window fills its own width.
+
+### The pull reading reports its own findings — `b9f9e9dd0`
+
+The analysis answers in two sections — the open comments' explanations
+and the new findings no comment covers — every item in one five-field
+format: the path, the remark, the code, the justification, the fix. The
+findings ride the machine digest, render as their own panel block, and a
+repeat reading gets them in its upfront digest so they are re-judged, not
+forgotten.
 
 ## Distribution
 

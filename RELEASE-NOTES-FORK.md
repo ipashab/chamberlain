@@ -2,13 +2,55 @@
 
 **Base:** upstream `openchamber/openchamber` @ `95af6769` (v2.5.3), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.5.3-fork1` on `v2.5.3`, `2.5.2-fork1` on `v2.5.2`, and before that
+`2.5.3-fork2` and `2.5.3-fork1` on `v2.5.3`, `2.5.2-fork1` on `v2.5.2`,
+and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
 changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
 `changelog/` — `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.5.3-fork2` — regions hold chats and files; readings report their own findings
+
+**The workspace regions hold things.** A region of the docked layout can
+now host the session's own chat, or a file opened into it: every file tab
+keeps its own editor pane pinned to the tab's path, so two files read side
+by side in two regions, and a pane not shown in any region stays mounted
+and hidden — an unsaved draft survives the region switch. Chat tabs work
+the same way: one pane per region, so two forks of one task sit next to
+each other.
+
+**And they move.** A region drags by its header, a tab drags out of its
+strip, a session drags in from the sidebar — into one shared gesture.
+Released over a region's middle, the dragged thing becomes a tab of that
+region; released over a border quarter, the region splits in two along
+that edge and the newcomer lands beside — never over — what was already
+there. The drag starts only after a small move, so a header click still
+clicks; a session that can land in neither a folder nor the workspace
+never drags at all, instead of swallowing the click that started it; and
+a folder drop no longer depends on row edit or menu state. A project
+switch mid-drag unmounts nothing — the gesture's payload is dropped
+cleanly.
+
+**The window greets you sooner.** The desktop window appears on the
+splash the moment Electron fires `ready`; the main bundle, whose graph
+takes a few hundred milliseconds to evaluate, adopts that first window
+afterwards instead of making it wait. The mini-chat window fills its own
+width with the transcript and composer — a standalone window has no room
+for a centered column.
+
+**The pull reading reports what the comments miss.** The analysis
+answers in two sections now — the explanations of the open comments, and
+the new findings no comment covers — with every item of both sections held
+to one five-field format: the path, the remark, the code it talks about,
+the justification, the proposed fix. The findings ride the machine digest,
+render as their own block in the panel, and a repeat reading gets them in
+its upfront digest so they are re-judged, not forgotten. Each finding field
+in the block is read forgivingly: one mistyped entry does not sink the
+rest of the reading.
 
 ---
 
