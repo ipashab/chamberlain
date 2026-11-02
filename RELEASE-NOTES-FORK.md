@@ -2,7 +2,7 @@
 
 **Base:** upstream `openchamber/openchamber` @ `5731991` (v2.6.0), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `v2.5.3`,
+`2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `v2.5.3`,
 `2.5.2-fork1` on `v2.5.2`, and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
@@ -10,6 +10,23 @@ changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
 `changelog/` — `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.6.0-fork2` — the merge's lost parameter back, the suite honest about it
+
+**A merge resolution had eaten a parameter.** Settling upstream `v2.6.0`'s
+63 conflicts took `createToolEntry` from upstream's side, whose signature
+carries no `longRunning` — while the fork's calls still passed
+`longRunning: true` and interpolated it into timeouts. The generated
+plugin then died on a `ReferenceError` the moment a managed OpenCode
+came up. The parameter is back in the signature, one line, and the suite
+holds it: the runtime test that upstream's image-tool wave brought in
+expects the fork's always-on tools — team, tracker, contacts, backlog —
+beside the secret tool, an image the fork has always shipped rather than
+the lone tool upstream's test waited for. With both repairs the managed
+runtime comes up clean again — `isOpenCodeReady` true, the server
+serving, and the suite at its full hundred.
 
 ---
 
