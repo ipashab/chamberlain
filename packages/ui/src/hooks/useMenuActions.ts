@@ -72,7 +72,7 @@ type MenuAction =
   | 'open-right-sidebar-git'
   | 'open-right-sidebar-files'
   | 'toggle-terminal'
-  | 'toggle-terminal-expanded'
+  | 'toggle-context-panel-expanded'
   | 'copy'
   | 'add-selection-to-chat'
   | 'theme-light'
@@ -237,7 +237,7 @@ export const useMenuActions = (
           break;
         }
 
-        case 'toggle-terminal-expanded': {
+        case 'toggle-context-panel-expanded': {
           const directory = useDirectoryStore.getState().currentDirectory;
           if (!directory) break;
           // The expanded zone is gone with zones; the toggle now shows the
@@ -245,7 +245,6 @@ export const useMenuActions = (
           // idempotent when one already shows it.
           useUIStore.getState().openContextSurface(normalizeContextPanelDirectoryKey(directory), 'terminal');
           break;
-        }
 
         case 'copy': {
           const copyEvent = new Event('openchamber:copy', { cancelable: true });

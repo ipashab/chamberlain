@@ -37,6 +37,12 @@
     "pythonInterpreter": {
       "scope": "instance"
     },
+    "serverUpdateChannel": {
+      "scope": "instance",
+      "surfaces": [
+        "web"
+      ]
+    },
     "projects": {
       "scope": "instance"
     },
@@ -66,6 +72,12 @@
       ]
     },
     "desktopMinimizeToTrayEnabled": {
+      "scope": "instance",
+      "surfaces": [
+        "desktop"
+      ]
+    },
+    "desktopUpdateChannel": {
       "scope": "instance",
       "surfaces": [
         "desktop"
@@ -180,6 +192,9 @@
     "agentImageModel": {
       "scope": "instance"
     },
+    "agentSecretToolEnabled": {
+      "scope": "instance"
+    },
     "agentToolsCodeMode": {
       "scope": "instance"
     },
@@ -220,6 +235,9 @@
     "openCodeUpdateToastDismissedVersion": {
       "scope": "instance"
     },
+    "openCodeProjectImportCompleted": {
+      "scope": "instance"
+    },
     "autoDeleteEnabled": {
       "scope": "instance"
     },
@@ -250,10 +268,16 @@
     "dictationEnabled": {
       "scope": "profile"
     },
+    "dictationAutoSend": {
+      "scope": "profile"
+    },
     "sttProvider": {
       "scope": "instance"
     },
     "sttServerUrl": {
+      "scope": "instance"
+    },
+    "sttEndpointPath": {
       "scope": "instance"
     },
     "sttModel": {
@@ -347,6 +371,16 @@
     },
     "sidebarWorktreeNameByBranch": {
       "scope": "profile"
+    },
+    "sidebarSections": {
+      "scope": "profile"
+    },
+    "sidebarPinLists": {
+      "scope": "profile"
+    },
+    "sidebarHiddenSections": {
+      "scope": "profile",
+      "perSurface": true
     },
     "workStatusSectionOrder": {
       "scope": "profile"
@@ -464,6 +498,9 @@
       "scope": "profile"
     },
     "autoSaveEnabled": {
+      "scope": "profile"
+    },
+    "fileEditorWrapLines": {
       "scope": "profile"
     },
     "confirmFileTreeMove": {
@@ -675,6 +712,9 @@
     "recentEfforts": {
       "scope": "profile"
     },
+    "lastUsedEfforts": {
+      "scope": "profile"
+    },
     "providerOrder": {
       "scope": "profile"
     },
@@ -856,6 +896,10 @@
       "local": true
     },
     "contextZoneSizes": {
+      "scope": "device",
+      "local": true
+    },
+    "contextZoneExpandedChatSizes": {
       "scope": "device",
       "local": true
     },

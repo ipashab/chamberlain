@@ -4,22 +4,21 @@ import {
   DragOverlay,
   MouseSensor,
   TouchSensor,
-  useSensor,
-  useSensors,
   useDraggable,
   useDroppable,
+  useSensor,
+  useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { Icon } from "@/components/icon/Icon";
 import { sessionFolderCollision } from './sessionFolderCollision';
-import { getSessionFolderIdentityKey, isArchivedFolderScope } from '../sessions/sessionFolderIdentity';
+import { Icon } from '@/components/icon/Icon';
+import { getSessionDragId, getSessionFolderDropId, isArchivedFolderScope } from '../sessions/sessionFolderIdentity';
 import { resolveEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { trackRegionDrop, applyRegionDrop, resolveRegionDropTarget, type RegionDropGesture } from '@/components/layout/regionDropGesture';
 
 /** Body class shown while a session row drag is live; CSS turns every
  * context-panel region into a visible drop target. */
 const SESSION_DRAG_BODY_CLASS = 'oc-session-dragging';
-
 
 type SessionFolderDropTarget = {
   folderId: string;
@@ -102,7 +101,7 @@ export const DroppableFolderWrapper: React.FC<{
   ) => React.ReactNode;
 }> = ({ folderId, scopeKey, ownerKey, disabled = false, children }) => {
   const { setNodeRef, isOver } = useDroppable({
-    id: `folder-drop:${getSessionFolderIdentityKey(scopeKey, folderId)}`,
+    id: getSessionFolderDropId(scopeKey, folderId),
     disabled: disabled || isArchivedFolderScope(scopeKey),
     data: { type: 'folder', folderId, scopeKey, ownerKey },
   });

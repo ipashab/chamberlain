@@ -245,6 +245,8 @@ const CONTEXT_PANEL_MAX_PERSISTED_WIDTH = 10000;
 /** Per surface, not per panel: see clampContextPanelTabs. */
 const CONTEXT_PANEL_MAX_TABS = 12;
 const CONTEXT_PANEL_MAX_LABEL_LENGTH = 120;
+// Keep the most recently changed model preferences.
+const MAX_LAST_USED_EFFORTS = 512;
 const LEFT_SIDEBAR_DEFAULT_WIDTH = 280;
 /** Separates browser tabs opened in the same millisecond. */
 let browserTabSequence = 0;
@@ -301,7 +303,9 @@ const normalizeContextTargetPath = (value: string | null | undefined): string | 
     return null;
   }
 
-  return trimmed.replace(/\\/g, '/');
+  // Absolute file targets are already resolved; edge spaces belong to the name.
+  const path = /^(?:[\\/]|[A-Za-z]:[\\/])/.test(value) ? value : trimmed;
+  return path.replace(/\\/g, '/');
 };
 
 const normalizeContextTargetDirectory = (value: string | null | undefined): string | null => {
@@ -371,6 +375,8 @@ const normalizeContextPanelTabDedupeKey = (
   if (mode === 'diff') {
     return mode;
   }
+
+  if (mode === 'file' && dedupeKey === targetPath && targetPath) return targetPath;
 
   if (typeof dedupeKey === 'string') {
     const trimmed = dedupeKey.trim();
@@ -1052,6 +1058,11 @@ interface UIStore {
       every surface the zone shows, so neither switching folders nor
       switching surfaces moves the zone's edge; unset opens at the default. */
   contextZoneSizes: Partial<Record<ContextZone, number>>;
+  /** Expanded, a zone leaves the chat this many px (the bottom zone: of
+      height), as the user resized it there; unset leaves the default column.
+      Kept apart from `contextZoneSizes`, so the docked and the expanded zone
+      each keep the size the user gave them. */
+  contextZoneExpandedChatSizes: Partial<Record<ContextZone, number>>;
   /** Expanded collapsible sections of the in-chat work-status panel, by id. */
   workStatusExpandedSections: Record<string, boolean>;
   /**
@@ -1188,6 +1199,8 @@ interface UIStore {
   autoDeleteEnabled: boolean;
   /** Global file-editor autosave. Default true for backward compatibility. */
   autoSaveEnabled: boolean;
+  /** Long lines in the Files editor and viewer wrap instead of scrolling sideways. */
+  fileEditorWrapLines: boolean;
   /** Ask before a drag in the files tree moves a file or folder. */
   confirmFileTreeMove: boolean;
   /**
@@ -1244,6 +1257,11 @@ interface UIStore {
   /** Agents starred in the agent menu. While any of them is available, agent cycling (Tab) goes through those only. */
   favoriteAgents: string[];
   recentEfforts: Record<string, string[]>;
+  /**
+   * The last chosen thinking level per `provider/model`.
+   * `null` is an explicit Default; a missing key is no preference.
+   */
+  lastUsedEfforts: Record<string, string | null>;
 
   diffLayoutPreference: 'dynamic' | 'inline' | 'side-by-side';
   diffFileLayout: Record<string, 'inline' | 'side-by-side'>;
@@ -1309,6 +1327,7 @@ interface UIStore {
   agentRenderToolEnabled: boolean;
   /** Whether agents may drive the debug panel's debugpy run. */
   agentDebuggerToolEnabled: boolean;
+  agentSecretToolEnabled: boolean;
   agentWorkflowToolEnabled: boolean;
   /** Whether OpenChamber's agent tools sit behind OpenCode's Code Mode instead of being direct tools. */
   agentToolsCodeMode: boolean;
@@ -1317,12 +1336,12 @@ interface UIStore {
   /** The permission mode the server writes onto each new top-level session. */
   permissionDefaultMode: PermissionMode;
   /**
-   * Whether this build has agent memory at all. Server-owned and not
-   * persisted: an unreleased feature must not come back from a stale cache.
+   * Whether an OpenChamber server backs agent memory here; false in VS Code.
+   * Server-owned and not persisted.
    */
   agentMemoryFeatureAvailable: boolean;
   /**
-   * Whether this build has agent workflows (`OPENCHAMBER_WORKFLOWS_ENABLE`).
+   * Whether an OpenChamber server backs agent workflows here; false in VS Code.
    * Server-owned and not persisted, for the same reason as the memory flag.
    */
   agentWorkflowFeatureAvailable: boolean;
@@ -1426,7 +1445,11 @@ interface UIStore {
   toggleContextPanelExpanded: (directory: string, zone?: ContextZone) => void;
   /** Width for a side zone, height for the bottom one; shared by its surfaces and folders. */
   setContextZoneSize: (zone: ContextZone, size: number) => void;
-  /** Moves a surface to another zone: left, right or bottom. */
+  setContextZoneExpandedChatSize: (zone: ContextZone, size: number) => void;
+  /**
+   * Places a surface in a zone for every project on this device. Where it is
+   * on screen it goes along: the zone it left closes and the new one opens on it.
+   */
   moveContextSurfaceToZone: (mode: ContextPanelMode, zone: ContextZone) => void;
   /**
    * Splits one region of the layout in two: a layout leaf by its id, or
@@ -1560,6 +1583,7 @@ interface UIStore {
   setMergedWorktreeCleanupEnabled: (value: boolean) => void;
   setWorktreeArchiveOnDoneEnabled: (value: boolean) => void;
   setAutoSaveEnabled: (value: boolean) => void;
+  setFileEditorWrapLines: (value: boolean) => void;
   setConfirmFileTreeMove: (value: boolean) => void;
   setLayoutAnimations: (value: boolean) => void;
   setOpenLinksInBrowserPanel: (value: boolean) => void;
@@ -1611,6 +1635,7 @@ interface UIStore {
   addRecentAgent: (agentName: string) => void;
   toggleFavoriteAgent: (agentName: string) => void;
   addRecentEffort: (providerID: string, modelID: string, variant: string | undefined) => void;
+  rememberLastUsedEffort: (providerID: string, modelID: string, variant: string | null) => void;
   setDiffLayoutPreference: (mode: 'dynamic' | 'inline' | 'side-by-side') => void;
   /** The layout setting for every diff, dropping the per-file choices (the Changes header toggle). */
   setDiffLayoutForAllFiles: (mode: 'inline' | 'side-by-side') => void;
@@ -1659,6 +1684,7 @@ interface UIStore {
   setAgentImageModel: (value: string) => void;
   setAgentRenderToolEnabled: (value: boolean) => void;
   setAgentDebuggerToolEnabled: (value: boolean) => void;
+  setAgentSecretToolEnabled: (value: boolean) => void;
   setAgentWorkflowToolEnabled: (value: boolean) => void;
   setAgentToolsCodeMode: (value: boolean) => void;
   setIsolatedSpacesEnabled: (value: boolean) => void;
@@ -1748,6 +1774,7 @@ export const useUIStore = create<UIStore>()(
         contextEditorVisible: true,
         contextEditorTreeWidth: 240,
         contextZoneSizes: {},
+        contextZoneExpandedChatSizes: {},
         workStatusExpandedSections: {},
         messageQueueExpanded: false,
         workStatusScrollTop: 0,
@@ -1822,6 +1849,7 @@ export const useUIStore = create<UIStore>()(
         showDeletionDialog: true,
         autoDeleteEnabled: false,
         autoSaveEnabled: true,
+        fileEditorWrapLines: true,
         confirmFileTreeMove: true,
         layoutAnimations: true,
         openLinksInBrowserPanel: false,
@@ -1860,6 +1888,7 @@ export const useUIStore = create<UIStore>()(
         recentAgents: [],
         favoriteAgents: [],
         recentEfforts: {},
+        lastUsedEfforts: {},
         diffLayoutPreference: 'inline',
         diffFileLayout: {},
         diffWrapLines: false,
@@ -1912,6 +1941,7 @@ export const useUIStore = create<UIStore>()(
         agentImageModel: '',
         agentRenderToolEnabled: true,
         agentDebuggerToolEnabled: true,
+        agentSecretToolEnabled: true,
         agentWorkflowToolEnabled: true,
         agentToolsCodeMode: false,
         isolatedSpacesEnabled: false,
@@ -2748,6 +2778,11 @@ export const useUIStore = create<UIStore>()(
           set((state) => ({ contextZoneSizes: { ...state.contextZoneSizes, [zone]: clampContextZoneSize(zone, size) } }));
         },
 
+        setContextZoneExpandedChatSize: (zone, size) => {
+          if (!Number.isFinite(size)) return;
+          set((state) => ({ contextZoneExpandedChatSizes: { ...state.contextZoneExpandedChatSizes, [zone]: Math.max(0, Math.round(size)) } }));
+        },
+
         moveContextSurfaceToZone: (mode, zone) => {
           set((state) => {
             const from = zoneOfMode(state.contextSurfaceZones, mode);
@@ -3299,6 +3334,10 @@ export const useUIStore = create<UIStore>()(
           set({ autoSaveEnabled: value });
         },
 
+        setFileEditorWrapLines: (value) => {
+          set({ fileEditorWrapLines: value });
+        },
+
         setConfirmFileTreeMove: (value) => {
           set({ confirmFileTreeMove: value });
         },
@@ -3734,8 +3773,8 @@ export const useUIStore = create<UIStore>()(
         },
 
         addRecentEffort: (providerID, modelID, variant) => {
-          const provider = typeof providerID === 'string' ? providerID.trim() : '';
-          const model = typeof modelID === 'string' ? modelID.trim() : '';
+          const provider = providerID.trim();
+          const model = modelID.trim();
           if (!provider || !model) {
             return;
           }
@@ -3752,6 +3791,26 @@ export const useUIStore = create<UIStore>()(
                 ...state.recentEfforts,
                 [key]: [normalizedVariant, ...filtered].slice(0, 5),
               },
+            };
+          });
+        },
+
+        rememberLastUsedEffort: (providerID, modelID, variant) => {
+          const provider = typeof providerID === 'string' ? providerID.trim() : '';
+          const model = typeof modelID === 'string' ? modelID.trim() : '';
+          if (!provider || !model) {
+            return;
+          }
+          const key = `${provider}/${model}`;
+          const normalizedVariant = variant?.trim() || null;
+          set((state) => {
+            if (state.lastUsedEfforts[key] === normalizedVariant) {
+              return state;
+            }
+            const entries = Object.entries(state.lastUsedEfforts).filter(([entryKey]) => entryKey !== key);
+            entries.push([key, normalizedVariant]);
+            return {
+              lastUsedEfforts: Object.fromEntries(entries.slice(-MAX_LAST_USED_EFFORTS)),
             };
           });
         },
@@ -3899,8 +3958,17 @@ export const useUIStore = create<UIStore>()(
         setAgentDebuggerToolEnabled: (value) => {
           set({ agentDebuggerToolEnabled: value });
         },
+        setAgentSecretToolEnabled: (value) => {
+          set({ agentSecretToolEnabled: value });
+        },
         setAgentWorkflowToolEnabled: (value) => {
           set({ agentWorkflowToolEnabled: value });
+          if (value) return;
+          // Off hides workflows (`selectWorkflowsShown`), so an open Workflows tab closes too.
+          for (const [directory, panel] of Object.entries(get().contextPanelByDirectory)) {
+            const workflowTabIds = panel.tabs.filter((tab) => tab.mode === 'workflows').map((tab) => tab.id);
+            if (workflowTabIds.length > 0) get().closeContextPanelTabs(directory, workflowTabIds);
+          }
         },
         setAgentToolsCodeMode: (value) => {
           set({ agentToolsCodeMode: value });
@@ -4362,6 +4430,7 @@ export const useUIStore = create<UIStore>()(
           contextEditorVisible: state.contextEditorVisible,
           contextEditorTreeWidth: state.contextEditorTreeWidth,
           contextZoneSizes: state.contextZoneSizes,
+          contextZoneExpandedChatSizes: state.contextZoneExpandedChatSizes,
           workStatusExpandedSections: state.workStatusExpandedSections,
           messageQueueExpanded: state.messageQueueExpanded,
           workStatusScrollTop: state.workStatusScrollTop,
@@ -4396,6 +4465,7 @@ export const useUIStore = create<UIStore>()(
           showDeletionDialog: state.showDeletionDialog,
           autoDeleteEnabled: state.autoDeleteEnabled,
           autoSaveEnabled: state.autoSaveEnabled,
+          fileEditorWrapLines: state.fileEditorWrapLines,
           confirmFileTreeMove: state.confirmFileTreeMove,
           layoutAnimations: state.layoutAnimations,
           openLinksInBrowserPanel: state.openLinksInBrowserPanel,
@@ -4432,6 +4502,7 @@ export const useUIStore = create<UIStore>()(
           recentAgents: state.recentAgents,
           favoriteAgents: state.favoriteAgents,
           recentEfforts: state.recentEfforts,
+          lastUsedEfforts: state.lastUsedEfforts,
           diffLayoutPreference: state.diffLayoutPreference,
           diffWrapLines: state.diffWrapLines,
           diffHideWhitespace: state.diffHideWhitespace,
@@ -4470,6 +4541,7 @@ export const useUIStore = create<UIStore>()(
           agentImageModel: state.agentImageModel,
           agentRenderToolEnabled: state.agentRenderToolEnabled,
           agentDebuggerToolEnabled: state.agentDebuggerToolEnabled,
+          agentSecretToolEnabled: state.agentSecretToolEnabled,
           agentWorkflowToolEnabled: state.agentWorkflowToolEnabled,
           agentToolsCodeMode: state.agentToolsCodeMode,
           isolatedSpacesEnabled: state.isolatedSpacesEnabled,

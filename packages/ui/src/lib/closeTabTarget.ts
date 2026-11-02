@@ -4,50 +4,73 @@ import { hasDesktopInvoke, invokeDesktop } from '@/lib/desktop';
  * What Cmd/Ctrl+W closes in the desktop app.
  *
  * The window menu owns the shortcut, so the page cannot catch the key itself.
- * A surface with a tab of its own (a file open in Files) registers here; the
- * desktop shell is told whether one is registered, and while one is, the
- * shortcut arrives as an `openchamber:close-tab` event instead of closing the
- * window. The surface with keyboard focus wins; without one, the last
- * registered surface wins. Several file panes can be registered at once —
- * two layout regions, each showing its own file — and focus is what tells
- * them apart.
+ * A surface with a tab of its own (a file open in the editor, a terminal, a
+ * browser tab) registers here; the desktop shell is told whether one is
+ * registered, and while one is, the shortcut arrives as an
+ * `openchamber:close-tab` event instead of closing the window.
+ *
+ * The surface the user clicked or focused last wins. A surface's place is the
+ * zone it sits in (`[data-context-zone]`), so a click on the zone's tab strip
+ * counts as much as one in its content. When places nest, such as the header's
+ * session tabs registered on the whole page around a zone with tabs, a click
+ * counts for the innermost one, so a click in that zone goes to its tabs and
+ * a click anywhere else, a zone without tabs included, to the sessions'.
+ * Registering counts as being used, so a surface just shown wins until the
+ * user goes elsewhere.
  */
-type CloseTabTarget = {
-  close: () => void;
-  /** Whether the registered node holds keyboard focus right now. */
-  ownsFocus?: () => boolean;
-};
+type Target = { close: () => void; area: { current: Element | null }; usedAt: number };
 
-const handlers: Array<CloseTabTarget> = [];
+const targets: Target[] = [];
+let clock = 0;
 let listening = false;
 
 const report = (): void => {
   if (!hasDesktopInvoke()) return;
-  void invokeDesktop('desktop_set_close_tab_target', { active: handlers.length > 0 });
+  void invokeDesktop('desktop_set_close_tab_target', { active: targets.length > 0 });
+};
+
+const placeOf = (element: Element): Element => element.closest('[data-context-zone]') ?? element;
+
+const handleUse = (event: Event): void => {
+  const node = event.target;
+  if (!(node instanceof Node)) return;
+  const hits: Array<{ target: Target; place: Element }> = [];
+  for (const target of targets) {
+    const area = target.area.current;
+    const place = area ? placeOf(area) : null;
+    if (place?.contains(node)) hits.push({ target, place });
+  }
+  // Only the innermost places count: a click in a zone with tabs goes to
+  // them, not to a target around the zone.
+  for (const hit of hits) {
+    const outer = hits.some((other) => other.place !== hit.place && hit.place.contains(other.place));
+    if (!outer) hit.target.usedAt = ++clock;
+  }
 };
 
 const handleCloseTab = (): void => {
-  for (let index = handlers.length - 1; index >= 0; index -= 1) {
-    const target = handlers[index];
-    if (target.ownsFocus?.()) {
-      target.close();
-      return;
-    }
+  let latest: Target | undefined;
+  for (const target of targets) {
+    if (!latest || target.usedAt > latest.usedAt) latest = target;
   }
-  handlers[handlers.length - 1]?.close();
+  latest?.close();
 };
 
-export const registerCloseTabTarget = (close: () => void, ownsFocus?: () => boolean): (() => void) => {
+export const registerCloseTabTarget = (close: () => void, area: { current: Element | null }): (() => void) => {
   if (!listening) {
     window.addEventListener('openchamber:close-tab', handleCloseTab);
+    window.addEventListener('pointerdown', handleUse, true);
+    // `focus`, captured: a click into a browser tab's page focuses its
+    // `<webview>` with a `focus` event only, no `focusin` and no pointer event.
+    window.addEventListener('focus', handleUse, true);
     listening = true;
   }
-  const target: CloseTabTarget = { close, ownsFocus };
-  handlers.push(target);
+  const target: Target = { close, area, usedAt: ++clock };
+  targets.push(target);
   report();
   return () => {
-    const index = handlers.lastIndexOf(target);
-    if (index >= 0) handlers.splice(index, 1);
+    const index = targets.indexOf(target);
+    if (index >= 0) targets.splice(index, 1);
     report();
   };
 };
