@@ -1,15 +1,46 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `95af6769` (v2.5.3), merged
+**Base:** upstream `openchamber/openchamber` @ `5731991` (v2.6.0), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.5.3-fork2` and `2.5.3-fork1` on `v2.5.3`, `2.5.2-fork1` on `v2.5.2`,
-and before that
+`2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `v2.5.3`,
+`2.5.2-fork1` on `v2.5.2`, and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
 changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
-`changelog/` — `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+`changelog/` — `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.6.0-fork1` — upstream `v2.6.0` whole: a sidebar you arrange, agents that remember
+
+**The base moves to upstream `v2.6.0`.** The **sidebar is yours to
+arrange**: reorder Chats, Pinned, In work and Projects, and build
+sections that filter sessions by state, type, linked PR or issue, title
+or project, or group several projects under one caption. Agents can
+**keep what they learn** across sessions on the Memory tab of Project
+knowledge, run **multi-step workflows** with a plan you approve, ask for
+**secrets** on a private card the conversation never sees, and **draw
+tables, charts, steps and forms** in their replies in the app's own
+look, with forms that collect your answers back. Header tabs give a
+draft its own tab, a new-session button and Cmd+W; a scheduled task can
+run in its own worktree from a branch you pick; the terminal answers
+Ghostty's keybindings; Zen shows its requests and spend — and Russian
+labels those counters now, as every upstream 2.6.0 string is translated
+into all the fork's locales again. The app rests quieter: one elevation
+system and spring-opened menus, colour only where it marks a state.
+
+**The merger kept the fork.** Upstream's chrome redesign moved the page
+buttons into a More menu and lifted the board onto new repository
+semantics — the fork kept its own row, the command board, its drag
+gesture and its zone regions through the 63 conflicts: the header keeps
+goals, contacts and archive one click away, the tracker surfaces ride
+the rail's workspace group beside the page they always followed, debug
+stays with the tools, and the packaged menu sends the dock expand
+action under its new name while the regions keep the regional body.
+Upstream's second board helpers were left out with the tests that assume
+them; the fork's own suite is back in.
 
 ---
 
