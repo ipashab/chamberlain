@@ -55,7 +55,7 @@ export const RegionSurfaceMenu: React.FC<Args> = ({ leafId, directoryKey }) => {
   const guestSurfaces = useGuestSurfaces();
   const { screenWidth } = useDeviceInfo();
   const tabs = panelState?.tabs;
-  const workflowsShown = useWorkflowsSurfaceShown(tabs, directoryKey);
+  const workflowsShown = useWorkflowsSurfaceShown(tabs ?? NO_TABS, directoryKey);
 
   const surfaces = React.useMemo(() => getVisibleContextRailSurfaces({
     railOrder: contextRailOrder,

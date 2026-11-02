@@ -1,7 +1,4 @@
 import React from 'react';
-import { TooltipLabelWithShortcut } from '@/components/ui/action-toolbar';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatShortcutForDisplay, getEffectiveShortcutCombo } from '@/lib/shortcuts';
 
 import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
 import { DiffViewIcon } from '@/components/icons/DiffIcon';
@@ -60,6 +57,7 @@ import { closeZoneOnEscape } from './zoneEscape';
 import { setRegionBody, setRegionHeaderSlot } from './regionHosts';
 import { findLeaf, leavesOf } from '@/lib/workspace/layoutTree';
 import { runRegionHeaderDrop, trackRegionDrop } from './regionDropGesture';
+import { registerCloseTabTarget } from '@/lib/closeTabTarget';
 
 const CONTEXT_TAB_LABEL_MAX_CHARS = 24;
 type TranslateFn = ReturnType<typeof useI18n>['t'];

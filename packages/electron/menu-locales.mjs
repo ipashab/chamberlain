@@ -862,7 +862,7 @@ export const MENU_LOCALE_DICTIONARIES = {
     'openGitSidebar': 'Открыть панель Git',
     'openFilesSidebar': 'Открыть панель файлов',
     'toggleTerminalDock': 'Показать/скрыть терминал',
-    'toggleTerminalExpanded': 'Развернуть терминал',
+    'toggleContextPanelExpanded': 'Развернуть или свернуть панель',
     'lightTheme': 'Светлая тема',
     'darkTheme': 'Тёмная тема',
     'systemTheme': 'Системная тема',

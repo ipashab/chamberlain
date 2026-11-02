@@ -259,7 +259,10 @@ function AssistantsView({ onLeave }: { onLeave: () => void }) {
           <label className="typography-micro font-medium" htmlFor="assistant-directory">{t('sessions.assistants.form.project.label')}</label>
           <Select value={directory} onValueChange={setDirectory}>
             <SelectTrigger id="assistant-directory">
-              <SelectValue />
+              <SelectValue>
+                {projects.find((project) => project.path === directory)?.label?.trim()
+                  || (directory ? formatDirectoryName(directory, undefined) : '')}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {projects.map((project) => (

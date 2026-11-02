@@ -16,7 +16,7 @@ import { addSelectionToChat } from '@/lib/addSelectionToChat';
 import { navigateSessionHistory } from '@/lib/sessionNavigationHistory';
 
 const getActiveElementSelectedText = (): string => {
-  if (typeof document === 'undefined') {
+  if (!('document' in globalThis)) {
     return '';
   }
 
@@ -46,7 +46,7 @@ const copyCurrentSelectionFallback = async (): Promise<boolean> => {
   }
 
   try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    if ('navigator' in globalThis && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(selectionText);
       return true;
     }
@@ -245,6 +245,7 @@ export const useMenuActions = (
           // idempotent when one already shows it.
           useUIStore.getState().openContextSurface(normalizeContextPanelDirectoryKey(directory), 'terminal');
           break;
+        }
 
         case 'copy': {
           const copyEvent = new Event('openchamber:copy', { cancelable: true });
@@ -337,6 +338,8 @@ export const useMenuActions = (
 
   React.useEffect(() => {
     const handleMenuAction = (event: Event) => {
+      // SAFETY: openchamber:menu-action is dispatched only by dispatchAction above,
+      // always with a MenuAction payload.
       const action = (event as CustomEvent<MenuAction>).detail;
       if (!action) return;
       handleAction(action);

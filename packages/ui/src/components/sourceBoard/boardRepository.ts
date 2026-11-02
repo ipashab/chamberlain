@@ -206,22 +206,6 @@ function useFolderRepositories(root: string | null) {
     return { rootIsGitRepo, nestedRepos, retry };
 }
 
-/**
- * Probes the root and discovers the repositories under it, reading the Git
- * screen's discovery without touching its repository selection: the board's
- * choice is its own.
- */
-export function useBoardRepository(root: string | null, choice: RepositoryChoice): BoardRepository & { retry: () => void } {
-    const { sourceControl } = useRuntimeAPIs();
-    const acrossAvailable = Boolean(sourceControl.referencesAcross);
-    const { rootIsGitRepo, nestedRepos, retry } = useFolderRepositories(root);
-    const resolution = React.useMemo(
-        () => resolveBoardRepository(root, rootIsGitRepo, nestedRepos, { path: choice.path, all: choice.all }, acrossAvailable),
-        [acrossAvailable, choice.all, choice.path, nestedRepos, root, rootIsGitRepo],
-    );
-    return { ...resolution, retry };
-}
-
 /** A folder's remotes once its binding is read; null while it is, empty when the read failed. */
 export type FolderRemotes = { directory: string; remotes: readonly GitRemote[] | null };
 

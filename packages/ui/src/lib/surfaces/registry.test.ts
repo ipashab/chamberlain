@@ -59,9 +59,6 @@ describe('getVisibleContextRailSurfaces', () => {
     expect(getVisibleContextRailSurfaces({ ...baseOptions, isVSCode: true }).some((s) => s.id === 'pulls')).toBe(true);
   });
 
-  test('respects the persisted user rail order', () => {
-    const surfaces = getVisibleContextRailSurfaces({ ...baseOptions, railOrder: ['git', 'context'] });
-    expect(surfaces.slice(0, 2).map((surface) => surface.id)).toEqual(['git', 'context']);
   test('respects the persisted user rail order inside each group', () => {
     const surfaces = getVisibleContextRailSurfaces({ ...baseOptions, railOrder: ['diff', 'git', 'context'] });
     expect(surfaces.slice(0, 2).map((surface) => surface.id)).toEqual(['diff', 'git']);
@@ -69,14 +66,17 @@ describe('getVisibleContextRailSurfaces', () => {
 
   test('keeps each group together, placed where its first surface stands', () => {
     // A saved order from before groups: Notes ahead of Files, Context last.
+    // The fork's tracker surfaces have no place in the saved order and ride
+    // the workspace run after Notes; debug joins the tools run.
     const surfaces = getVisibleContextRailSurfaces({
       ...baseOptions,
       railOrder: ['notes', 'git', 'editor', 'pr', 'terminal', 'context'],
     });
     expect(surfaces.map((surface) => surface.id)).toEqual([
       'notes',
+      'pulls', 'jira', 'confluence', 'review', 'board', 'mcp-console',
       'git', 'pr', 'diff', 'walkthrough',
-      'editor', 'terminal', 'browser',
+      'editor', 'terminal', 'debug', 'browser',
       'context',
     ]);
   });

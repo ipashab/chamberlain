@@ -61,7 +61,7 @@ export const DraggableSessionRow: React.FC<{
   const canLandInFolder = folderOwners === null || (ownerKey !== null && folderOwners.has(ownerKey));
   const canLandOnWorkspace = !archivedBucket && sessionDirectory != null;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `session-drag:${dragKey ?? sessionId}`,
+    id: getSessionDragId(dragKey ?? sessionId),
     disabled: archivedBucket || (!canLandInFolder && !canLandOnWorkspace),
     data: { type: 'session', sessionId, ownerKey, sessionDirectory, sessionTitle, archivedBucket },
   });

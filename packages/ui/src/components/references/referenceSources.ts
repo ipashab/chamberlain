@@ -484,9 +484,6 @@ const repositoryPullStatuses = createValueCache<ChangeRequestListStatus | null>(
 const PULL_STATUS_BATCH = 10;
 const IDLE: CachedValue<ChangeRequestListStatus | null> = { status: 'idle' };
 
-/** Forgets every PR's checks and mergeability, so the lists showing them ask again: the board's list refresh. */
-export const forgetRepositoryPullStatuses = (): void => repositoryPullStatuses.clear();
-
 /** Forgets one PR's checks and mergeability, at any head commit: the preview's refresh. */
 export const forgetRepositoryPullStatus = (pull: RepositoryItemRef): void => {
     const marker = `|${joinProjectPath(pull.owner, pull.repo)}#${pull.number}@`.toLowerCase();

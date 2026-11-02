@@ -298,7 +298,10 @@ function MissionsView({ onLeave }: { onLeave: () => void }) {
           <label className="typography-micro font-medium" htmlFor="mission-directory">{t('sessions.missions.form.project.label')}</label>
           <Select value={directory} onValueChange={setDirectory}>
             <SelectTrigger id="mission-directory">
-              <SelectValue />
+              <SelectValue>
+                {projects.find((project) => project.path === directory)?.label?.trim()
+                  || (directory ? formatDirectoryName(directory, undefined) : '')}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {projects.map((project) => (

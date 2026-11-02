@@ -244,6 +244,17 @@ const BUILT_IN_SURFACE_GROUPS = {
   notes: 'workspace',
   workflows: 'workspace',
   chat: 'workspace',
+  // The fork's own surfaces. Debug sits in the tools run the fork's rail
+  // drew it in; the tracker cluster rides the workspace run, so no new
+  // divider cuts between it and the surfaces it has always followed.
+  debug: 'tools',
+  team: 'workspace',
+  pulls: 'workspace',
+  jira: 'workspace',
+  confluence: 'workspace',
+  review: 'workspace',
+  board: 'workspace',
+  'mcp-console': 'workspace',
 } satisfies Record<BuiltInContextSurfaceId, ContextSurfaceGroup>;
 
 const isBuiltInSurfaceId = (id: ContextSurfaceId): id is BuiltInContextSurfaceId => Object.hasOwn(BUILT_IN_SURFACE_GROUPS, id);

@@ -238,5 +238,6 @@ export const projectActionsI18n = {
     'commandPalette.item.openProjectActions': 'Действия проекта',
     'commandPalette.item.runProjectAction': 'Запустить: {name}',
     'commandPalette.item.stopProjectAction': 'Остановить: {name}',
+    'projectActions.header.allActions': 'Все действия',
   },
 } as const;

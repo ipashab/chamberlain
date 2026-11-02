@@ -45,6 +45,9 @@ mock.module('@/sync/session-ui-store', () => ({
     getState: () => ({ currentSessionId: 'session_1', getDirectoryForSession: (id: string) => `/work/${id}` }),
   },
   resolveSendSelection: () => ({}),
+  // The admission flow compares it against session-admission's parked reads;
+  // a constant answers "never overtaken" for static markup.
+  getAdmissionNavigationRevision: () => 0,
 }));
 
 // The landing list is a read, not render state: the static markup only ever

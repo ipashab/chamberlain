@@ -60,6 +60,35 @@ type Props = {
 const PRESSED_PAGE_BUTTON_CLASS = 'bg-interactive-selection text-interactive-selection-foreground hover:bg-interactive-selection hover:text-interactive-selection-foreground';
 const IDLE_PAGE_BUTTON_CLASS = 'text-muted-foreground hover:text-foreground hover:bg-transparent';
 
+/**
+ * A page the sidebar opens in the main area. The button stays pressed while
+ * its page is open, and the same click closes the page again.
+ */
+function SidebarPageButton({ label, pressed, onClick, className, children }: {
+  label: string;
+  pressed: boolean;
+  onClick: () => void;
+  className: string;
+  children: React.ReactNode;
+}): React.ReactNode {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          className={cn(className, pressed ? PRESSED_PAGE_BUTTON_CLASS : IDLE_PAGE_BUTTON_CLASS)}
+          aria-label={label}
+          aria-pressed={pressed}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={4}><p>{label}</p></TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function SidebarHeader(props: Props): React.ReactNode {
   const { t } = useI18n();
   // The header spans the sidebar: the sections manager opens beside its end

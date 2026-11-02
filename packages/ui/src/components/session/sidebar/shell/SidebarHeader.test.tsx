@@ -158,7 +158,7 @@ describe('SidebarHeader', () => {
     expect(document.querySelector('[aria-label="Display mode"]')).not.toBeNull();
   });
 
-  test('the row holds the list controls and one More menu, and no page buttons', async () => {
+  test('the row holds the list controls and one More menu, then the fork page buttons', async () => {
     await act(async () => root.render(
       <I18nProvider>
         <TooltipProvider>
@@ -167,7 +167,7 @@ describe('SidebarHeader', () => {
       </I18nProvider>,
     ));
     const labels = [...document.querySelectorAll('button')].map((button) => button.getAttribute('aria-label'));
-    expect(labels).toEqual(['Search sessions', 'Add project', 'Display mode', 'More']);
+    expect(labels).toEqual(['Search sessions', 'Goals', 'Contacts', 'Archive', 'Add project', 'Display mode', 'More']);
   });
 
   test('the search button opens the field and, once open, closes it', async () => {

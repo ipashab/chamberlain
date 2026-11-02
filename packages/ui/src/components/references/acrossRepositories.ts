@@ -35,7 +35,6 @@ export type AcrossExclusion =
     | { directory: string; reason: 'missing' | RepositoryReferencesAcrossSkip }
     /** On a provider other than the one asked, which this list does not search. */
     | { directory: string; reason: 'unsupportedProvider'; provider: string };
-export type AcrossExclusionReason = AcrossExclusion['reason'];
 
 export type AcrossContexts = {
     /** Every folder's context is known; asking earlier would list a part and then the whole. */

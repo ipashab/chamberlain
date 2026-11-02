@@ -1211,7 +1211,9 @@ export const referencePickerI18n = {
     'references.picker.tracker.childrenDone': 'Подзадачи готовы: {done} из {total}',
     'references.picker.tracker.childrenMany': 'Подзадачи: больше {count}',
     'references.picker.preview.sends.tracker': 'Агент получит описание и комментарии.',
-
+    'references.link.copy': 'Копировать ссылку',
+    'references.link.copied': 'Ссылка скопирована',
+    'references.link.copyFailed': 'Не удалось скопировать ссылку',
   },
   ko: {
     'references.picker.thread.resolved': '해결됨',
