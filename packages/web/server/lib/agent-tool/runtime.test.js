@@ -939,7 +939,9 @@ describe('managed agent tool runtime', () => {
     const hooks = {};
     const tools = await loadTools(dataDir, 'secret', hooks);
 
-    expect(Object.keys(tools)).toEqual(['openchamber_secret']);
+    // The fork's always-on tools (team, tracker, contacts, backlog) ship for
+    // every session, so they ride along here too.
+    expect(Object.keys(tools)).toEqual(['openchamber_team', 'openchamber_tracker', 'openchamber_contacts', 'openchamber_backlog', 'openchamber_secret']);
     expect(Object.keys(tools.openchamber_secret.input.properties.parameters.properties).sort()).toEqual(['label', 'placeholder', 'reason']);
     expect(tools.openchamber_secret.options).toEqual({ codemode: false });
     expect(tools.openchamber_secret.description.length).toBeLessThanOrEqual(2048);
