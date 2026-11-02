@@ -647,7 +647,7 @@ const singleActionSchema = (definition) => ({
  * expression (over `args`) that says whether this call waits, and
  * `closedInChatNote` what the agent reads when the user wrote in the chat.
  */
-const createToolEntry = ({ name, description, definitions, parameters, codeMode, answers = null }) => {
+const createToolEntry = ({ name, description, definitions, parameters, codeMode, answers = null, longRunning = false }) => {
   const normalizeBooleans = booleanNormalizationBlock(parameters);
   const reviveDependsOn = dependsOnRevivalBlock(parameters);
   const actionSchema = definitions.length === 1 ? singleActionSchema(definitions[0]) : multiActionSchema(definitions);
