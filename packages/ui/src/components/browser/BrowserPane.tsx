@@ -465,7 +465,11 @@ const WebviewBrowser: React.FC<BrowserPaneProps> = ({ initialUrl, directory: tab
     while (!(webviewRef.current && pageReachedRef.current) && Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    return webviewRef.current;
+    // A view that never reached its page (a server that accepts the
+    // connection but never answers, say) must not be handed to an action: its
+    // methods throw Electron's own "not attached" error, which tells the
+    // agent nothing.
+    return webviewRef.current && pageReachedRef.current ? webviewRef.current : null;
   }, []);
 
   // Agent-driven actions. Waiting for the page to settle after a navigation is
