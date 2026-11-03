@@ -2,7 +2,7 @@
 
 **Base:** upstream `openchamber/openchamber` @ `5731991` (v2.6.0), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `v2.5.3`,
+`2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
 `2.5.2-fork1` on `v2.5.2`, and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
@@ -10,6 +10,23 @@ changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
 `changelog/` — `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.6.0-fork3` — the browser panel says what is wrong with a stuck page
+
+**A webview the page never reached leaked Electron's own error to the
+agent.** `waitForView` in the browser panel returned the webview element
+once its 15-second wait ran out, even when the page inside it had never
+arrived — a tab whose server accepts the connection but never answers
+fires no `dom-ready` and no `did-fail-load`, so nothing had told the
+panel its guest was not attached. The agent's next action then surfaced
+Electron's raw "The WebView must be attached to the DOM and the dom-ready
+event emitted before this method can be called", which names neither the
+tab, nor the page, nor what to do about it. The view that never reached
+its page is now handed back as absent, and the action answers with the
+panel's own plain "The browser panel is not ready" — the case a restored
+tab pointing at a dead address used to trip every time it was read.
 
 ---
 
