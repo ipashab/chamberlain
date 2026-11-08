@@ -63,7 +63,7 @@ const threadForAgent = (thread: ReviewThread): string => thread.comments
  * changed since the last read. An agent's draft written through `gh` appears
  * when its turn ends or the window comes back.
  */
-export function useChangeRequestReview(target: ChangeRequestReviewTarget | null): ChangeRequestReview | null {
+function useChangeRequestReview(target: ChangeRequestReviewTarget | null): ChangeRequestReview | null {
     const { t } = useI18n();
     const { sourceControl } = useRuntimeAPIs();
     const descriptor = useSourceControlProvider(target?.provider);

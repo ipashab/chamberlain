@@ -69,7 +69,11 @@ import { tooltipsWorkspaceI18n } from './tooltips-workspace.i18n';
 import { tooltipsPanelI18n } from './tooltips-panel.i18n';
 import { tooltipsChatI18n } from './tooltips-chat.i18n';
 
-export const dict = {
+import type { I18nDictionary } from '../store';
+
+// The full mirror of en is one `Record` over its keys: with the literal
+// inferred, the declaration emit hits the compiler's serialization limit.
+export const dict: I18nDictionary = {
   'quota.family.zen': 'نماذج Zen',
   'quota.value.requests': 'الطلبات: {count}',
   'quota.value.spent': 'تم إنفاق {spent}',

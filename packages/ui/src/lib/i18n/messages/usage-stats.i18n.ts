@@ -697,6 +697,7 @@ export const usageStatsI18n = {
     'usageStats.openAction': 'Статистика',
     'usageStats.title': 'Статистика',
     'usageStats.range.label': 'Период',
+    'usageStats.range.1d': 'Сегодня',
     'usageStats.range.7d': '7 дней',
     'usageStats.range.30d': '30 дней',
     'usageStats.range.90d': '90 дней',

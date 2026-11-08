@@ -673,19 +673,6 @@ export const ContextSurfacePanes: React.FC = () => {
     (active && leafId ? regionHosts[leafId]?.headerSlot ?? null : null);
 
 
-  // A tab restored from the last run starts its page the first time it shows:
-  // an extension nobody looked at this run runs nothing. After that it stays
-  // mounted, which keeps the page's state while another tab is in front.
-  const [seenPluginTabs, setSeenPluginTabs] = React.useState<ReadonlySet<string>>(() => new Set());
-  const newlyShownPluginTabs = pluginTabs.filter((tab) => {
-    if (seenPluginTabs.has(tab.id)) return false;
-    const zone = zoneFor(tab.mode);
-    return zone.isOpen && zone.activeTab?.id === tab.id;
-  });
-  if (newlyShownPluginTabs.length > 0) {
-    setSeenPluginTabs(new Set([...seenPluginTabs, ...newlyShownPluginTabs.map((tab) => tab.id)]));
-  }
-
   return (
     <>
       {fileTabs.map((tab) => (

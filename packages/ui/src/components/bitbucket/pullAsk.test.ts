@@ -69,7 +69,7 @@ describe('pull asks', () => {
 
     beforeEach(() => {
         useSessionUIStore.setState({ currentSessionId: 'ses_ask', getDirectoryForSession: () => '/repo' });
-        useInlineCommentDraftStore.setState({ drafts: {}, touchedAt: {} });
+        useInlineCommentDraftStore.setState({ drafts: {} });
     });
 
     afterEach(() => {
@@ -77,7 +77,7 @@ describe('pull asks', () => {
             currentSessionId: original.currentSessionId,
             getDirectoryForSession: original.getDirectoryForSession,
         });
-        useInlineCommentDraftStore.setState({ drafts: {}, touchedAt: {} });
+        useInlineCommentDraftStore.setState({ drafts: {} });
     });
 
     describe('attachLinesAsk', () => {

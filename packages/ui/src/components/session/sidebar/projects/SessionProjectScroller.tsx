@@ -426,7 +426,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
         }}
         onManageWorktrees={() => actions.openWorktreesPage(project.id)}
         onManageSpaces={spacesPageAvailable ? () => useUIStore.getState().setSpacesPageProjectId(project.id) : undefined}
-        onOpenSourceBoard={openProjectOnBoard ? () => openProjectOnBoard(project.id) : undefined}
+        onOpenSourceBoard={openProjectOnBoard ? () => openProjectOnBoard() : undefined}
         onNewFolder={() => {
           if (row.collapsed) actions.toggleProject(project.id);
           const folder = useSessionFoldersStore.getState().createFolder(project.normalizedPath, t('sessions.sidebar.folders.newFolderTitle'));

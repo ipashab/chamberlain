@@ -45,8 +45,10 @@ const prepareManagedEnv = async (runtime, options) => {
 
 /** Loads the generated plugin and returns the tools it registers, by name. */
 // `hooks` collects the session hooks the plugin registers, by name, and
-// `removed` the ids of OpenCode's own tools it takes away.
-const loadTools = async (dataDir, tag, hooks = {}, removed = []) => {
+// `hooks` collects the session hooks the plugin registers, by name, and
+// `removed` the ids of OpenCode's own tools it takes away, `namespaces` the
+// namespaces it registers.
+const loadTools = async (dataDir, tag, hooks = {}, removed = [], namespaces = []) => {
   // Every load has to read what materializePlugin just wrote: a rewrite
   // followed by a load is the whole assertion. Runners key the module cache
   // in their own way — Bun caches by file path and ignores a query string,
@@ -60,7 +62,11 @@ const loadTools = async (dataDir, tag, hooks = {}, removed = []) => {
   await pluginModule.default.setup({
     tool: {
       transform: (edit) => {
-        edit({ add: (tool) => { registered[tool.name] = tool; }, remove: (id) => { removed.push(id); } });
+        edit({
+          add: (tool) => { registered[tool.name] = tool; },
+          remove: (id) => { removed.push(id); },
+          namespace: (namespace) => { namespaces.push(namespace); },
+        });
       },
     },
     session: {
@@ -94,7 +100,7 @@ describe('agent tool action allowlist', () => {
 
   it('asks for the task name in the language of the user', () => {
     const workName = OPENCHAMBER_CONTROL_ACTION_DEFINITIONS.find(({ action }) => action === 'work.name');
-    expect(workName.description).toContain("in the language of the user's latest message");
+    expect(workName.description).toContain("in the user's latest language");
   });
 
   it.each([
@@ -904,7 +910,7 @@ describe('managed agent tool runtime', () => {
 
   it('exposes image generation as its own tool only when switched on, never behind Code Mode', async () => {
     const { runtime, dataDir } = await createRuntime();
-    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false, includeImage: true, codeMode: true });
+    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false, includeImage: true });
     const tool = await loadTools(dataDir, 'image');
 
     expect(Object.keys(tool)).toEqual(['openchamber', 'openchamber_team', 'openchamber_tracker', 'openchamber_contacts', 'openchamber_backlog', 'openchamber_image']);
@@ -912,6 +918,41 @@ describe('managed agent tool runtime', () => {
       .toEqual(['aspect', 'count', 'images', 'path', 'prompt', 'resolution']);
     expect(tool.openchamber_image.options).toEqual({ codemode: false });
     expect(tool.openchamber_image.description.length).toBeLessThanOrEqual(2048);
+  });
+
+  it('exposes usage as its own tool behind Code Mode, only when switched on', async () => {
+    const { runtime, dataDir } = await createRuntime();
+    await prepareManagedEnv(runtime, { includeControl: false, includeWeb: false, includeMemory: false, includeUsage: true });
+    const namespaces = [];
+    const tool = await loadTools(dataDir, 'usage', {}, [], namespaces);
+
+    // The team, tracker, contacts and backlog tools are fork capabilities
+    // that ship always (each answers inert or unconfigured where it has
+    // nothing to do), so they ride along here too.
+    expect(Object.keys(tool)).toEqual(['openchamber_team', 'openchamber_tracker', 'openchamber_contacts', 'openchamber_backlog', 'openchamber_usage']);
+    expect(Object.keys(tool.openchamber_usage.input.properties.parameters.properties)).toEqual(['providerId']);
+    expect(tool.openchamber_usage.options).toEqual({ codemode: true });
+    // Its catalog line names when to read it, so agents do not check limits before every task.
+    expect(namespaces).toEqual([
+      expect.objectContaining({ name: 'openchamber_usage', description: expect.stringContaining('when the user asks about limits') }),
+      expect.objectContaining({ name: 'openchamber_team' }),
+      expect.objectContaining({ name: 'openchamber_tracker' }),
+      expect.objectContaining({ name: 'openchamber_contacts' }),
+      expect.objectContaining({ name: 'openchamber_backlog' }),
+    ]);
+    expect(tool.openchamber_usage.description.length).toBeLessThanOrEqual(2048);
+
+    await runtime.materializePlugin({ includeControl: true, includeWeb: false, includeMemory: false });
+    expect(await loadTools(dataDir, 'usage-off')).not.toHaveProperty('openchamber_usage');
+  });
+
+  it('runs usage.read from the usage tool, bare read included', async () => {
+    const { runtime, executeAction } = await createRuntime();
+    const result = await runtime.execute({ tool: 'openchamber_usage', input: { action: 'read', providerId: 'claude' }, sessionID: 'ses_a' });
+
+    expect(result).toMatchObject({ ok: true, action: 'usage.read' });
+    expect(executeAction).toHaveBeenCalledWith('usage.read', expect.objectContaining({ providerId: 'claude' }), undefined, expect.anything());
+    expect((await runtime.execute({ tool: 'openchamber', input: { action: 'usage.read' }, sessionID: 'ses_a' })).ok).toBe(false);
   });
 
   it('exposes render as its own tool carrying only the page (html or ui) and its title', async () => {
@@ -935,7 +976,7 @@ describe('managed agent tool runtime', () => {
 
   it('exposes secret as its own direct tool whose every call waits for the user', async () => {
     const { runtime, dataDir } = await createRuntime();
-    await prepareManagedEnv(runtime, { includeControl: false, includeWeb: false, includeMemory: false, includeSecret: true, codeMode: true });
+    await prepareManagedEnv(runtime, { includeControl: false, includeWeb: false, includeMemory: false, includeSecret: true });
     const hooks = {};
     const tools = await loadTools(dataDir, 'secret', hooks);
 
@@ -979,6 +1020,13 @@ describe('managed agent tool runtime', () => {
       expect(tools.openchamber.input.properties.parameters.properties).not.toHaveProperty(field);
     }
     expect(scheduleParameters.disabled.type).toBe('boolean');
+    for (const field of ['runInWorktree', 'baseBranch', 'cleanupWorktree']) {
+      expect(scheduleParameters).toHaveProperty(field);
+      expect(tools.openchamber.input.properties.parameters.properties).not.toHaveProperty(field);
+    }
+    expect(scheduleParameters.runInWorktree.type).toBe('boolean');
+    expect(scheduleParameters.cleanupWorktree.type).toBe('boolean');
+    expect(scheduleParameters.baseBranch.type).toBe('string');
 
     await runtime.materializePlugin({ includeControl: true, includeSchedule: false });
     expect(await loadTools(dataDir, 'schedule-disabled')).not.toHaveProperty('openchamber_schedule');
@@ -1042,6 +1090,7 @@ describe('managed agent tool runtime', () => {
       includeRender: true,
       includeWorkflow: true,
       includeImage: true,
+      includeUsage: true,
     });
     const tools = await loadTools(dataDir, 'description-length');
 
@@ -1058,6 +1107,7 @@ describe('managed agent tool runtime', () => {
       'openchamber_schedule',
       'openchamber_team',
       'openchamber_tracker',
+      'openchamber_usage',
       'openchamber_web',
       'openchamber_workflow',
       'openchamber_workflow_answer',
@@ -1125,21 +1175,30 @@ describe('managed agent tool runtime', () => {
     }
   });
 
-  it('registers every tool as a direct tool unless Code Mode is asked for, and the render tool always direct', async () => {
+  it('puts the control, schedule, browser, memory, knowledge and notify tools behind Code Mode, and the render tool direct', async () => {
     const { runtime, dataDir } = await createRuntime();
-    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: true, includeMemory: true, includeNotify: true });
-    const direct = await loadTools(dataDir, 'direct');
-    for (const tool of Object.values(direct)) {
-      expect(tool.options).toEqual({ codemode: false });
-    }
-
-    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: true, includeMemory: true, includeNotify: true, includeRender: true, codeMode: true });
-    const { openchamber_render: render, ...behindExecute } = await loadTools(dataDir, 'codemode');
-    expect(Object.keys(behindExecute).length).toBeGreaterThan(0);
+    await prepareManagedEnv(runtime, { includeControl: true, includeSchedule: true, includeWeb: true, includeMemory: true, includeKnowledge: true, includeNotify: true, includeRender: true });
+    const namespaces = [];
+    const { openchamber_render: render, ...behindExecute } = await loadTools(dataDir, 'codemode', {}, [], namespaces);
+    // The fork's always-on tools (team, tracker, contacts, backlog) sit
+    // behind Code Mode like the rest of theirs.
+    const names = ['openchamber', 'openchamber_backlog', 'openchamber_contacts', 'openchamber_knowledge', 'openchamber_memory', 'openchamber_notify', 'openchamber_schedule', 'openchamber_team', 'openchamber_tracker', 'openchamber_web'];
+    expect(Object.keys(behindExecute).sort()).toEqual(names);
     for (const tool of Object.values(behindExecute)) {
       expect(tool.options).toEqual({ codemode: true });
     }
     expect(render.options).toEqual({ codemode: false });
+    // Names stay as they are; each tool gets a namespace of its own name, so
+    // its catalog row says what it is even when the catalog lists none of it.
+    expect(namespaces.map((namespace) => namespace.name).sort()).toEqual(names);
+    expect(namespaces.find((namespace) => namespace.name === 'openchamber_web').description).toContain('browser panel');
+
+    // A tool switched off takes its namespace along; the fork's always-on
+    // tools keep theirs.
+    await prepareManagedEnv(runtime, { includeControl: true, includeWeb: false, includeMemory: false, includeRender: true });
+    const fewer = [];
+    await loadTools(dataDir, 'fewer', {}, [], fewer);
+    expect(fewer.map((namespace) => namespace.name)).toEqual(['openchamber', 'openchamber_team', 'openchamber_tracker', 'openchamber_contacts', 'openchamber_backlog']);
   });
 
   it('refuses to inject a plugin with no tools in it', async () => {
