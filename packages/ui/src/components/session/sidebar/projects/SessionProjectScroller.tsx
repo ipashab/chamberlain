@@ -1,4 +1,5 @@
 import React from 'react';
+import { CollapsedSessionActivityIndicator } from '../sessions/collapsedActivityIndicator';
 import {
   DndContext,
   DragOverlay,
@@ -37,11 +38,11 @@ import { SessionSidebarRows, type SessionSidebarHeldRow } from '../SessionSideba
 import { copyDragSource, keepRowInList, ROW_DRAG_AUTO_SCROLL, useRowDragSensors } from '../rowDrag';
 import { RowDragPreview } from '../RowDragPreview';
 import { setSidebarBlockDrag, useSidebarBlockDragStore } from '../list/blockDrag';
-import { saveSidebarSections, useSidebarSectionsUiStore } from '../sections/sectionActions';
+import { removeFolderFromSections, saveSidebarSections, useSidebarSectionsUiStore } from '../sections/sectionActions';
 import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
 import { SortableSidebarSection } from './SortableSidebarSection';
 import { sectionDragId, sectionIdOfRow } from './sectionDrag';
-import { sessionTreeTextInset } from '../sessions/sessionTreeGeometry';
+import { sessionDetailedRowPaddingLeft, sessionTreeTextInset } from '../sessions/sessionTreeGeometry';
 import { SessionSidebarActivityHeader, SessionSidebarCaption } from '../sessionSidebarHeaderPresentation';
 import { resolveSessionSidebarStickyHeader, type SessionSidebarRow, type SessionSidebarRowModel } from '../sessionSidebarRowModel';
 import { SortableProjectItem } from './sortableItems';
@@ -343,7 +344,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
       default:
         label = t('sessions.sidebar.group.empty.loadingSessions');
     }
-    return <div className="relative py-1 text-start typography-micro text-muted-foreground" style={{ paddingInlineStart: row.flat ? FLAT_TEXT_INSET_PX : sessionTreeTextInset(row.depth ?? 0) }}>
+    return <div className="relative py-1 text-start typography-micro text-muted-foreground" style={{ paddingInlineStart: row.flat ? FLAT_TEXT_INSET_PX : row.detailed ? sessionDetailedRowPaddingLeft(row.depth ?? 0) : sessionTreeTextInset(row.depth ?? 0) }}>
       <span className="inline-flex flex-wrap items-center gap-1.5">
         {row.status.state === 'loading' ? <Spinner className="size-3" /> : null}
         {label}
@@ -425,7 +426,12 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
         }}
         onManageWorktrees={() => actions.openWorktreesPage(project.id)}
         onManageSpaces={spacesPageAvailable ? () => useUIStore.getState().setSpacesPageProjectId(project.id) : undefined}
-        onOpenSourceBoard={openProjectOnBoard ? () => openProjectOnBoard() : undefined}
+        onOpenSourceBoard={openProjectOnBoard ? () => openProjectOnBoard(project.id) : undefined}
+        onNewFolder={() => {
+          if (row.collapsed) actions.toggleProject(project.id);
+          const folder = useSessionFoldersStore.getState().createFolder(project.normalizedPath, t('sessions.sidebar.folders.newFolderTitle'));
+          model.groupProps.startFolderRename(project.normalizedPath, folder);
+        }}
         onOpenFolder={project.normalizedPath && files.revealPath ? () => openProjectFolder(project.normalizedPath) : undefined}
         onRenameStart={() => actions.openProjectEditDialog(project.id)}
         onArchiveAll={() => void requestArchiveAll(label, row.section.groups)}
@@ -456,10 +462,12 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
     }
     if (row.kind === 'folder-header') {
       const renaming = model.groupProps.folderRename?.folderId === row.folder.id && model.groupProps.folderRename.scopeKey === row.scopeKey;
+      const folderProject = row.mixed ? model.projectSections.find((section) => section.project.id === row.projectId)?.project : undefined;
       return <DroppableFolderWrapper folderId={row.folder.id} scopeKey={row.scopeKey} ownerKey={row.ownerKey} disabled={!row.dropEnabled}>
         {(droppableRef, isDropTarget) => <SessionSidebarFolderItem
           activityNodes={row.activityNodes}
-          folder={row.folder} displayName={row.displayName} sessions={row.nodes} depth={row.depth} canExpand={!row.empty}
+          folder={row.folder} displayName={row.displayName} sessions={row.nodes} memberCount={row.memberCount} depth={row.depth}
+          projectLabel={folderProject ? getProjectLabel(folderProject, view.homeDirectory) : undefined} canExpand={!row.empty}
           isCollapsed={row.collapsed} onToggle={row.forceExpanded ? () => undefined : () => toggleFolderCollapse(row.folder.id)}
           onRename={(name) => renameFolder(row.scopeKey, row.folder.id, name)}
           onDelete={() => {
@@ -467,8 +475,9 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
               sessionEvents.requestDelete({ sessions: [...row.deleteSessions], mode: 'session' });
             } else if (!showDeletionDialog) {
               deleteFolder(row.scopeKey, row.folder.id);
+              removeFolderFromSections(row.folder.id);
             } else {
-              setFolderDeleteConfirm({ scopeKey: row.scopeKey, folderId: row.folder.id, folderName: row.folder.name, subFolderCount: row.subFolderCount, sessionCount: row.nodes.length });
+              setFolderDeleteConfirm({ scopeKey: row.scopeKey, folderId: row.folder.id, folderName: row.folder.name, subFolderCount: row.subFolderCount, sessionCount: row.memberCount });
             }
           }}
           renderBody={false} groupDirectory={row.scopeDirectory ?? row.group.directory} projectId={row.projectId}
@@ -532,17 +541,21 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
         toggleParent={model.groupProps.toggleParent}
       />;
     }
-    // Show more and the archive's empty line align with the text of the rows
-    // they close: 10px in under gutterless timeline-style rows; past the tree
-    // level's chevron slot on tree rows.
+    // Show more aligns with the text of the rows it closes: 10px in under
+    // gutterless timeline-style rows, the detailed text column under two-line
+    // rows, past the tree level's chevron slot on tree rows. The archive's
+    // empty line keeps the tree column.
     const rowTextInset = row.kind === 'show-control' && row.flat === true
       ? FLAT_TEXT_INSET_PX
-      : sessionTreeTextInset(row.kind === 'show-control' || row.kind === 'empty' ? row.depth ?? 0 : 0);
+      : row.kind === 'show-control' && row.detailed === true
+        ? sessionDetailedRowPaddingLeft(row.depth ?? 0)
+        : sessionTreeTextInset(row.kind === 'show-control' || row.kind === 'empty' ? row.depth ?? 0 : 0);
     if (row.kind === 'show-control') {
       // Small and short, so it reads as a control under the list, not a row of it.
       const control = (kind: 'more' | 'fewer') => (
-        <button type="button" className="rounded-md py-0.5 typography-micro text-muted-foreground leading-tight hover:text-foreground hover:underline" onClick={() => applyShowControl(row, kind, { model, actions })}>
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-md py-0.5 typography-micro text-muted-foreground leading-tight hover:text-foreground hover:underline" onClick={() => applyShowControl(row, kind, { model, actions })}>
           {t(kind === 'more' ? 'sessions.sidebar.group.showMore' : 'sessions.sidebar.group.showFewer')}
+          {kind === 'more' ? <CollapsedSessionActivityIndicator nodes={row.hiddenNodes} /> : null}
         </button>
       );
       return (
@@ -785,6 +798,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
     <FolderDeleteConfirmDialog value={folderDeleteConfirm} setValue={setFolderDeleteConfirm} onConfirm={() => {
       if (!folderDeleteConfirm) return;
       deleteFolder(folderDeleteConfirm.scopeKey, folderDeleteConfirm.folderId);
+      removeFolderFromSections(folderDeleteConfirm.folderId);
       setFolderDeleteConfirm(null);
     }} />
     {archiveAllConfirm.dialog}

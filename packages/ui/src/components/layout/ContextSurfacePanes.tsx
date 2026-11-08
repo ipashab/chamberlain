@@ -639,6 +639,18 @@ export const ContextSurfacePanes: React.FC = () => {
     [shownInRegion, tabs],
   );
   const pluginTabs = React.useMemo(() => tabs.filter((tab) => isPluginContextPanelMode(tab.mode)), [tabs]);
+  // A tab restored from the last run starts its page the first time it shows
+  // in a region: an extension nobody looked at this run runs nothing. After
+  // that it stays mounted, which keeps the page's state while another tab
+  // is in front.
+  const [seenPluginTabs, setSeenPluginTabs] = React.useState<ReadonlySet<string>>(() => new Set());
+  const newlyShownPluginTabs = pluginTabs.filter((tab) => {
+    if (seenPluginTabs.has(tab.id)) return false;
+    return shownInRegion(tab.id);
+  });
+  if (newlyShownPluginTabs.length > 0) {
+    setSeenPluginTabs(new Set([...seenPluginTabs, ...newlyShownPluginTabs.map((tab) => tab.id)]));
+  }
   const guests = useGuestsStore((state) => state.guests);
   const surfaceGuestIds = React.useMemo(
     () => new Set(guests.filter(guestHasSharedSurface).map((guest) => guest.id)),
@@ -659,6 +671,20 @@ export const ContextSurfacePanes: React.FC = () => {
   // shown: a hidden surface's toolbar must not answer for the region.
   const headerSlotFor = (leafId: string | null, active: boolean): HTMLElement | null =>
     (active && leafId ? regionHosts[leafId]?.headerSlot ?? null : null);
+
+
+  // A tab restored from the last run starts its page the first time it shows:
+  // an extension nobody looked at this run runs nothing. After that it stays
+  // mounted, which keeps the page's state while another tab is in front.
+  const [seenPluginTabs, setSeenPluginTabs] = React.useState<ReadonlySet<string>>(() => new Set());
+  const newlyShownPluginTabs = pluginTabs.filter((tab) => {
+    if (seenPluginTabs.has(tab.id)) return false;
+    const zone = zoneFor(tab.mode);
+    return zone.isOpen && zone.activeTab?.id === tab.id;
+  });
+  if (newlyShownPluginTabs.length > 0) {
+    setSeenPluginTabs(new Set([...seenPluginTabs, ...newlyShownPluginTabs.map((tab) => tab.id)]));
+  }
 
   return (
     <>
@@ -824,6 +850,7 @@ export const ContextSurfacePanes: React.FC = () => {
       ) : null}
       {pluginTabs.map((tab) => {
         if (!isPluginContextPanelMode(tab.mode)) return null;
+        if (!seenPluginTabs.has(tab.id)) return null;
         // A shared-surface extension's picture is drawn by the host and
         // mounted only while shown, so an unwatched surface holds no socket
         // and its service can idle out. Its own page, when it has one, is

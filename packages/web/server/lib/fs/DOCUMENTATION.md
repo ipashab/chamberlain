@@ -8,6 +8,11 @@ Own filesystem API behavior for the web server runtime, including workspace-boun
 - `packages/web/server/lib/fs/search.js`: fuzzy filesystem search for workspace supplements and project icon discovery.
 - `packages/web/server/lib/fs/content-search.js`: find in files, run by ripgrep (`GET /api/fs/find-in-files`).
 - `packages/web/server/lib/fs/ripgrep.js`: where the ripgrep binary comes from.
+- `folder-change-watch.js` owns signal-driven fingerprint/settle scheduling for extension packages and custom themes. Each root has one watcher, one 30-second safety interval and at most one pending fast check. Its first fingerprint starts at creation; stop closes the watcher, cancels timers and suppresses in-flight results.
+
+### Why folder change checks retain a safety interval
+
+The interval reopens the watcher before checking, so Linux/Windows folder deletion and recreation recovers even when the old watcher emits nothing. A failed, errored or closed watcher uses the caller's fast cadence until a safety tick restores it; healthy roots read files only on signals, settling checks and safety ticks.
 
 ## Public exports
 - `registerFsRoutes(app, dependencies)` from `routes.js`
@@ -60,7 +65,7 @@ Own filesystem API behavior for the web server runtime, including workspace-boun
   - The active project directory is validated with `fs.realpath`, so when the project root is itself a symlink the workspace base no longer matches the paths the client sends. Workspace resolution therefore retries against the raw directory the client requested (`requestedDirectory` from `resolveProjectDirectory`) before falling back to worktree roots. Symlinks are still resolved afterwards, and write/exec routes keep their canonical containment check against the resolved base.
 - `createFsSearchRuntime({ fsPromises, path, spawn, resolveGitBinaryForSpawn })` from `search.js`
   - Returns `{ searchFilesystemFiles(rootPath, options) }`.
-  - Supports fuzzy matching, hidden-file handling, and optional `git check-ignore` filtering.
+   - Supports fuzzy matching, hidden-file handling, and optional Git ignore filtering.
    - An empty query stops at `limit` candidates. A query walks the tree until it is exhausted or 10,000 files are inspected (`FILE_SEARCH_MAX_VISITED_FILES`): weak shallow matches would otherwise exhaust a candidate budget before exact deeper matches are ever visited. The ceiling mirrors `packages/vscode/src/bridge-fs-helpers-runtime.ts`, and both suites pin the two runtimes' agreement.
 
 ### Why workspace search supplements OpenCode
@@ -71,14 +76,43 @@ caller's result limit. Replacing the index with the icon-discovery walk would
 drop normal results. Web, desktop, hosted mobile and Capacitor use this endpoint;
 VS Code forwards the same flags to its extension-host search.
 
-Search ignore checks send and receive NUL-delimited names with
-`git check-ignore --stdin -z`, preserving Unicode, whitespace and newlines.
-Git's quoted line output cannot be compared directly with filesystem names.
+Git ignore reads use NUL-delimited paths, preserving Unicode, whitespace and
+newlines. Git's quoted line output cannot be compared directly with filesystem
+names.
 
 `workspaceSearch: true` searches generated directories such as `build` and
 `dist`, excludes only `.git` and `node_modules`, and removes the icon walk's
 10,000-file ceiling. A 30-second deadline fails the search rather than returning
 an unmarked partial answer. Default icon discovery keeps its existing bounds.
+
+When the client closes the response (a new letter aborted the request) the walk
+stops at its next batch, starts no more Git reads, kills the running one and
+sends nothing. Typing a name otherwise leaves one whole-tree walk per letter
+running at once. VS Code stops its own walk through `api:fs:search:abort`.
+
+### Why a stopped walk kills Git without `taskkill /T`
+
+On Windows the spawned `git.exe` is Git for Windows' launcher, so the kill leaves
+the real `git` to finish that one read, about 250 ms in a 20,000-file checkout.
+`taskkill` would start one more process per stopped read, on a path that exists
+to start fewer. The Git service's untracked listing uses it because that listing
+can walk for a minute.
+
+### Why workspace search reads ignored paths per repository
+
+Workspace search runs `git ls-files --others --ignored --exclude-standard
+--directory -z` once per repository in each query. Per-directory `check-ignore`
+spawned hundreds of Git processes in a copied checkout; batching its input still
+repeated path checks. Git's ignored-path listing keeps tracked files visible,
+applies nested ignore and negation rules, and collapses fully ignored directories
+so the filesystem walk can prune them. A nested `.git` file or directory starts
+a separate read in that repository's context. A wholly ignored search root can
+be reported as `./`; it excludes that root's contents. Git keeps directories with
+tracked descendants expanded, preserving their tracked exceptions.
+The reads live only for the current
+query, so later queries see changed ignore rules and cannot share state across
+requested roots. Icon discovery retains per-directory `check-ignore` and its
+bounded walk.
 
 ### Find in files
 
@@ -123,7 +157,7 @@ npm and Bun install for the current platform; `rg` on the PATH user commands
 get. A found binary is kept for the process lifetime; a miss is looked up again
 on the next search. The stderr pipe is read to the end, for the reason below.
 
-Both search and directory listing discard `git check-ignore` stderr at spawn.
+Both search and directory listing discard Git ignore-read stderr at spawn.
 They consume stdout for ignore matches. Never create an unread stderr pipe:
 Git diagnostics can fill it and block the child indefinitely, so repeated
 searches accumulate live Git processes. Both also kill a `check-ignore` child
@@ -132,7 +166,8 @@ that has not exited within `OPENCHAMBER_GIT_CHECK_IGNORE_TIMEOUT_MS` (default
 `git-process.test.js` exercises both
 paths with real OS pipes, twelve concurrent checks, and 2 MiB of diagnostics
 per child. Successful completion must preserve ignore filtering and reap all
-twelve children.
+twelve children. Workspace search applies the same timeout and fallback to its
+`ls-files` child.
 
 ## Composition contract with `index.js`
 - `index.js` provides composition-time dependencies only (platform primitives + callbacks such as `resolveProjectDirectory`, `normalizeDirectoryPath`, and `buildAugmentedPath`).
@@ -164,4 +199,4 @@ The Git service validates a selected commit identity before planning or spawning
 - If adding new `/api/fs/*` endpoints, add them in `routes.js` and extend this document.
 - `routes.js` and the sibling modules it imports (`byte-range.js`, `workspace-file-names.js`, `content-search.js`, `../shared/guards.js`, `../git/redaction.js`, `../path-realpath-cache.js`) load with Node built-ins only: `routes.test.js` imports a copy of them in a bare Node process without `node_modules`, the way a packaged desktop build once failed to load them. A new sibling module goes into that test's copy list and takes its value guards from `../shared/guards.js` rather than from a dependency.
 - `GET /api/fs/list` may resolve symlinks with `realpath` to read directory contents, but the response `path` and each entry `path` must stay in the caller's requested path space (`path.join(requestedPath, name)`). Returning real paths breaks file-tree expansion for directories reached through workspace symlinks.
-- `POST /api/fs/upload` accepts one `application/octet-stream` body with `path` and optional `overwrite=true` query parameters. The body streams into a same-directory temp file with a 100 MiB default cap configurable through `OPENCHAMBER_FS_UPLOAD_MAX_BYTES`; failed and oversized uploads clean up that temp file. New files commit through an atomic no-replace link, existing files return `409` unless overwrite is explicit, directory targets are rejected, and the destination parent resolves before writing so uploads cannot escape through workspace symlinks.
+- `POST /api/fs/upload` accepts one `application/octet-stream` body with `path` and optional `overwrite=true` query parameters. The body streams into a same-directory temp file with a 100 MiB default cap configurable through `OPENCHAMBER_FS_UPLOAD_MAX_BYTES`; failed and oversized uploads clean up that temp file. An oversized body is rejected with `413` carrying `reason: 'too-large'` and the effective `maxBytes`, so a client can name the limit it hit. A path that resolves outside the workspace is rejected with `403` carrying `reason: 'outside-workspace'`. New files commit through an atomic no-replace link, existing files return `409` unless overwrite is explicit, directory targets are rejected, and the destination parent resolves before writing so uploads cannot escape through workspace symlinks.

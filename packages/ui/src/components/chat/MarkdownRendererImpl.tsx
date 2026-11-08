@@ -28,6 +28,7 @@ import type { ToolPopupContent } from './message/types';
 import { getMarkdownCjk, getMarkdownProcessingOptions, markdownMath } from './markdown/streamdownPlugins';
 import { remarkEmojiShortcodes } from './markdown/remarkEmojiShortcodes';
 import { remarkRepositoryReferences } from './markdown/remarkRepositoryReferences';
+import { fenceUiBlocks } from './uiBlocks/taggedBlocks';
 import type { EmojiShortcodes } from '@/lib/emoji/shortcodes';
 import type { RepositoryLinkContext } from '@/lib/source-control/repositoryLinks';
 import { MarkdownMediaProvider, type MarkdownDocumentAssets } from './markdown/MarkdownMediaContext';
@@ -273,6 +274,7 @@ export interface MarkdownContentProps {
   messageId?: string;
   enableFileReferences?: boolean;
   disableLinkSafety?: boolean;
+  tableWidthScope?: string;
   loopbackPreview?: boolean;
   documentAssets?: MarkdownDocumentAssets;
   onShowPopup?: (content: ToolPopupContent) => void;
@@ -306,6 +308,7 @@ export function MarkdownContent({
   messageId,
   enableFileReferences = true,
   disableLinkSafety,
+  tableWidthScope,
   loopbackPreview = false,
   documentAssets,
   onShowPopup,
@@ -434,8 +437,9 @@ export function MarkdownContent({
     // Only an assistant reply on screen draws UI blocks; copies and image
     // exports keep the block's source.
     uiBlocks: uiBlocks && !purpose,
-    uiBlockReply: uiBlocks && !purpose && settled && sessionId && messageId ? { sessionId, messageId } : null,
+    settledReply: uiBlocks && !purpose && settled && sessionId && messageId ? { sessionId, messageId } : null,
     disableLinkSafety,
+    tableWidthScope,
     theme,
     mermaidControls,
     onShowPopup,
@@ -443,7 +447,7 @@ export function MarkdownContent({
     confirmFile,
     code,
   }), [
-    directory, fileReferences, fileNavigation, loopbackPreview, settled, purpose, uiBlocks, sessionId, messageId, disableLinkSafety, theme,
+    directory, fileReferences, fileNavigation, loopbackPreview, settled, purpose, uiBlocks, sessionId, messageId, disableLinkSafety, tableWidthScope, theme,
     mermaidControls, onShowPopup, onExportCode, confirmFile, code,
   ]);
 
@@ -555,7 +559,7 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
   const body = (
     <MarkdownContent
       key={identity}
-      content={content}
+      content={variant === 'assistant' ? fenceUiBlocks(content) : content}
       singleTilde={false}
       mode={mode}
       mediaMode={variant === 'assistant' ? 'assistant' : 'local'}

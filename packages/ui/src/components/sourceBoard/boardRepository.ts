@@ -229,7 +229,13 @@ export function folderOfRepository(
 }
 
 /** The folder a link to an issue or PR is read through: `pending` while that is not known yet, `failed` when the search for repositories failed. */
-export type LinkRepository = { status: 'pending' | 'failed' | 'ready'; directory: string; retry: () => void };
+export type LinkRepository = {
+    status: 'pending' | 'failed' | 'ready';
+    directory: string;
+    /** A remote of the folder names the link's repository; false for one the project may only reach through its fork network, or not at all. */
+    owned: boolean;
+    retry: () => void;
+};
 
 /**
  * The folder the Tracker reads a link through. A root that is a repository is
@@ -237,8 +243,11 @@ export type LinkRepository = { status: 'pending' | 'failed' | 'ready'; directory
  * is read through the one whose remote is the link's repository, so a link to
  * any of them opens in the Tracker; with none, the root is read and answers
  * that it cannot show the link. The Git selection is never touched.
+ * `enabled: false` reads nothing and answers with the root, for surfaces that
+ * ask only while a link is on screen.
  */
-export function useLinkRepository(root: string, url: string): LinkRepository {
+export function useLinkRepository(root: string, url: string, options: { enabled?: boolean } = {}): LinkRepository {
+    const { enabled = true } = options;
     const { sourceControl } = useRuntimeAPIs();
     const { rootIsGitRepo, nestedRepos, retry } = useFolderRepositories(root);
     const candidates = rootIsGitRepo === false && Array.isArray(nestedRepos) ? nestedRepos : NO_FOLDERS;
@@ -262,8 +271,11 @@ export function useLinkRepository(root: string, url: string): LinkRepository {
         return folderOfRepository(repositoryUrl, folders, [...knownIdentities, ...defaultSourceControlIdentities(descriptors)], descriptors);
     }, [bindings, candidates, descriptors, knownIdentities, repositoryUrl]);
 
-    if (rootIsGitRepo === null || (rootIsGitRepo === false && nestedRepos === undefined)) return { status: 'pending', directory: root, retry };
-    if (rootIsGitRepo === false && nestedRepos === null) return { status: 'failed', directory: root, retry };
-    if (match === null) return { status: 'pending', directory: root, retry };
-    return { status: 'ready', directory: match === 'none' ? root : match, retry };
+    if (!enabled) return { status: 'ready', directory: root, owned: false, retry };
+    if (rootIsGitRepo === null) return { status: 'pending', directory: root, owned: false, retry };
+    if (match !== null && match !== 'none') return { status: 'ready', directory: match, owned: true, retry };
+    if (nestedRepos === undefined) return { status: 'pending', directory: root, owned: false, retry };
+    if (nestedRepos === null) return { status: 'failed', directory: root, owned: false, retry };
+    if (match === null) return { status: 'pending', directory: root, owned: false, retry };
+    return { status: 'ready', directory: root, owned: false, retry };
 }

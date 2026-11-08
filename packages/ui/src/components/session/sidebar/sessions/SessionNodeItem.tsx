@@ -38,6 +38,7 @@ import { useGuestActions } from '@/hooks/useGuestSurfaces';
 import { guestSessionActions, type GuestActionEntry } from '@/lib/guests/actions';
 import { runGuestSessionAction } from '@/lib/guests/session-action';
 import { SessionAiRenameMenuItem } from '@/components/session/SessionAiRenameMenuItem';
+import { MoveSessionDialog } from '@/components/session/MoveSessionDialog';
 import { handleSessionRenameKeyDown } from '@/components/session/sessionRenameKeyboard';
 import { useIsSessionAiRenamePending } from '@/sync/use-session-ai-rename';
 import { useSessionBlockingRequests } from '@/sync/sync-context';
@@ -46,6 +47,8 @@ import { useSessionHoverPrefetch } from '../list/useSessionPrefetch';
 import { getSyncSessionMaterializationStatus } from '@/sync/sync-refs';
 import { useViewportStore, viewportSessionKey } from '@/sync/viewport-store';
 import { DraggableSessionRow } from '../folders/sessionFolderDnd';
+import { requestNewFolder } from '../folders/newFolderRequest';
+import { getWorkFolderScope } from './sessionFolderIdentity';
 import { useSessionRowOrderRegistry } from './sessionRowOrder';
 import { canShowSessionWorktreeMenu, getSessionWorktreeMenuDisabled, nodeContainsSessionId, nodeHasPinnedMembershipChange, resolveTooltipBranchLabel, selectBlockingBadgeSessionScopes, type BlockingBadgeSessionScope } from './sessionNodeItemUtils';
 import { useSessionRowMenuState } from './useSessionRowMenuState';
@@ -79,7 +82,7 @@ import { isRowBoxClick } from './rowBoxClick';
 import { setSessionWorkState } from '@/sync/session-actions';
 import { useSessionWarmingStore, useSessionWarmUntil } from '@/stores/useSessionWarmingStore';
 import { isSpaceDirectory } from '@/lib/spaces/space-route';
-import { sessionGoalStatusColor, sessionGoalStatusLabelKey } from '@/lib/sessionGoalPresentation';
+import { sessionGoalMarkLabelKey, sessionGoalStatusColor } from '@/lib/sessionGoalPresentation';
 import { getChatsRootFromDirectory, isChatDirectoryPath } from '@/lib/chatDirectories';
 import { getMultiRunIdentity, sameMultiRunIdentity } from '@/lib/multirun/identity';
 import { ArrowsMerge } from '@/components/icons/ArrowsMerge';
@@ -532,6 +535,7 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
   const isAiRenaming = useIsSessionAiRenamePending(session.id, sessionDirectory);
   const isSessionActionPending = isMovingToWorktree || isAiRenaming;
   const currentWorktreeMetadata = node.worktree ?? useSessionUIStore.getState().getWorktreeMetadata(session.id) ?? null;
+  const [moveDialogOpen, setMoveDialogOpen] = React.useState(false);
   const [worktreeTargets, setWorktreeTargets] = React.useState<SessionWorktreeMenuTarget[]>([]);
   const [worktreeTargetsLoadFailed, setWorktreeTargetsLoadFailed] = React.useState(false);
   const worktreeSubmenuOpenRef = React.useRef(false);
@@ -576,8 +580,7 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
       toast.error(t('sessions.warming.toggleFailed'));
     }
   };
-  // SAFETY: sessionGoalStatusLabelKey contains an i18n key for every SessionGoalStatus.
-  const sessionGoalLabel = sessionGoal ? t(sessionGoalStatusLabelKey[sessionGoal.status] as never) : '';
+  const sessionGoalLabel = sessionGoal ? t(sessionGoalMarkLabelKey[sessionGoal.status]) : '';
   const sessionGoalGlyph = sessionGoal ? (
     <RowMarkTooltip label={sessionGoalLabel}>
       <span className="inline-flex flex-shrink-0 items-center" aria-label={sessionGoalLabel}>
@@ -1393,6 +1396,16 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
           </Sub>
         );
       })() : null}
+      {!isSubtaskSession && !archivedBucket && !isVSCode && sessionDirectory && !isSpaceDirectory(sessionDirectory) ? (
+        <SessionMenuItemHint hint={isStreaming ? t('sessions.sidebar.session.moveToWorktree.tooltipBusy') : t('sessions.moveSession.hint')}>
+          <span className="block">
+            <Item disabled={isStreaming || isMovingToWorktree} onClick={() => setMoveDialogOpen(true)} className="w-full [&>svg]:me-1">
+              <Icon name="folder-received" className="me-1 h-4 w-4" />
+              {t('sessions.moveSession.menu')}
+            </Item>
+          </span>
+        </SessionMenuItemHint>
+      ) : null}
       {multiRunKey ? (
         <SessionMenuItemHint hint={t('sessions.sidebar.session.menuHint.openRunOverview')}>
         <Item onClick={() => useUIStore.getState().setRunOverviewKey(multiRunKey)} className="[&>svg]:me-1">
@@ -1402,32 +1415,46 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
         </SessionMenuItemHint>
       ) : null}
 
-      {sessionDirectory && !archivedBucket && !isTimelineRow && hasFolderMutationAuthority ? (() => {
-        // Folders are flat per project: list folders from every scope of the
-        // owning project (root + all worktrees) so sessions can be filed
-        // across worktrees. Each action targets the folder's owning scope,
-        // and moving between scopes clears the previous membership first.
+      {sessionDirectory && !archivedBucket && hasFolderMutationAuthority ? (() => {
+        // A session files where its row lives: the project root's folders, or
+        // those of its own worktree, which itself files whole. Every other
+        // scope is read only to find and clear an older membership.
+        const workScope = getWorkFolderScope(folderOwnerKey);
         const scopes: string[] = [];
         const pushScope = (candidate: string | null | undefined) => {
           const normalized = normalizePath(candidate ?? null);
           if (normalized && !scopes.includes(normalized)) scopes.push(normalized);
         };
-        if (sessionProjectId && !isVSCode) {
-          const project = useProjectsStore.getState().projects.find((entry) => entry.id === sessionProjectId);
-          const projectRoot = normalizePath(project?.path ?? null);
-          pushScope(projectRoot);
-          if (projectRoot) {
-            (useSessionUIStore.getState().availableWorktreesByProject.get(projectRoot) ?? [])
-              .forEach((worktree) => pushScope(worktree.path));
-          }
+        const project = sessionProjectId && !isVSCode
+          ? useProjectsStore.getState().projects.find((entry) => entry.id === sessionProjectId)
+          : undefined;
+        const projectRoot = normalizePath(project?.path ?? null);
+        if (workScope) pushScope(workScope);
+        else if (projectRoot) pushScope(projectRoot);
+        else {
+          pushScope(getChatsRootFromDirectory(sessionDirectory));
+          pushScope(sessionDirectory);
         }
-        pushScope(getChatsRootFromDirectory(sessionDirectory));
+        const offeredScopes = [...scopes];
+        pushScope(projectRoot);
         pushScope(sessionDirectory);
-        const folderEntries = scopes.flatMap((scope) =>
+        if (projectRoot) {
+          (useSessionUIStore.getState().availableWorktreesByProject.get(projectRoot) ?? [])
+            .forEach((worktree) => pushScope(worktree.path));
+        }
+        const allEntries = scopes.flatMap((scope) =>
           getFoldersForScope(scope).map((folder) => ({ scope, folder })));
-        const currentEntry = folderEntries.find(({ scope, folder }) =>
+        const currentEntry = allEntries.find(({ scope, folder }) =>
           getSessionFolderId(scope, session.id) === folder.id) ?? null;
-        const defaultScope = scopes[0] ?? sessionDirectory;
+        const folderEntries = allEntries.filter((entry) => offeredScopes.includes(entry.scope) || entry === currentEntry);
+        const defaultScope = offeredScopes[0] ?? sessionDirectory;
+        const fileInNewFolder = (folderId: string): void => {
+          for (const scope of scopes) {
+            if (scope !== defaultScope) removeSessionFromFolder(scope, session.id);
+          }
+          addSessionToFolder(defaultScope, folderId, session.id);
+        };
+        if (workScope && folderEntries.length === 0) return null;
         return (
           <>
             <Separator />
@@ -1458,19 +1485,25 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
                     );
                   })
                 )}
-                <Separator />
-                <Item onClick={() => {
-                   const newFolder = createFolderAndStartRename(defaultScope);
-                   if (!newFolder) return;
-                   pendingFolderCreateRef.current = true;
-                  for (const scope of scopes) {
-                    if (scope !== defaultScope) removeSessionFromFolder(scope, session.id);
-                  }
-                  addSessionToFolder(defaultScope, newFolder.id, session.id);
-                }}>
-                  <Icon name="add" className="me-1 h-4 w-4" />
-                  {t('sessions.sidebar.folders.newFolderEllipsis')}
-                </Item>
+                {!workScope ? <>
+                  <Separator />
+                  <Item onClick={() => {
+                    if (isZoneRow) {
+                      requestNewFolder({
+                        projectLabel: project?.label?.trim() || (project ? formatDirectoryName(project.path, null) : null),
+                        create: (name) => fileInNewFolder(useSessionFoldersStore.getState().createFolder(defaultScope, name).id),
+                      });
+                      return;
+                    }
+                    const newFolder = createFolderAndStartRename(defaultScope);
+                    if (!newFolder) return;
+                    pendingFolderCreateRef.current = true;
+                    fileInNewFolder(newFolder.id);
+                  }}>
+                    <Icon name="add" className="me-1 h-4 w-4" />
+                    {t('sessions.sidebar.folders.newFolderEllipsis')}
+                  </Item>
+                </> : null}
                 {currentEntry ? (
                   <Item onClick={() => { removeSessionFromFolder(currentEntry.scope, session.id); }} className="text-destructive focus:text-destructive">
                     <Icon name="close" className="me-1 h-4 w-4" />
@@ -1963,6 +1996,9 @@ function SessionNodeItemComponent(props: SessionNodeItemProps): React.ReactNode 
         </ContextMenuRoot>
       </DraggableSessionRow>
       {hasChildren && isExpanded ? children : null}
+      {moveDialogOpen && sessionDirectory ? (
+        <MoveSessionDialog open onOpenChange={setMoveDialogOpen} sessionId={session.id} sourceDirectory={sessionDirectory} />
+      ) : null}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
         <DialogContent showCloseButton={false} className="max-w-sm gap-5">
           <DialogHeader>

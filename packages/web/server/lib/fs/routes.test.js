@@ -796,7 +796,21 @@ describe('fs upload', () => {
     const res = await callUpload(handler, { path: '/repo/link/file.bin' });
 
     expect(res.statusCode).toBe(403);
-    expect(res.body).toEqual({ error: 'Access denied' });
+    expect(res.body).toEqual({ error: 'Access denied', reason: 'outside-workspace' });
+    expect(fsPromises.open).not.toHaveBeenCalled();
+  });
+
+  it('rejects an existing target that resolves outside the workspace', async () => {
+    const fsPromises = {
+      realpath: vi.fn(async (targetPath) => targetPath === '/repo/file.bin' ? '/outside/file.bin' : targetPath),
+      open: vi.fn(async () => ({ write: vi.fn(), close: vi.fn() })),
+    };
+    const handler = registerUpload(fsPromises);
+
+    const res = await callUpload(handler);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toEqual({ error: 'Access denied', reason: 'outside-workspace' });
     expect(fsPromises.open).not.toHaveBeenCalled();
   });
 
@@ -818,7 +832,11 @@ describe('fs upload', () => {
       });
 
       expect(res.statusCode).toBe(413);
-      expect(res.body).toEqual({ error: 'File exceeds maximum size of 5 bytes' });
+      expect(res.body).toEqual({
+        error: 'File exceeds maximum size of 5 bytes',
+        reason: 'too-large',
+        maxBytes: 5,
+      });
       expect(write).toHaveBeenCalledWith(Buffer.from('123'), 0, 3, null);
       expect(fsPromises.link).not.toHaveBeenCalled();
       expect(fsPromises.unlink).toHaveBeenCalledWith(expect.stringMatching(/^\/repo\/file\.bin\.upload-/));
@@ -839,7 +857,11 @@ describe('fs upload', () => {
       const res = await callUpload(handler, { body: Buffer.from('123456') });
 
       expect(res.statusCode).toBe(413);
-      expect(res.body).toEqual({ error: 'File exceeds maximum size of 5 bytes' });
+      expect(res.body).toEqual({
+        error: 'File exceeds maximum size of 5 bytes',
+        reason: 'too-large',
+        maxBytes: 5,
+      });
       expect(fsPromises.open).not.toHaveBeenCalled();
     } finally {
       if (previous === undefined) delete process.env.OPENCHAMBER_FS_UPLOAD_MAX_BYTES;
@@ -2763,7 +2785,7 @@ describe('GET /api/fs/search', () => {
     await rm(repo, { recursive: true, force: true });
   });
 
-  const register = async () => {
+  const register = async (overrides = {}) => {
     const { spawn } = await import('node:child_process');
     const { app, getRoute } = createRouteRegistry();
     registerFsRoutes(app, {
@@ -2772,6 +2794,7 @@ describe('GET /api/fs/search', () => {
       resolveProjectDirectory: async () => ({ directory: repo }),
       buildAugmentedPath: () => '/usr/bin', resolveGitBinaryForSpawn: () => 'git',
       openchamberUserConfigRoot: '/home/user/.config',
+      ...overrides,
     });
     return async (query) => {
       const response = createMockResponse();
@@ -2791,6 +2814,47 @@ describe('GET /api/fs/search', () => {
     expect((await ask({ query: 'needle', includeHidden: 'true', respectGitignore: 'false', limit: '1' })).body.files).toHaveLength(1);
   });
 
+  it('stops the walk and sends nothing once the client closes the response', async () => {
+    let reads = 0;
+    let closeResponse;
+    const fsPromises = {
+      ...nativeFs,
+      stat: nativeFs.stat,
+      realpath: nativeFs.realpath,
+      readdir: async (...args) => {
+        reads += 1;
+        closeResponse();
+        return nativeFs.readdir(...args);
+      },
+    };
+    await nativeFs.mkdir(path.join(repo, 'src/deep'), { recursive: true });
+    const { app, getRoute } = createRouteRegistry();
+    const { spawn } = await import('node:child_process');
+    registerFsRoutes(app, {
+      os: { homedir: () => '/home/user' }, path, fsPromises, spawn,
+      crypto: { randomUUID: () => 'job-0' }, normalizeDirectoryPath: (p) => p,
+      resolveProjectDirectory: async () => ({ directory: repo }),
+      buildAugmentedPath: () => '/usr/bin', resolveGitBinaryForSpawn: () => 'git',
+      openchamberUserConfigRoot: '/home/user/.config',
+    });
+    const response = createMockResponse();
+    response.on = (event, listener) => {
+      if (event === 'close') closeResponse = listener;
+      return response;
+    };
+    await getRoute('GET', '/api/fs/search')({ query: { query: 'needle', respectGitignore: 'false' }, headers: {} }, response);
+    expect(reads).toBe(1);
+    expect(response.body).toBeNull();
+
+    // Already gone before the route got this far: no walk at all.
+    reads = 0;
+    const gone = createMockResponse();
+    gone.destroyed = true;
+    await getRoute('GET', '/api/fs/search')({ query: { query: 'needle', respectGitignore: 'false' }, headers: {} }, gone);
+    expect(reads).toBe(0);
+    expect(gone.body).toBeNull();
+  });
+
   it('returns paths under the requested symlink and reports missing directories', async () => {
     const link = `${repo}-link`;
     await nativeFs.symlink(repo, link);
@@ -2802,6 +2866,59 @@ describe('GET /api/fs/search', () => {
     } finally {
       await rm(link, { force: true });
     }
+  });
+
+  it('reads Git ignores once per repository and preserves nested rules and tracked files', async () => {
+    const { spawn } = await import('node:child_process');
+    const gitReads = [];
+    const ask = await register({ spawn: (...args) => { gitReads.push(args[2].cwd); return spawn(...args); } });
+    for (let index = 0; index < 12; index++) {
+      const directory = path.join(repo, `dir-${index}`);
+      await mkdir(directory);
+      await nativeFs.writeFile(path.join(directory, 'ordinary.txt'), '');
+    }
+    await mkdir(path.join(repo, 'src'));
+    await nativeFs.writeFile(path.join(repo, 'src/.gitignore'), '*.ts\n!keep-needle.ts\n');
+    await nativeFs.writeFile(path.join(repo, 'src/keep-needle.ts'), '');
+    await nativeFs.writeFile(path.join(repo, 'src/drop-needle.ts'), '');
+    await nativeFs.writeFile(path.join(repo, 'build/tracked-needle.ts'), '');
+    execFileSync('git', ['add', '-f', 'build/tracked-needle.ts'], { cwd: repo });
+    const nested = path.join(repo, 'nested');
+    await mkdir(nested);
+    execFileSync('git', ['init', '-q'], { cwd: nested });
+    await nativeFs.writeFile(path.join(nested, '.gitignore'), '*.ts\n!keep-needle.ts\n');
+    await nativeFs.writeFile(path.join(nested, 'keep-needle.ts'), '');
+    await nativeFs.writeFile(path.join(nested, 'drop-needle.ts'), '');
+
+    const files = (await ask({ query: 'needle', includeHidden: 'true' })).body.files;
+    expect(files.map((file) => file.relativePath)).toEqual([
+      'needle.ts', '.needle.ts', 'src/keep-needle.ts', 'nested/keep-needle.ts', 'build/tracked-needle.ts',
+    ]);
+    expect(gitReads.sort()).toEqual((await Promise.all([repo, nested].map((directory) => nativeFs.realpath(directory)))).sort());
+  });
+
+  it('refreshes ignore rules on the next query and isolates requested directories', async () => {
+    const other = await mkdtemp(path.join(tmpdir(), 'oc-file-search-other-'));
+    try {
+      execFileSync('git', ['init', '-q'], { cwd: other });
+      await nativeFs.writeFile(path.join(other, 'needle.ts'), '');
+      const ask = await register();
+      expect((await ask({ query: 'needle' })).body.files.map((file) => file.relativePath)).toEqual(['needle.ts']);
+      await nativeFs.writeFile(path.join(repo, '.gitignore'), 'build/\nneedle.ts\n');
+      expect((await ask({ query: 'needle' })).body.files).toEqual([]);
+      expect((await ask({ directory: other, query: 'needle' })).body.files.map((file) => file.relativePath)).toEqual(['needle.ts']);
+    } finally {
+      await rm(other, { recursive: true, force: true });
+    }
+  });
+
+  it('respects an ignored search root while retaining tracked exceptions', async () => {
+    const ask = await register();
+    const query = { directory: path.join(repo, 'build'), query: 'needle' };
+    expect((await ask(query)).body.files).toEqual([]);
+    await nativeFs.writeFile(path.join(repo, 'build/other-needle.ts'), '');
+    execFileSync('git', ['add', '-f', 'build/needle.ts'], { cwd: repo });
+    expect((await ask(query)).body.files.map((file) => file.relativePath)).toEqual(['needle.ts']);
   });
 });
 
