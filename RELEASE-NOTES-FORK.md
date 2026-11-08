@@ -1,15 +1,54 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `5731991` (v2.6.0), merged
+**Base:** upstream `openchamber/openchamber` @ `651a0564` (v2.7.0), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
+`2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
 `2.5.2-fork1` on `v2.5.2`, and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
 changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
-`changelog/` — `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+`changelog/` — `2.7.0.md`, `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.7.0-fork1` — upstream `v2.7.0` whole: extensions you build, spreadsheets you edit
+
+**The base moves to upstream `v2.7.0`.** You can **build your own
+extensions**: describe what you want with `/new-extension`, the agent
+writes and builds it, and an Install button shows up right in the chat —
+extensions now draw in the chat, answer the agent's questions, act on
+sessions on their own, and add actions and @ rows. Office files **open
+and edit without leaving the app**: Word, PowerPoint, Excel and
+OpenDocument in the viewer, tables sorting, filtering, resizing and
+editing with formulas and undo, selected cells or text quoted to the
+composer, and the cells an agent changed staying marked. Shell code
+blocks in a finished reply get a **Run** button, with the output in the
+block and the agent carrying on when the command ends. SQLite, Parquet,
+zip and Jupyter files open read-only, Office files compare in Changes,
+commits and pull requests, and Markdown exports to Word and PDF, CSV to
+Excel. A Session Totals card counts the whole session's input,
+output and reasoning, with its cache hit rate; an agent can check your
+provider limits and when they reset; every keyboard command is listed in
+Settings and can be rebound; Gitea rides the `gt` CLI; the phone app
+gets a pass over every screen; Patina light and dark themes arrive; the
+bundled OpenCode moves to 2.2.6 — and OpenChamber's own tools always run
+through Code Mode now, a session's first request about 30% smaller, the
+setting gone — and Russian gains the 80 new strings upstream brought,
+in all the fork's locales again.
+
+**The merger kept the fork.** Upstream made Code Mode the only mode, so
+the fork's always-on tools — team, tracker, contacts, backlog, the
+debugger — answer under it with catalog lines of their own, named where
+each is inert until you configure it. The workspace regions stay the
+fork's: chat and file panels keep their zones and drag gestures over
+upstream's new surface panes, and the source board stays the fork's own
+wrapper over the Bitbucket and Jira panels through the 29 conflicts.
+Workflows stay off by default, as upstream ships them, after one merge
+of this line once took the setting the other way. The dompurify
+dependency, dropped upstream in 2.6.0 while the fork's Jira and
+Confluence views still imported it, is back where the build needs it.
 
 ---
 
