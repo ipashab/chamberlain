@@ -39,7 +39,7 @@ export const IntegrationsPage: React.FC = () => {
   const hasConfluence = !isVSCodeRuntime();
   const guests = useGuestsStore((state) => state.guests);
   const runtimeKey = useGuestsStore((state) => state.runtimeKey);
-  const builtInGuests = !isVSCodeRuntime() && !isMobileSurfaceRuntime()
+  const builtInGuests = !isVSCodeRuntime()
     ? guests.filter((guest) => guest.source === 'bundled' && guest.integration && isGuestActive(guest))
     : [];
   const hasBuiltIn = servedSourceControl.length > 0 || servedTrackers.length > 0 || hasBitbucket || hasJira || hasConfluence || builtInGuests.length > 0;
@@ -57,7 +57,7 @@ export const IntegrationsPage: React.FC = () => {
   return (
     <SettingsPageLayout
       title={t('settings.page.integrations.title')}
-      description={t('settings.page.integrations.description')}
+      namedBySidebar
       showSaveStatus
       headerEnd={canBrowseCatalog ? (
         <Button
@@ -78,7 +78,6 @@ export const IntegrationsPage: React.FC = () => {
         <SettingsSection
           title={t('settings.integrations.firstParty.title')}
           info={t('settings.integrations.firstParty.info')}
-          divider={false}
           settingsItem="integrations.first-party"
           contentClassName="space-y-3"
         >
@@ -94,7 +93,7 @@ export const IntegrationsPage: React.FC = () => {
           {builtInGuests.map((guest) => <GuestIntegrationCard key={`${runtimeKey}:${guest.id}`} guest={guest} />)}
         </SettingsSection>
       ) : null}
-      <CatalogExtensionsSection divider={hasBuiltIn} />
+      <CatalogExtensionsSection />
       <GuestIntegrationsSection />
     </SettingsPageLayout>
   );

@@ -204,6 +204,14 @@ const PROMPT_PAGE_MAP: Record<string, PromptPageConfig> = {
       { id: 'jira.issue.spec.methodology', titleKey: 'settings.magicPrompts.page.block.methodology' },
     ],
   },
+  'memory.toDocs': {
+    titleKey: 'settings.magicPrompts.page.group.memoryToDocs.title',
+    descriptionKey: 'settings.magicPrompts.page.group.memoryToDocs.description',
+    blocks: [
+      { id: 'memory.toDocs.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
+      { id: 'memory.toDocs.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+    ],
+  },
 };
 
 const isVisiblePromptId = (id: MagicPromptId): boolean => id.endsWith('.visible');
@@ -514,7 +522,7 @@ export const MagicPromptsPage: React.FC = () => {
   const renderError = (target: EditorContext, message: string, path?: string) => (
     <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--status-error-background)] px-4 py-3">
       <div className="min-w-0 flex-1 basis-64 space-y-1 typography-meta text-[var(--status-error)]">
-        <p>{message}</p>
+        <p dir="auto">{message}</p>
         {path ? <p dir="ltr" className="break-all" data-magic-prompt-path>{path}</p> : null}
       </div>
       <Button variant="outline" size="sm" onClick={() => { void load(target); }}>
@@ -644,7 +652,7 @@ export const MagicPromptsPage: React.FC = () => {
       )}
       showSaveStatus={false}
     >
-      <SettingsSection divider={false}>
+      <SettingsSection>
         <SettingsStackedField
           label={t('settings.magicPrompts.page.scope.label')}
           info={t('settings.magicPrompts.page.scope.info')}

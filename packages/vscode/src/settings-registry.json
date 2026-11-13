@@ -201,6 +201,15 @@
     "agentMemoryToolEnabled": {
       "scope": "instance"
     },
+    "agentMemoryDreamingEnabled": {
+      "scope": "instance"
+    },
+    "agentMemoryDreamingModel": {
+      "scope": "instance"
+    },
+    "agentMemoryDreamingVariant": {
+      "scope": "instance"
+    },
     "agentKnowledgeToolEnabled": {
       "scope": "instance"
     },
@@ -347,6 +356,10 @@
       "perSurface": true
     },
     "sidebarKeepWorkInPlace": {
+      "scope": "profile",
+      "perSurface": true
+    },
+    "sidebarKeepPinnedInPlace": {
       "scope": "profile",
       "perSurface": true
     },
@@ -705,6 +718,9 @@
       "scope": "profile"
     },
     "customProviderIcons": {
+      "scope": "profile"
+    },
+    "customProviderLogos": {
       "scope": "profile"
     },
     "recentModels": {
