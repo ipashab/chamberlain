@@ -1,15 +1,63 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `651a0564` (v2.7.0), merged
+**Base:** upstream `openchamber/openchamber` @ `f31748c9` (v2.7.1), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
+`2.7.1-fork1` on `v2.7.1`, `2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
 `2.5.2-fork1` on `v2.5.2`, and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
 changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
-`changelog/` — `2.7.0.md`, `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+`changelog/` — `2.7.1.md`, `2.7.0.md`, `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.7.1-fork1` — upstream `v2.7.1` whole: one search, memory you tidy, extensions on the phone
+
+**The base moves to upstream `v2.7.1`.** **One search** now answers the
+sidebar, Archive and the command palette: it finds titles and message
+text as you type, a menu in the field picks where to look, and archived
+conversations come in their own group. **Organize memory** tidies what
+agents remember while no session runs — duplicates merge, finished or
+outdated entries go, the Memory panel shows what the last pass changed
+with Undo, and Move puts project rules into `AGENTS.md` or a skill.
+**Extensions work on the phone**: their blocks, sections, popovers and
+editors draw there, and an extension that supports it gets its own
+workspace tab. Projects can create their **worktrees with their own
+command**, a copy-on-write clone tool if you want one, and Delete worktree
+can keep its sessions. Sessions take a **read/unread** mark from their
+menu or Alt+click; the sidebar grows a **Pages** section that hides and
+moves like the others; several sessions in In work are selected and
+marked done at once. **Stop** on a running shell command stops only that
+command; a pasted issue or PR link becomes a chip that reaches the agent
+with the item's details; a **Tasks** section shows the agent's todo list,
+and Context sources lists the plans with their progress. An agent can run
+a command with **secrets you enter on a card**, masked in its output, and
+can list In work, mark sessions done and drop a link it added. Themes are
+picked from drawings of the app, the list has search; the About page
+shows your release notes and the ones an update carries; Settings marks
+each new control with a `new` badge — and Russian gains the new strings
+again, in all the fork's locales.
+
+**The merger kept the fork.** The 31 conflicts went through with the
+fork's layout intact: the header keeps goals, contacts and archive one
+click away beside upstream's new Customize sections and Display mode, the
+archive page still opens with a search query in hand, and the workspace
+regions, the board, the tracker surfaces and the debug mode stay the
+fork's. Upstream moved the agent tools' action grammar from `oneOf` to
+`enum`, so the fork's always-on tools — team, tracker, contacts, backlog,
+the debugger, secret runs — now carry their verbs under the keyword the
+widened schema kept, and their tests read it the same way. Upstream's own
+new tab-state icon won over the fork's older copy where the two met in
+the context panel. happy-dom 21, which the base brings, never starts an
+image load: an `img` is born complete with no bytes behind it, and the
+avatar's tests now hand the window a base URL and an honest loading image
+instead of trusting that one. The suite answers green apart from what was
+already red on 2.7.0 — the fork's own settings-registry rows, the MCP
+grid, one server registry key — and upstream's own poll-interval test,
+which reads one millisecond short when the clock moves under it; the
+anti-slop ratchet counts nothing new.
 
 ---
 
