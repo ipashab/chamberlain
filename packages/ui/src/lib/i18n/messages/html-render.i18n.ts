@@ -33,7 +33,6 @@ export const htmlRenderI18n = {
     'settings.openchamber.tools.field.agentRenderTool': 'Инструмент рендера у агентов',
     'settings.openchamber.tools.field.agentRenderToolAria': 'Инструмент рендера у агентов',
     'settings.openchamber.tools.field.agentRenderToolSummary': 'Позволяет агентам показывать графики, таблицы и диаграммы прямо в чате.',
-    'settings.openchamber.tools.field.agentRenderToolInfo': 'Страницы выполняются в песочнице без доступа к вашим сессиям и файлам. Ссылки открываются в браузере.',
   },
   nl: {
     'chat.htmlRender.fullscreen': 'Volledig scherm openen',

@@ -25,6 +25,7 @@ describe('BitbucketAvatar', () => {
     let windowInstance: Window;
     let host: HTMLDivElement;
     let root: Root;
+    let restoreBornComplete: () => void;
 
     const renderAvatar = async (props: Partial<React.ComponentProps<typeof BitbucketAvatar>>) => {
         await act(async () => {
@@ -33,7 +34,7 @@ describe('BitbucketAvatar', () => {
     };
 
     beforeEach(() => {
-        windowInstance = new Window();
+        windowInstance = new Window({ url: 'http://localhost' });
         Object.assign(globalThis, {
             window: windowInstance,
             document: windowInstance.document,
@@ -43,6 +44,21 @@ describe('BitbucketAvatar', () => {
             Event: windowInstance.Event,
             IS_REACT_ACT_ENVIRONMENT: true,
         });
+        // happy-dom 21 never starts a load in this window, so an img is
+        // born complete with no bytes behind it and the first ref call
+        // reads that as a load that already failed: initials, and no img
+        // left to dispatch against. Fresh bytes on the wire — the window
+        // the load-event tests below live in — has to be stubbed in, and
+        // the base URL above keeps relative srcs parseable so setting
+        // one dispatches no error of its own. afterEach puts the real
+        // getter back.
+        const imageProto = windowInstance.HTMLImageElement.prototype;
+        const originalComplete = Object.getOwnPropertyDescriptor(imageProto, 'complete');
+        Object.defineProperty(imageProto, 'complete', { configurable: true, get: () => false });
+        restoreBornComplete = () => {
+            if (originalComplete) Object.defineProperty(imageProto, 'complete', originalComplete);
+            else Reflect.deleteProperty(imageProto, 'complete');
+        };
         host = document.createElement('div');
         document.body.append(host);
         root = createRoot(host);
@@ -50,6 +66,7 @@ describe('BitbucketAvatar', () => {
 
     afterEach(() => {
         act(() => root.unmount());
+        restoreBornComplete();
         windowInstance.close();
     });
 

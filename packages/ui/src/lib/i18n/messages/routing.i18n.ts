@@ -415,7 +415,6 @@ export const routingI18n = {
     'routing.safetyKind.unknown': 'неясный эффект',
     'routing.toast.safetySkipped': 'Страховочная сетка не смогла проверить действие и ждёт вашего решения',
     'settings.page.routing.title': 'Маршрутизация',
-    'settings.page.routing.description': 'Автоматически выбирает подходящую модель для каждого промпта.',
     'settings.routing.loadError': 'Не удалось загрузить настройки маршрутизации: {error}',
     'settings.routing.unavailable': 'Маршрутизация недоступна на этом сервере.',
     'settings.routing.token.label': 'API-ключ TypeSafe',

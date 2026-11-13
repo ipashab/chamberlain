@@ -731,10 +731,15 @@ const SHOTS = [
     async run(page, ctx) {
       await openMainSession(page, ctx)
       await setContextPanel(page, null)
-      await page.click("button[aria-label=\"Search sessions\"]")
-      await page.waitFor(`document.activeElement?.getAttribute("aria-label") === "Search sessions..."`, { what: "the session search field" })
+      // The fork's header keeps the search field inline: it takes the click
+      // itself, no button opens a field behind it.
+      await page.click("input[aria-label=\"Search sessions\"]")
+      await page.waitFor(`document.activeElement?.getAttribute("aria-label") === "Search sessions"`, { what: "the session search field" })
       await page.type("повтор")
-      await page.waitFor(`document.body.innerText.includes("matches")`, { what: "search results" })
+      // The fork narrows the list to the hits, with a match badge on each
+      // row; it shows no "N matches" line. A session that only message
+      // text names proves the search reached into the bodies.
+      await page.waitFor(`document.body.innerText.includes("Обробка 429")`, { what: "the search results" })
     },
   },
   {
@@ -745,7 +750,9 @@ const SHOTS = [
       // A file in the Git list opens the Changes view with its diff.
       await page.click("[role=list][aria-label=\"Changed files\"] [role=button]", { text: "retry.ts" })
       await page.moveMouseAway()
-      await page.waitFor(`document.body.innerText.includes("Changed: 3") && [...document.querySelectorAll("diffs-container")].some((element) => element.getBoundingClientRect().height > 100)`, { what: "the Changes view with the diff of retry.ts" })
+      // The scope trigger drops its count when the toolbar row collapses to
+      // icons at this width, so the shot proves itself with the rendered diff.
+      await page.waitFor(`[...document.querySelectorAll("diffs-container")].some((element) => element.getBoundingClientRect().height > 100)`, { what: "the Changes view with the diff of retry.ts" })
     },
   },
   {

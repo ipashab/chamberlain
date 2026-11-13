@@ -363,7 +363,7 @@ describe('managed agent tool runtime', () => {
     const debuggerTool = tools.openchamber_debugger;
     expect(debuggerTool.description).toContain('debug panel');
     expect(debuggerTool.description).toContain('debug.wait');
-    const actions = debuggerTool.input.properties.action.oneOf.map((entry) => entry.const);
+    const actions = debuggerTool.input.properties.action.enum;
     expect(actions).toEqual([
       'debug.start', 'debug.wait', 'debug.state', 'debug.stop', 'debug.breakpoints',
       'debug.continue', 'debug.step', 'debug.evaluate', 'debug.variables',
@@ -374,7 +374,7 @@ describe('managed agent tool runtime', () => {
       'path', 'program', 'pythonPath', 'reference', 'timeoutMs', 'until',
     ]);
     // No debug action or input leaks into the other tools.
-    expect(tools.openchamber.input.properties.action.oneOf.map((entry) => entry.const)).not.toContain('debug.start');
+    expect(tools.openchamber.input.properties.action.enum).not.toContain('debug.start');
     expect(tools.openchamber_web.input.properties.parameters.properties).not.toHaveProperty('expression');
     await runtime.materializePlugin({ includeDebugger: false });
     expect(await loadTools(dataDir, 'debugger-disabled')).not.toHaveProperty('openchamber_debugger');
@@ -698,7 +698,7 @@ describe('managed agent tool runtime', () => {
     await prepareManagedEnv(runtime, { includeControl: true, includeWeb: true, includeMemory: true, includeNotify: true });
     const tool = await loadTools(dataDir, 'all');
     expect(Object.keys(tool)).toContain('openchamber_team');
-    expect(tool.openchamber_team.input.properties.action.oneOf.map((entry) => entry.const))
+    expect(tool.openchamber_team.input.properties.action.enum)
       .toEqual(expect.arrayContaining(['team.start', 'team.spawn_agent', 'team.task_create']));
     expect(Object.keys(tool.openchamber_team.input.properties.parameters.properties).sort())
       .toEqual(['agent', 'blockedBy', 'deadlineMinutes', 'description', 'domain', 'isDomainLead', 'message', 'model', 'name', 'newName', 'owner', 'prUrl', 'reason', 'result', 'sinceMessageId', 'slotId', 'status', 'subject', 'taskId', 'to']);
@@ -717,7 +717,7 @@ describe('managed agent tool runtime', () => {
 
     expect(Object.keys(tool.openchamber_tracker.input.properties.parameters.properties).sort())
       .toEqual(['ref', 'text', 'transition']);
-    const actions = tool.openchamber_tracker.input.properties.action.oneOf.map((entry) => entry.const);
+    const actions = tool.openchamber_tracker.input.properties.action.enum;
     expect(actions).toEqual(['pr.view', 'pr.comment', 'pr.approve', 'issue.view', 'issue.comment', 'issue.transitions', 'issue.transition']);
     // The reference forms ride on the description, the grammar the agent reads first.
     expect(tool.openchamber_tracker.description).toContain('pr://<full Bitbucket pull-request URL>');
@@ -726,7 +726,7 @@ describe('managed agent tool runtime', () => {
     // tool keeps the upstream pr.watch/pr.unwatch waits: those wait on GitHub
     // and GitLab, while the tracker reads Bitbucket and Jira.
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('ref');
-    expect(tool.openchamber.input.properties.action.oneOf.map((entry) => entry.const).filter((action) => (action.startsWith('pr.') || action.startsWith('issue.')) && action !== 'pr.watch' && action !== 'pr.unwatch')).toEqual([]);
+    expect(tool.openchamber.input.properties.action.enum.filter((action) => (action.startsWith('pr.') || action.startsWith('issue.')) && action !== 'pr.watch' && action !== 'pr.unwatch')).toEqual([]);
   });
 
   it('exposes the contacts tool with the delegation grammar only', async () => {
@@ -739,13 +739,13 @@ describe('managed agent tool runtime', () => {
 
     expect(Object.keys(tool.openchamber_contacts.input.properties.parameters.properties).sort())
       .toEqual(['contact', 'sessionID', 'task', 'timeoutMs']);
-    const actions = tool.openchamber_contacts.input.properties.action.oneOf.map((entry) => entry.const);
+    const actions = tool.openchamber_contacts.input.properties.action.enum;
     expect(actions).toEqual(['contact.list', 'contact.run', 'contact.wait']);
     // The fork and the persona ride on the description, which the agent reads first.
     expect(tool.openchamber_contacts.description).toContain('forks this conversation');
     // Contact inputs must not leak into the control tool's schema.
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('task');
-    expect(tool.openchamber.input.properties.action.oneOf.map((entry) => entry.const).filter((action) => action.startsWith('contact.'))).toEqual([]);
+    expect(tool.openchamber.input.properties.action.enum.filter((action) => action.startsWith('contact.'))).toEqual([]);
   });
 
   it('dispatches contact actions by the calling session, the agent input untouched', async () => {
@@ -816,13 +816,13 @@ describe('managed agent tool runtime', () => {
 
     expect(Object.keys(tool.openchamber_backlog.input.properties.parameters.properties).sort())
       .toEqual(['itemID', 'position', 'text']);
-    const actions = tool.openchamber_backlog.input.properties.action.oneOf.map((entry) => entry.const);
+    const actions = tool.openchamber_backlog.input.properties.action.enum;
     expect(actions).toEqual(['backlog.list', 'backlog.add', 'backlog.remove', 'backlog.move', 'backlog.clear', 'backlog.run']);
     // The drain's pacing rides on the description, which the agent reads first.
     expect(tool.openchamber_backlog.description).toContain('each staged item is sent into this dialog as its own turn');
     // Backlog inputs must not leak into the control tool's schema.
     expect(Object.keys(tool.openchamber.input.properties.parameters.properties)).not.toContain('text');
-    expect(tool.openchamber.input.properties.action.oneOf.map((entry) => entry.const).filter((action) => action.startsWith('backlog.'))).toEqual([]);
+    expect(tool.openchamber.input.properties.action.enum.filter((action) => action.startsWith('backlog.'))).toEqual([]);
   });
 
   it('dispatches backlog actions by the calling session, the queue the session owns', async () => {

@@ -206,6 +206,7 @@ export const surfacePanelI18n = {
     'contextPanel.surface.status.reconnecting': 'Соединение потеряно. Переподключение…',
     'contextPanel.surface.status.ready': 'Щёлкните или начните вводить, чтобы взять управление',
     'contextPanel.surface.status.readyFocused': 'Вводите, чтобы управлять поверхностью; щёлкните вне неё, чтобы выйти',
+    'contextPanel.surface.status.readyTouch': 'Коснитесь, чтобы взять управление',
     'contextPanel.surface.status.agentWorking': 'Агент работает',
     'contextPanel.surface.status.youControl': 'Управление у вас',
     'contextPanel.surface.status.otherControls': 'Управление у другого устройства',

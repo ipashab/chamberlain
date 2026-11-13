@@ -30,6 +30,7 @@ import type { SearchScope } from '@/lib/search/omniQuery';
 import { SearchInMenu } from '@/components/search/SearchInMenu';
 import { SearchStatusMark } from '@/components/search/SearchStatusMark';
 import type { ContentSearchStatus } from '@/hooks/useConversationSearch';
+import { useUIStore } from '@/stores/useUIStore';
 
 type Props = {
   hideDirectoryControls: boolean;
@@ -60,6 +61,8 @@ type Props = {
 };
 
 const IDLE_BUTTON_CLASS = 'text-muted-foreground hover:text-foreground hover:bg-transparent';
+const PRESSED_PAGE_BUTTON_CLASS = 'bg-interactive-selection text-interactive-selection-foreground hover:bg-interactive-selection hover:text-interactive-selection-foreground';
+const IDLE_PAGE_BUTTON_CLASS = IDLE_BUTTON_CLASS;
 
 /**
  * A page the sidebar opens in the main area. The button stays pressed while

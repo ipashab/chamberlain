@@ -347,17 +347,6 @@ const getTabIcon = (
   return undefined;
 };
 
-// The branch's own tab, then what each item is.
-const TrackerTabIcon: React.FC<{ url: string | null }> = ({ url }) => {
-  const urls = useRepositoryUrlMatcher();
-  const trackerUrls = useTrackerUrlMatcher();
-  const target = url ? trackerTargetOfUrl(url, urls, trackerUrls) : null;
-  const name: IconName = !target ? 'git-branch'
-    : target.source === 'tracker' ? trackerPresentation(target.provider).icon
-      : REPOSITORY_KIND_ICONS[target.kind];
-  return <Icon name={name} className="h-3.5 w-3.5" />;
-};
-
 const browserFaviconFor = (url: string, faviconByOrigin: Record<string, string>): string => {
   try {
     return faviconByOrigin[new URL(url).origin] ?? '';

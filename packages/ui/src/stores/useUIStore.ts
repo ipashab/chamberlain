@@ -1131,6 +1131,8 @@ interface UIStore {
   isArchivePageOpen: boolean;
   /** The full-screen integrations catalog page, opened from the sidebar header. */
   isIntegrationsCatalogOpen: boolean;
+  /** The query the Archive page opened with; empty for a plain open. */
+  archivePageSearch: string;
   /** Grows on every open, so a page already on screen starts fresh. */
   archivePageOpenCount: number;
   isUsageStatsPageOpen: boolean;
@@ -1842,6 +1844,7 @@ export const useUIStore = create<UIStore>()(
         isAssistantsDialogOpen: false,
         isArchivePageOpen: false,
         isIntegrationsCatalogOpen: false,
+        archivePageSearch: '',
         archivePageOpenCount: 0,
         isUsageStatsPageOpen: false,
         isSourceBoardOpen: false,

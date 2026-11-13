@@ -150,7 +150,7 @@ describe('SidebarHeader', () => {
     expect(document.querySelector('[data-search-status]')).toBeNull();
     expect(document.querySelector('[aria-label="Clear search"]')).not.toBeNull();
     // The field's own controls sit inside it; the list controls follow the field.
-    expect(buttonLabels().slice(-2)).toEqual(['Customize sections', 'Display mode']);
+    expect(buttonLabels().slice(-2)).toEqual(['Archive', 'Display mode']);
     expect(document.querySelector('[data-session-search-input]')?.contains(searchInTrigger())).toBe(true);
 
     await render(<SidebarHeader {...baseProps} searchStatus={{ kind: 'loading' }} />);

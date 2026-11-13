@@ -244,7 +244,6 @@ export const providersI18n = {
     'settings.providers.accounts.toast.renameFailed': 'Не вдалося перейменувати акаунт',
   },
   ru: {
-    'settings.providers.grid.description': 'Провайдеры моделей, доступные OpenCode. Откройте один, чтобы управлять его аккаунтами и моделями.',
     'settings.providers.enterpriseTitle': 'Корпоративный режим',
     'settings.providers.enterpriseManagedBy': 'Управляется {organization}.',
     'settings.providers.enterprisePolicyUnreadable': 'Файл политики машины не удалось прочитать, поэтому корпоративный режим остаётся включённым. Попросите администратора проверить его.',

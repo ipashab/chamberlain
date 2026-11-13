@@ -41,7 +41,6 @@ export const mcpGridI18n = {
   },
   ru: {
     'settings.mcp.grid.actionsAria': 'Действия для {name}',
-    'settings.mcp.grid.description': 'Серверы инструментов, которые могут вызывать ваши агенты. Откройте один, чтобы увидеть его статус и настройки.',
     'settings.mcp.grid.searchPlaceholder': 'Поиск серверов',
     'settings.mcp.grid.addHint': 'Локальная команда или удалённый URL',
     'settings.mcp.grid.noMatches': 'Под «{query}» не подходит ни один сервер.',
