@@ -1,15 +1,69 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `f31748c9` (v2.7.1), merged
+**Base:** upstream `openchamber/openchamber` @ `cf18602` (v2.7.3), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.7.1-fork1` on `v2.7.1`, `2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
+`2.7.3-fork1` on `v2.7.3`, `2.7.1-fork1` on `v2.7.1`, `2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
 `2.5.2-fork1` on `v2.5.2`, and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
 changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
-`changelog/` — `2.7.1.md`, `2.7.0.md`, `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+`changelog/` — `2.7.3.md`, `2.7.2.md`, `2.7.1.md`, `2.7.0.md`, `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.7.3-fork1` — upstream `v2.7.3` whole: share pages, subagents you can see, attachments as chips
+
+**The base moves to upstream `v2.7.3`, taking in `v2.7.2` on the way.**
+**Share pages** let an agent ask your teammates: it sends them a page,
+the chat shows a link and a PIN for each person, and their answers come
+back into the session. A shared link pasted into the composer opens the
+page in your own OpenChamber, and Pages on the rail lists every page you
+received. **Subagents show what each one is doing**: every row in Work
+status carries a second line with its current step, and a Subagents panel
+lists them all, so one that stalled or went the wrong way shows without
+opening its chat; an operator's worker sessions nest under it in the
+sidebar. **Everything you attach is a chip in the composer**: files,
+images, issues, pull requests and shared pages sit where you put them in
+the sentence, and deleting the chip removes the attachment. An agent can
+**wait on a pull request** the same way it waits on a timer from a minute
+to a day, show you a page and keep working, and read the terminal panel.
+The browser dictates into annotation comments and marks up PDFs, and a
+PDF in a message opens in a document dialog. The board filters repository
+lists by labels and edits an item's title, description and comments in
+the preview; projects keep notes and todos in the repository; questions
+can show as cards in the chat; chat width picks Default, Wider or Full;
+and the desktop app ships OpenCode's server instead of its full
+command-line program, about 170 MB off the install. **Folder trust closes
+a hole**: a repository could send values from your environment or files
+to its own server, or allow actions you set to ask, without asking you;
+the trust prompt now lists both, and repositories whose agent files
+change nothing for you no longer ask. Bundled OpenCode went to 2.3.0 and
+then 2.3.2.
+
+**The merger kept the fork.** The 105 conflicted files went through with
+the fork's layout intact: the header keeps goals, contacts and archive
+one click away beside upstream's Customize sections and Display mode, and
+the missions queue, the team roster, the board, the tracker surfaces and
+the debug mode stay the fork's. The fork's always-on tools — team,
+tracker, contacts, backlog, the debugger, secret runs — speak upstream's
+widened action schema where the two releases met. Upstream moved the
+desktop to OpenCode's server, and around the fork's own entry files,
+which stay `.js`, the server sources convert to TypeScript, about 90
+files with the fork's runtime logic collected in `runtime.ts`; the first
+pass had renamed the entry files too and broke seventeen web tests until
+they went back. Two finds from shooting this release's own screens: bun
+applied the carried `@tanstack/virtual-core` patch at 3.19.10's line
+numbers, which left a guard above its own declarations and crashed every
+virtualized list at runtime, so the patch's offsets moved to match
+3.19.11; and one conflict marker survived in the OpenChamber tools
+settings and rendered as a stray line, gone. The anti-slop gate keeps the
+fork's Russian comments in the server sources under an override in its
+config, the ratchet counts nothing new, and the file-size ratchet names
+eight files that were already over the limit in the base. The suite
+answers green apart from ten ui tests already red upstream; Russian gains
+the new strings in all the fork's locales.
 
 ---
 
