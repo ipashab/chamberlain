@@ -255,7 +255,6 @@ export const OpenChamberToolsSettings: React.FC = () => {
           summary={t('settings.openchamber.tools.field.agentControlToolSummary')}
           ariaLabel={t('settings.openchamber.tools.field.agentControlToolAria')}
         />
-=======
         {agentWorkflowAvailable ? (
           <ToolRow
             icon="flow-chart"
