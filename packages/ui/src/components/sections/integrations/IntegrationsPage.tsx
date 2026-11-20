@@ -25,12 +25,8 @@ import { useUIStore } from '@/stores/useUIStore';
 
 export const IntegrationsPage: React.FC = () => {
   const { t } = useI18n();
-  // Source-control sign-in is an OpenChamber server feature; VS Code uses the
-  // editor's own Git and GitHub integration instead.
   const sourceControlProviders = useSourceControlProviders();
   const servedSourceControl = isVSCodeRuntime() ? [] : sourceControlProviders;
-  // Trackers exist where the runtime has the API; the server says which. An
-  // extension's tracker (`ext-<id>`) is drawn under Extension accounts instead.
   const trackerDescriptors = useTrackerDescriptors();
   const servedTrackers = getRegisteredRuntimeAPIs()?.trackers ? trackerDescriptors.filter((descriptor) => !isExtensionTrackerId(descriptor.id)) : [];
   // The fork's own integrations are separate cards; VS Code uses its own Git integration.
@@ -44,8 +40,6 @@ export const IntegrationsPage: React.FC = () => {
     : [];
   const hasBuiltIn = servedSourceControl.length > 0 || servedTrackers.length > 0 || hasBitbucket || hasJira || hasConfluence || builtInGuests.length > 0;
   const enterpriseMode = useEnterpriseMode();
-  // The catalog is a main-window page, opened the way the sidebar opens it;
-  // enterprise mode hides it until administrators can curate its sources.
   const { isMobile } = useDeviceInfo();
   const canBrowseCatalog = !enterpriseMode && !isMobile && !isVSCodeRuntime() && !isMobileSurfaceRuntime();
   const openCatalog = () => {

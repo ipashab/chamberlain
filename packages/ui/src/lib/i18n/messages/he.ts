@@ -25,26 +25,32 @@ import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
 import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
 import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
+import { questionsInChatI18n } from './questions-in-chat.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { settingsHintsI18n } from './settings-hints.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { sessionWarmingI18n } from './session-warming.i18n';
+import { connectionHeartbeatI18n } from './connection-heartbeat.i18n';
 import { compactionSettingsI18n } from './compaction-settings.i18n';
 import { heapSnapshotI18n } from './heap-snapshot.i18n';
 import { consoleBudgetsI18n } from './console-budgets.i18n';
 import { imageToolI18n } from './image-tool.i18n';
+import { sharePagesI18n } from './share-pages.i18n';
+import { receivedPagesI18n } from './received-pages.i18n';
 import { memoryDreamingI18n } from './memory-dreaming.i18n';
 import { usageToolI18n } from './usage-tool.i18n';
 import { openchamberToolsLayoutI18n } from './openchamber-tools-layout.i18n';
 import { openchamberToolOutputI18n } from './openchamber-tool-output.i18n';
 import { opencodeToolOutputI18n } from './opencode-tool-output.i18n';
 import { agentStatusI18n } from './agent-status.i18n';
+import { androidWidgetsI18n } from './android-widgets.i18n';
 import { selectionApprovalI18n } from './selection-approval.i18n';
 import { snippetsI18n } from './snippets.i18n';
 import { sidebarWorkI18n } from './sidebar-work.i18n';
 import { sidebarSectionsI18n } from './sidebar-sections.i18n';
 import { worktreeArchiveI18n } from './worktree-archive.i18n';
+import { operatorChildrenI18n } from './operator-children.i18n';
 import { omniSearchI18n } from './omni-search.i18n';
 import { overviewI18n } from './overview.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -64,6 +70,7 @@ import { markdownOutlineI18n } from './markdown-outline.i18n';
 import { markdownGithubI18n } from './markdown-github.i18n';
 import { autocompleteScopeI18n } from './autocomplete-scope.i18n';
 import { workflowsI18n } from './workflows.i18n';
+import { subagentsI18n } from './subagents.i18n';
 import { sessionReferencesI18n } from './session-references.i18n';
 import { guestStatusViewI18n } from './guest-status-view.i18n';
 import { tooltipsDiffI18n } from './tooltips-diff.i18n';
@@ -205,7 +212,6 @@ export const dict = {
   'chat.message.context.chatQuote': 'ציטוט מהודעה קודמת',
   'chat.message.context.showQuoteSource': 'הצג בהודעה המקורית',
   'chat.message.context.fileQuote': 'בחירה מתוך {file}',
-  'chat.chatInput.chatQuoteContext': 'ציטוטים מהצ\'אט',
   'chat.chatInput.chatQuoteContextRemove': 'הסר ציטוטים מהצ\'אט',
   'chat.message.context.debugVariable': 'משתנה ניפוי {name}',
   'chat.chatInput.debugVariables': 'משתני ניפוי',
@@ -213,15 +219,17 @@ export const dict = {
   'chat.chatInput.contextPreview.commentLabel': 'הערת משתמש',
   'chat.chatInput.contextPreview.edit': 'ערוך הערה',
   'chat.chatInput.contextPreview.remove': 'הסר',
+  'chat.chatInput.contextPreview.removeScreenshot': 'הסרת צילום המסך',
   'chat.message.context.browserAnnotation': 'סימון בדפדפן ({page})',
   'chat.message.context.prComment': 'הערה ב-PR של GitHub ({label})',
   'chat.message.context.mrComment': 'הערה בבקשת מיזוג של GitLab ({label})',
   'chat.message.context.prCheck': 'בדיקת PR של GitHub שנכשלה ({label})',
   'chat.message.context.mrCheck': 'משימת pipeline של GitLab שנכשלה ({label})',
   'chat.chatInput.terminalContext': '{terminal}, שורות {start}-{end}',
+  'chat.chatInput.context.more': '+{count} נוספים',
+  'chat.chatInput.context.showLess': 'הצג פחות',
+  'chat.chatInput.attachment.unavailable': 'לא מצורף: הקובץ אבד כשהאפליקציה נטענה מחדש. צרפו אותו שוב או מחקו את השבב הזה.',
   'chat.chatInput.terminalContextRemove': 'הסר את ההקשר מהמסוף',
-  'chat.chatInput.prCommentContext': 'הערות PR',
-  'chat.chatInput.mrCommentContext': 'הערות MR',
   'chat.chatInput.prCommentContextRemove': 'הסר את ההקשר של הערות ה-PR',
   'chat.chatInput.prCheckContext': 'בדיקות PR שנכשלו',
   'chat.chatInput.mrCheckContext': 'משימות pipeline שנכשלו',
@@ -859,7 +867,7 @@ export const dict = {
   'sessions.sidebar.session.status.backgroundCommand': 'פקודה פועלת ברקע',
   'sessions.sidebar.session.status.backgroundImage': 'תמונה נוצרת ברקע',
   'sessions.sidebar.session.status.waitingOnPullRequest': 'ממתין לבדיקות או לסקירה',
-  'sessions.sidebar.session.status.waitingOnExtension': 'ממתין להרחבה',
+  'sessions.sidebar.session.status.waitingOnExtension': 'ממתין לטיימר או להרחבה',
   'sessions.sidebar.session.status.pinned': 'הפעלה מוצמדת',
   'sessions.sidebar.session.status.movingToWorktree': 'ההפעלה מועברת לעץ עבודה חדש',
   'sessions.sidebar.session.status.permissionRequired': 'נדרשת הרשאה',
@@ -1799,14 +1807,15 @@ export const dict = {
   'contextPanel.browser.device.schemeSystem': 'אוטומטי',
   'contextPanel.browser.device.schemeLight': 'בהיר',
   'contextPanel.browser.device.schemeDark': 'כהה',
+  'contextPanel.browser.device.scheme': "מראה הדף",
   'contextPanel.browser.device.schemeFailed': 'לא ניתן היה לשנות את מראה הדף',
   'contextPanel.browser.frameTitle': 'דפדפן',
   'contextPanel.browser.loadFailed': 'לא ניתן היה לטעון את הדף הזה',
   'contextPanel.browser.waitingForServer': 'ממתין לשרת הפיתוח',
-  'contextPanel.browser.waitingForServerHint': 'הוא עדיין לא מקבל חיבורים. הדף ייטען ברגע שיתחיל לקבל.',
+  'contextPanel.browser.waitingForServerHint': 'הוא עדיין לא מוכן. הדף ייטען ברגע שיהיה מוכן.',
   'contextPanel.browser.tunnelFailed': 'לא ניתן היה להגיע לשרת הפיתוח הזה',
   'contextPanel.browser.remoteLoopback.title': '{url} נמצא במחשב של OpenChamber',
-  'contextPanel.browser.remoteLoopback.hint': 'כרטיסיית דפדפן לא יכולה לפתוח דפים שרצים שם. יש לפתוח זאת באפליקציית שולחן העבודה.',
+  'contextPanel.browser.remoteLoopback.hint': 'כרטיסיית דפדפן לא יכולה לפתוח דפים שרצים שם. יש לפתוח זאת באפליקציית OpenChamber לשולחן העבודה או לנייד.',
   'contextPanel.browser.tunnelFailedHint': '{url} רץ במחשב שבו OpenChamber פועל, ולא ניתן היה לפתוח אליו חיבור. שום דבר מהמחשב שלך לא מוצג כאן.',
   'contextPanel.browser.loadFailedUnknown': 'לא ניתן היה להגיע לדף.',
   'contextPanel.browser.crashed': 'הדף הזה הפסיק להגיב',
@@ -1815,7 +1824,8 @@ export const dict = {
   'projectActions.toast.multipleServers': 'כמה שרתים הופעלו — יש לבחור אחד בחלונית הדפדפן',
   'contextPanel.browser.devServers.justStarted': 'הופעל זה עתה',
   'contextPanel.browser.devServers.unavailable': 'לא ניתן היה לבדוק אם יש שרתי פיתוח פעילים.',
-  'contextPanel.browser.devServers.remoteOnly': 'הם רצים במחשב שמארח את OpenChamber. כדי לפתוח אותם צריך את אפליקציית שולחן העבודה.',
+  'contextPanel.browser.devServers.remoteOnly': 'הם רצים במחשב שמארח את OpenChamber. כדי לפתוח אותם צריך את אפליקציית שולחן העבודה או את אפליקציית הנייד.',
+  'contextPanel.browser.unsafeWebView': 'אי אפשר להציג דפים בבטחה עם Android System WebView של הטלפון הזה. יש לעדכן אותו ב-Google Play.',
   'contextPanel.browser.annotate.toggle': 'הוסף הערות לדף',
   'contextPanel.browser.annotate.intro': 'זוהי בחירה עם הערות מהדפדפן המובנה באפליקציה.',
   'contextPanel.browser.annotate.attached': 'ההערה צורפה לצ\'אט',
@@ -1827,7 +1837,6 @@ export const dict = {
   'contextPanel.browser.annotate.tool.draw': 'ציור',
   'contextPanel.browser.annotate.commentPlaceholder': 'תאר את השינוי…',
   'contextPanel.browser.annotate.submit': 'צרף',
-  'contextPanel.browser.trustNotice': 'דפים שנפתחים כאן רצים עם גישה מלאה ל-OpenChamber — זה נדרש לבדיקת רכיבים ולצילומי מסך. יש לפתוח רק אתרים מהימנים: דף זדוני עלול לקרוא את הנתונים שלך או לפעול בשמך.',
   'contextPanel.tab.closeTabAria': 'סגור את הכרטיסייה {label}',
   'contextPanel.tab.menu.close': 'סגור',
   'contextPanel.tab.menu.moveToRegion': 'העבר לאזור',
@@ -2062,6 +2071,7 @@ export const dict = {
   'contextSidebar.tokens.cacheRead': 'קריאה מהמטמון',
   'contextSidebar.tokens.cacheWrite': 'כתיבה למטמון',
   'contextSidebar.tokens.cacheHit': 'פגיעה במטמון',
+  'chat.workStatus.replyCacheHit': 'פגיעה במטמון (תשובה)',
   'contextSidebar.actions.copyJson': 'העתק JSON',
   'contextSidebar.actions.copy': 'העתק',
   'contextSidebar.actions.copied': 'הועתק',
@@ -2286,6 +2296,7 @@ export const dict = {
   'rightSidebar.contextNotesTodo.toast.readPlanFileFailed': 'לא ניתן היה לקרוא את קובץ התוכנית',
   'inlineComment.range.lines': 'שורות {start}-{end}',
   'inlineComment.range.wholeFile': 'הקובץ כולו',
+  'inlineComment.card.codeChanged': 'הקוד שמתחת להערה הזו השתנה',
   'inlineComment.input.placeholder': 'הוספת הערה… ({shortcut} לשמירה)',
   'inlineComment.input.placeholderShort': 'הוספת הערה…',
   'inlineComment.actions.cancel': 'ביטול',
@@ -2605,21 +2616,11 @@ export const dict = {
   'session.githubIntegration.tabs.pullRequests': 'בקשות משיכה',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'הענף כבר פתוח בעץ עבודה',
   'session.githubIntegration.validation.failed': 'האימות נכשל',
-  'chat.fileAttachment.toast.attachFailed': 'לא ניתן היה לצרף את הקובץ',
   'chat.fileAttachment.toast.tooLarge': '{name} גדול מדי לצירוף (מעל {size}). אם הקובץ נמצא בפרויקט, אפשר לאזכר אותו עם @.',
   'chat.fileAttachment.toast.heicConversionFailed': 'לא ניתן היה להמיר את {name} מ-HEIC ל-JPEG, ולכן הוא לא צורף. שמרו את התמונה כ-JPEG וצרפו אותה שוב.',
   'chat.fileAttachment.toast.overSendLimit': '{name} גדול מדי לצירוף (מעל {size}).',
-  'chat.fileAttachment.toast.someFilesSkipped': "חלק מהקבצים דולגו:\n{summary}",
-  'chat.fileAttachment.toast.vscodePickFailed': 'לא ניתן היה לבחור קבצים ב-VS Code',
-  'chat.fileAttachment.fileFallback': 'קובץ',
-  'chat.fileAttachment.skippedFallback': 'דולג',
-  'chat.fileAttachment.actions.attachAria': 'צרף קבצים',
-  'chat.fileAttachment.actions.attach': 'צרף קבצים',
-  'chat.fileAttachment.actions.removeNamed': 'הסר את {name}',
-  'chat.fileAttachment.actions.removeImage': 'הסר תמונה',
   'chat.fileAttachment.activeEditor.addFile': 'הוסף את file:{name} להקשר',
   'chat.fileAttachment.activeEditor.pinSelection': 'הצמד את הבחירה להקשר',
-  'chat.fileAttachment.activeEditor.remove': 'הסר מההקשר',
   'chat.fileAttachment.openInDiagram': 'פתח בתצוגת תרשים',
   'chat.changedFiles.title': 'קבצים שהשתנו',
   'chat.changedFiles.actions.openFileTitle': 'פתח את {path}',
@@ -2698,6 +2699,7 @@ export const dict = {
   'chat.toast.opencodeRestartInterrupted.description': 'OpenCode הופעל מחדש בזמן שתגובה עדיין רצה. אפשר לשלוח הודעה כדי להמשיך.',
   'chat.toast.opencodeRestartInterrupted.autoResumeDescription': 'OpenCode הופעל מחדש בזמן שתגובה עדיין רצה. השיחה תמשיך אוטומטית; שלחו הודעה אם לא.',
   'chat.toast.opencodeRestartInterrupted.openSession': 'פתח הפעלה',
+  'chat.toast.shareAnswer.openSession': 'פתח הפעלה',
   'chat.errorBoundary.title': 'שגיאת צ\'אט',
   'chat.errorBoundary.description': 'אירעה שגיאה בממשק הצ\'אט. ייתכן שהסיבה היא בעיית רשת זמנית או נתוני הודעה פגומים.',
   'chat.errorBoundary.sessionLabel': 'הפעלה',
@@ -2842,6 +2844,19 @@ export const dict = {
   'chat.messageBody.toast.copied': 'הועתק ללוח',
   'chat.messageBody.actions.savingImage': 'שומר תמונה…',
   'chat.messageBody.actions.saveAsImage': 'שמור כתמונה',
+  'chat.messageSelection.action': 'בחירת הודעות',
+  'chat.messageSelection.count': 'נבחרו: {count}',
+  'chat.messageSelection.empty': 'לא נבחר דבר',
+  'chat.messageSelection.cancel': 'ביטול',
+  'chat.messageSelection.copyMarkdown': 'העתקת Markdown',
+  'chat.messageSelection.copyMarkdownShort': 'Markdown',
+  'chat.messageSelection.saveImage': 'שמירת תמונה',
+  'chat.messageSelection.saveImageShort': 'תמונה',
+  'chat.messageSelection.selectPrompt': 'בחירת הבקשה',
+  'chat.messageSelection.selectAnswer': 'בחירת התשובה',
+  'chat.messageSelection.toast.copied': 'ה-Markdown הועתק',
+  'chat.messageSelection.toast.copyFailed': 'ההעתקה ללוח נכשלה',
+  'chat.messageSelection.toast.missing': 'חלק מההודעות שנבחרו כבר לא נמצאות בצ׳אט הזה, ולכן הבחירה בהן בוטלה. בדקו את הבחירה ונסו שוב.',
   'chat.messageBody.actions.saveAsPlan': 'שמור כתוכנית',
   'chat.messageBody.actions.startNewSession': 'התחל הפעלה חדשה מתשובה זו',
   'chat.messageBody.actions.startNewMultiRun': 'התחל הרצה מרובה חדשה מתשובה זו',
@@ -2877,13 +2892,6 @@ export const dict = {
   'chat.chatInput.actions.sendMessageAria': 'שלח הודעה',
   'chat.chatInput.actions.queueMessageAria': 'הוסף הודעה לתור',
   'chat.chatInput.actions.stopGeneratingAria': 'עצור יצירה',
-  'chat.chatInput.linked.byAuthor': 'מאת {author}',
-  'chat.chatInput.linked.issue.openInBrowserAria': 'פתח את ה-issue בדפדפן',
-  'chat.chatInput.linked.issue.removeAria': 'הסר את ה-issue המקושר',
-  'chat.chatInput.linked.pr.openInBrowserAria': 'פתח את בקשת המשיכה בדפדפן',
-  'chat.chatInput.linked.mr.openInBrowserAria': 'פתח את בקשת המיזוג בדפדפן',
-  'chat.chatInput.linked.pr.removeAria': 'הסר את בקשת המשיכה המקושרת',
-  'chat.chatInput.linked.mr.removeAria': 'הסר את בקשת המיזוג המקושרת',
   'chat.chatInput.placeholder.shell': 'הזן פקודת מעטפת…',
   'chat.chatInput.placeholder.chat': 'לתכנן, לבנות או לשאול. @ לאזכור, $ למיומנויות, / לפקודות',
   'chat.chatInput.placeholder.chatCompact': 'לתכנן, לבנות או לשאול',
@@ -2933,6 +2941,8 @@ export const dict = {
   'chat.chatInput.toast.unsupportedAttachmentModalities': '{model} לא תומך בקלט מסוג {modalities} שנדרש עבור {files}. עדיין אפשר לשלוח את ההודעה, אבל ייתכן שהקבצים המצורפים האלה יתעלמו.',
   'chat.chatInput.toast.imagesSaving': 'שומר את {files}…',
   'chat.chatInput.toast.imagesSavedForTextModel': '{model} לא יכול לקרוא תמונות. {files} נשמר ב-{folder}.',
+  'chat.chatInput.toast.imagesSentAsPathsForTextModel': '{model} לא יכול לקרוא תמונות. ההודעה תעביר לו נתיב קובץ במקום {files}.',
+  'chat.chatInput.toast.textModelImageSaveFailed': 'לא ניתן היה לשמור את {files} כקבצים עבור מודל שלא קורא תמונות. ההודעה לא נשלחה.',
   'chat.chatInput.toast.imageSaveFailed': 'לא ניתן לשמור את {files}. צורף במקום זאת.',
   'chat.chatInput.toast.imagesSaved': '{files} נשמר ב-{folder}.',
   'chat.chatInput.toast.imageCopySaveFailed': 'לא ניתן לשמור את {files}.',
@@ -2941,9 +2951,7 @@ export const dict = {
   'chat.chatInput.toast.openSessionFirst': 'יש לפתוח הפעלה קודם',
   'chat.chatInput.toast.dictationKeptForOriginalSession': 'ההכתבה נשמרה כטיוטה בהפעלה שבה התחלת אותה',
   'chat.chatInput.toast.togglePermissionAutoAcceptFailed': 'לא ניתן היה לשנות את האישור האוטומטי של הרשאות',
-  'chat.chatInput.reviewComments': 'הערות סקירה:',
   'chat.chatInput.reviewCommentsRemove': 'הסר הערות סקירה',
-  'chat.chatInput.previewAnnotations': 'סימונים מהתצוגה המקדימה:',
   'chat.chatInput.previewContext': 'הקשר מהתצוגה המקדימה:',
   'chat.chatInput.previewContextRemove': 'הסר את ההקשר מהתצוגה המקדימה',
   'chat.chatInput.projectRoot': 'שורש הפרויקט',
@@ -3277,8 +3285,8 @@ export const dict = {
   'projects.sharedTrust.actions': 'פעולות',
   'projects.sharedTrust.skip': 'לא הפעם',
   'projects.sharedTrust.trust': 'אשר והרץ',
-  'projects.opencodeTrust.title': 'לאפשר ל-OpenCode להריץ קוד מהתיקייה הזו?',
-  'projects.opencodeTrust.description': 'OpenCode מריץ את התוספים והפקודות שבהגדרות של {path} מיד כשהוא פותח את התיקייה. אשרו אותם פעם אחת, ו-OpenChamber ישאל שוב רק כשהם ישתנו.',
+  'projects.opencodeTrust.title': 'לסמוך על הגדרות OpenCode בתיקייה הזו?',
+  'projects.opencodeTrust.description': 'OpenCode מחיל את כל מה שלמטה מההגדרות של {path} מיד כשהוא פותח את התיקייה. אשרו אותן פעם אחת, ו-OpenChamber ישאל שוב רק כשזה ישתנה.',
   'projects.opencodeTrust.plugins': 'תוספים',
   'projects.opencodeTrust.commands': 'פקודות',
   'projects.opencodeTrust.kind.package': '{name} (חבילת npm)',
@@ -3287,6 +3295,12 @@ export const dict = {
   'projects.opencodeTrust.kind.lsp': 'שרת שפה {name}',
   'projects.opencodeTrust.kind.formatter': 'מעצב {name}',
   'projects.opencodeTrust.kind.shell': 'מעטפת',
+  'projects.opencodeTrust.kind.env': 'משתנה סביבה {name}',
+  'projects.opencodeTrust.kind.file': 'קובץ {path}',
+  'projects.opencodeTrust.values': 'ערכים מהמחשב שלכם שהן יכולות לשלוח החוצה',
+  'projects.opencodeTrust.permissions': 'הרשאות שהן נותנות',
+  'projects.opencodeTrust.permission.agent': 'סוכן {name}',
+  'projects.opencodeTrust.permission.everyAgent': 'כל הסוכנים',
   'projects.opencodeTrust.paused': 'בלי אישור, סוכנים לא יכולים לעבוד בתיקייה הזו, אבל עדיין אפשר לעיין בקבצים ובשינויי Git שלה.',
   'projects.opencodeTrust.skip': 'לא הפעם',
   'projects.opencodeTrust.trust': 'אשר ופתח',
@@ -4052,6 +4066,8 @@ export const dict = {
   'chat.workStatus.telemetry.toolDurationDescription': 'הזמן שבו רצו כלים, כולל קריאות שנכשלו. כלים שרצים במקביל נספרים פעם אחת ולא מתווספים זה לזה.',
   'chat.workStatus.telemetry.ttft': 'TTFT ממוצע',
   'chat.workStatus.telemetry.ttftDescription': 'ההמתנה הממוצעת עד שהטקסט או החשיבה הראשונים מתחילים בכל שלב של המודל. מוסתר כשלשלב אין התחלה אחרי שנוצר, מה שנפוץ בשלבים של כלים בלבד ובחלקים שחותמת הזמן שלהם נקבעה ברגע היצירה.',
+  'chat.workStatus.telemetry.firstOutput': 'פלט ראשון ממוצע',
+  'chat.workStatus.telemetry.firstOutputDescription': 'ההמתנה הממוצעת מתחילת כל שלב של המודל ועד הפלט הראשון שלו מכל סוג: טקסט, חשיבה או קריאה לכלי. בניגוד ל-TTFT, נספרים גם שלבים שמתחילים בקריאה לכלי. מוסתר עבור שלבים מ-OpenCode שקודם ל-2.3.0.',
   'chat.workStatus.telemetry.steps': 'שלבים',
   'chat.workStatus.telemetry.stepsDescription': 'כמה פעמים נקרא המודל עבור ההנחיה הזו. קריאת תוצאות הכלים וההחלטה מה לעשות הלאה דורשות בדרך כלל שלב נוסף.',
   'chat.workStatus.telemetry.tokens': 'טוקנים',
@@ -4088,6 +4104,7 @@ export const dict = {
   'chat.workStatus.breakdown.planCountSingle': 'תוכנית {count}',
   'chat.workStatus.breakdown.planCountPlural': '{count} תוכניות',
   'chat.workStatus.linkedPlans.open': 'פתיחת התוכנית {title}',
+  'chat.workStatus.loadedSkills.open': 'פתיחת המיומנות {name}',
   'chat.workStatus.sections.open': 'בחר מקטעים',
   'chat.workStatus.sections.dialogTitle': 'מקטעי החלונית',
   'chat.workStatus.sections.reorder': 'גרור את {label} כדי לשנות את הסדר',
@@ -4120,6 +4137,7 @@ export const dict = {
   'chat.formCard.connectionLostReason': 'החיבור לשרת אבד ({reason}). לא נשלח דבר; נסה שוב אחרי שהחיבור יחזור.',
   'chat.formCard.notConnected': 'עדיין אין חיבור לשרת. לא נשלח דבר; נסה שוב אחרי שהחיבור ייווצר.',
   'chat.formCard.recoveredNotice': 'התור נעצר בזמן ההמתנה. שליחה תתחיל תור חדש בתשלום.',
+  'chat.formCard.deferredNotice': 'שלחת הודעה לפני שענית. שליחה תעביר את התשובה שלך כהודעה חדשה.',
   'chat.formDock.progress': '{current} מתוך {total}',
   'chat.formDock.waiting': 'עוד {count} ממתינות',
   'chat.formDock.back': 'חזרה',
@@ -4355,7 +4373,6 @@ export const dict = {
   'desktopHostSwitcher.startup.fellBackToLocal': 'החיבור אליו לא נפתח, ולכן OpenChamber הופעל על המופע המקומי. אפשר להתחבר אליו ממחליף המופעים כשהוא יהיה זמין.',
   'desktopSafeStart.title': 'OpenChamber קרס שוב ושוב',
   'desktopSafeStart.description': 'החלוניות נסגרו והתיקיות כווצו.',
-  'chat.chatInput.contextPreview.saveEdit': 'שמור הערה',
   'chat.chatInput.contextPreview.cancelEdit': 'בטל עריכה',
   'sessions.scheduledTasks.dialog.actions.openSession': 'פתח הפעלה',
   'sessions.scheduledTasks.dialog.actions.openSessionAria': 'פתח את ההפעלה מההרצה האחרונה של {taskName}',
@@ -4388,25 +4405,31 @@ export const dict = {
   ...aboutReleaseNotesI18n.he,
   ...updateCheckErrorsI18n.he,
   ...secretRequestI18n.he,
+  ...questionsInChatI18n.he,
   ...sessionNoticesI18n.he,
   ...settingsHintsI18n.he,
   ...usageStatsI18n.he,
   ...webSearchI18n.he,
   ...sessionWarmingI18n.he,
+  ...connectionHeartbeatI18n.he,
   ...compactionSettingsI18n.he,
   ...heapSnapshotI18n.he,
   ...consoleBudgetsI18n.he,
   ...imageToolI18n.he,
+  ...sharePagesI18n.he,
+  ...receivedPagesI18n.he,
   ...memoryDreamingI18n.he,
   ...usageToolI18n.he,
   ...openchamberToolsLayoutI18n.he,
   ...openchamberToolOutputI18n.he,
   ...opencodeToolOutputI18n.he,
   ...agentStatusI18n.he,
+  ...androidWidgetsI18n.he,
   ...snippetsI18n.he,
   ...sidebarWorkI18n.he,
   ...sidebarSectionsI18n.he,
   ...worktreeArchiveI18n.he,
+  ...operatorChildrenI18n.he,
   ...omniSearchI18n.he,
   ...overviewI18n.he,
   ...isolatedSpacesI18n.he,
@@ -4426,6 +4449,7 @@ export const dict = {
   ...markdownGithubI18n['he'],
   ...autocompleteScopeI18n['he'],
   ...workflowsI18n['he'],
+  ...subagentsI18n['he'],
   ...sessionReferencesI18n['he'],
   ...guestStatusViewI18n['he'],
   ...tooltipsDiffI18n['he'],

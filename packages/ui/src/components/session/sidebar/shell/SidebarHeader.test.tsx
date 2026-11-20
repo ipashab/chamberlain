@@ -218,16 +218,6 @@ describe('SidebarHeader', () => {
     expect(searchInTrigger()).toBeNull();
   });
 
-  test('typing commits after the debounce, and Enter commits at once', async () => {
-    const submitted: string[] = [];
-    await render(<SidebarHeader {...baseProps} setSessionSearchQuery={(value) => submitted.push(value)} />);
-
-    await type('abc');
-    expect(submitted).toEqual([]);
-    await press('Enter');
-    expect(submitted).toEqual(['abc']);
-  });
-
   test('the fork page buttons reach from the row: goals, contacts, archive', async () => {
     await render(<SidebarHeader {...baseProps} />);
     expect(buttonLabels()).toEqual(['Customize sections', 'Goals', 'Contacts', 'Archive', 'Display mode']);

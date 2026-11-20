@@ -26,19 +26,12 @@ type SessionFolderDropTarget = {
   ownerKey: string;
 };
 
-/**
- * The folder owners that have a folder a session can be dropped into. A row
- * whose owner has none does not drag at all: a drag with nowhere to land only
- * swallowed the click that started it. Without a provider every row drags.
- */
 const SessionFolderOwnersContext = React.createContext<ReadonlySet<string> | null>(null);
 
 export const SessionFolderOwnersProvider: React.FC<{
   ownerKeys: readonly string[];
   children: React.ReactNode;
 }> = ({ ownerKeys, children }) => {
-  // Keyed by content: the row model is rebuilt often, and a new set each time
-  // would re-render every draggable row.
   const ownersKey = [...new Set(ownerKeys)].sort().join('\n');
   const owners = React.useMemo(() => new Set(ownersKey ? ownersKey.split('\n') : []), [ownersKey]);
   return <SessionFolderOwnersContext.Provider value={owners}>{children}</SessionFolderOwnersContext.Provider>;
@@ -105,7 +98,6 @@ export const DroppableFolderWrapper: React.FC<{
     disabled: disabled || isArchivedFolderScope(scopeKey),
     data: { type: 'folder', folderId, scopeKey, ownerKey },
   });
-  // A session of another owner cannot land here, so the folder does not offer to take it.
   return <>{children(setNodeRef, isOver && active?.data.current?.ownerKey === ownerKey)}</>;
 };
 
@@ -250,19 +242,6 @@ export const SessionFolderDndScope: React.FC<{
       onDragEnd={handleDragEnd}
     >
       {children}
-      {/* The drag ghost's own overlay must not own the pointer: without this
-          it sits fixed under the cursor and swallows the elementFromPoint the
-          region targets read, and the regions' hover highlight too. */}
-      <DragOverlay style={{ pointerEvents: 'none' }}>
-        {/* The ghost now always shows: a drag can also land on a workspace
-            region far from the sidebar, and half the gesture's meaning is
-            seeing what is being carried there. */}
-        {activeDragId ? (
-          <div
-            style={{
-              width: activeDragWidth ? `${activeDragWidth}px` : 'auto',
-              height: activeDragHeight ? `${activeDragHeight}px` : 'auto',
-            }}
             className="flex items-center rounded-lg border border-[var(--interactive-border)] bg-[var(--surface-elevated)] px-2.5 py-1 shadow-none pointer-events-none"
           >
             <Icon name="sticky-note" className="h-4 w-4 text-muted-foreground me-2 flex-shrink-0" />

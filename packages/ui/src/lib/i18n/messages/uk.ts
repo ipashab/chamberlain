@@ -26,26 +26,32 @@ import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
 import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
 import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
+import { questionsInChatI18n } from './questions-in-chat.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { settingsHintsI18n } from './settings-hints.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { sessionWarmingI18n } from './session-warming.i18n';
+import { connectionHeartbeatI18n } from './connection-heartbeat.i18n';
 import { compactionSettingsI18n } from './compaction-settings.i18n';
 import { heapSnapshotI18n } from './heap-snapshot.i18n';
 import { consoleBudgetsI18n } from './console-budgets.i18n';
 import { imageToolI18n } from './image-tool.i18n';
+import { sharePagesI18n } from './share-pages.i18n';
+import { receivedPagesI18n } from './received-pages.i18n';
 import { memoryDreamingI18n } from './memory-dreaming.i18n';
 import { usageToolI18n } from './usage-tool.i18n';
 import { openchamberToolsLayoutI18n } from './openchamber-tools-layout.i18n';
 import { openchamberToolOutputI18n } from './openchamber-tool-output.i18n';
 import { opencodeToolOutputI18n } from './opencode-tool-output.i18n';
 import { agentStatusI18n } from './agent-status.i18n';
+import { androidWidgetsI18n } from './android-widgets.i18n';
 import { selectionApprovalI18n } from './selection-approval.i18n';
 import { snippetsI18n } from './snippets.i18n';
 import { sidebarWorkI18n } from './sidebar-work.i18n';
 import { sidebarSectionsI18n } from './sidebar-sections.i18n';
 import { worktreeArchiveI18n } from './worktree-archive.i18n';
+import { operatorChildrenI18n } from './operator-children.i18n';
 import { omniSearchI18n } from './omni-search.i18n';
 import { overviewI18n } from './overview.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -65,6 +71,7 @@ import { markdownOutlineI18n } from './markdown-outline.i18n';
 import { markdownGithubI18n } from './markdown-github.i18n';
 import { autocompleteScopeI18n } from './autocomplete-scope.i18n';
 import { workflowsI18n } from './workflows.i18n';
+import { subagentsI18n } from './subagents.i18n';
 import { sessionReferencesI18n } from './session-references.i18n';
 import { guestStatusViewI18n } from './guest-status-view.i18n';
 import { tooltipsDiffI18n } from './tooltips-diff.i18n';
@@ -225,25 +232,31 @@ export const dict: Record<I18nKey, string> = {
   ...aboutReleaseNotesI18n.uk,
   ...updateCheckErrorsI18n.uk,
   ...secretRequestI18n.uk,
+  ...questionsInChatI18n.uk,
   ...sessionNoticesI18n.uk,
   ...settingsHintsI18n.uk,
   ...usageStatsI18n.uk,
   ...webSearchI18n.uk,
   ...sessionWarmingI18n.uk,
+  ...connectionHeartbeatI18n.uk,
   ...compactionSettingsI18n.uk,
   ...heapSnapshotI18n.uk,
   ...consoleBudgetsI18n.uk,
   ...imageToolI18n.uk,
+  ...sharePagesI18n.uk,
+  ...receivedPagesI18n.uk,
   ...memoryDreamingI18n.uk,
   ...usageToolI18n.uk,
   ...openchamberToolsLayoutI18n.uk,
   ...openchamberToolOutputI18n.uk,
   ...opencodeToolOutputI18n.uk,
   ...agentStatusI18n.uk,
+  ...androidWidgetsI18n.uk,
   ...snippetsI18n.uk,
   ...sidebarWorkI18n.uk,
   ...sidebarSectionsI18n.uk,
   ...worktreeArchiveI18n.uk,
+  ...operatorChildrenI18n.uk,
   ...omniSearchI18n.uk,
   ...overviewI18n.uk,
   ...isolatedSpacesI18n.uk,
@@ -263,6 +276,7 @@ export const dict: Record<I18nKey, string> = {
   ...markdownGithubI18n['uk'],
   ...autocompleteScopeI18n['uk'],
   ...workflowsI18n['uk'],
+  ...subagentsI18n['uk'],
   ...sessionReferencesI18n['uk'],
   ...guestStatusViewI18n['uk'],
   ...tooltipsDiffI18n['uk'],
@@ -292,7 +306,6 @@ export const dict: Record<I18nKey, string> = {
   'chat.message.context.chatQuote': 'Цитата з попереднього повідомлення',
   'chat.message.context.showQuoteSource': 'Показати в оригінальному повідомленні',
   'chat.message.context.fileQuote': 'Виділене з {file}',
-  'chat.chatInput.chatQuoteContext': 'Цитати з чату',
   'chat.chatInput.chatQuoteContextRemove': 'Прибрати цитати з чату',
   'chat.message.context.debugVariable': 'Змінна налагодження {name}',
   'chat.chatInput.debugVariables': 'Змінні налагодження',
@@ -300,15 +313,17 @@ export const dict: Record<I18nKey, string> = {
   'chat.chatInput.contextPreview.commentLabel': 'Коментар користувача',
   'chat.chatInput.contextPreview.edit': 'Редагувати коментар',
   'chat.chatInput.contextPreview.remove': 'Прибрати',
+  'chat.chatInput.contextPreview.removeScreenshot': 'Прибрати скріншот',
   'chat.message.context.browserAnnotation': 'Анотація браузера ({page})',
   'chat.message.context.prComment': 'Коментар PR GitHub ({label})',
   'chat.message.context.mrComment': 'Коментар MR GitLab ({label})',
   'chat.message.context.prCheck': 'Невдала перевірка PR GitHub ({label})',
   'chat.message.context.mrCheck': 'Невдала задача pipeline GitLab ({label})',
   'chat.chatInput.terminalContext': '{terminal}, рядки {start}-{end}',
+  'chat.chatInput.context.more': 'Ще {count}',
+  'chat.chatInput.context.showLess': 'Згорнути',
+  'chat.chatInput.attachment.unavailable': 'Не прикріплено: файл загубився, коли апка перезавантажилась. Прикріпи його ще раз або видали цей чип.',
   'chat.chatInput.terminalContextRemove': 'Видалити контекст термінала',
-  'chat.chatInput.prCommentContext': 'Коментарі PR',
-  'chat.chatInput.mrCommentContext': 'Коментарі MR',
   'chat.chatInput.waitingForOpenCode': 'Чекаємо на OpenCode…',
   'chat.chatInput.waitingForOpenCodeHint': 'Повідомлення піде, щойно OpenCode запуститься',
   'chat.chatInput.prCommentContextRemove': 'Прибрати контекст коментарів PR',
@@ -943,7 +958,7 @@ export const dict: Record<I18nKey, string> = {
   "sessions.sidebar.session.status.backgroundCommand": "Команда працює у фоні",
   "sessions.sidebar.session.status.backgroundImage": "Картинка генерується у фоні",
   'sessions.sidebar.session.status.waitingOnPullRequest': 'Чекає на перевірки або ревʼю',
-  'sessions.sidebar.session.status.waitingOnExtension': 'Чекає на розширення',
+  'sessions.sidebar.session.status.waitingOnExtension': 'Чекає на таймер або розширення',
   "sessions.sidebar.session.status.pinned": "Закріплена сесія",
   "sessions.sidebar.session.status.movingToWorktree": "Перенесення сесії в новий worktree",
   "sessions.sidebar.session.status.permissionRequired": "Потрібен дозвіл",
@@ -1870,14 +1885,15 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.browser.device.schemeSystem": "Авто",
   "contextPanel.browser.device.schemeLight": "Світла",
   "contextPanel.browser.device.schemeDark": "Темна",
+  "contextPanel.browser.device.scheme": "Вигляд сторінки",
   "contextPanel.browser.device.schemeFailed": "Не вдалося змінити оформлення сторінки",
   "contextPanel.browser.frameTitle": "Браузер",
   "contextPanel.browser.loadFailed": "Не вдалося завантажити цю сторінку",
   "contextPanel.browser.waitingForServer": "Очікування dev-сервера",
-  "contextPanel.browser.waitingForServerHint": "Він ще не приймає зʼєднання. Сторінка завантажиться, щойно почне.",
+  "contextPanel.browser.waitingForServerHint": "Він ще не готовий. Сторінка завантажиться, щойно буде.",
   "contextPanel.browser.tunnelFailed": "Не вдалося дістатися цього dev-сервера",
   "contextPanel.browser.remoteLoopback.title": "{url} працює на машині з OpenChamber",
-  "contextPanel.browser.remoteLoopback.hint": "Вкладка браузера не може відкрити сторінки, що працюють там. Відкрийте це в десктопному застосунку.",
+  "contextPanel.browser.remoteLoopback.hint": "Вкладка браузера не може відкрити сторінки, що працюють там. Відкрийте це в десктопному або мобільному застосунку OpenChamber.",
   "contextPanel.browser.tunnelFailedHint": "{url} працює на машині, де запущено OpenChamber, і зʼєднання з ним відкрити не вдалося. Нічого зі своєї машини тут не показано.",
   "contextPanel.browser.loadFailedUnknown": "Не вдалося звернутися до сторінки.",
   "contextPanel.browser.crashed": "Ця сторінка перестала відповідати",
@@ -1886,7 +1902,8 @@ export const dict: Record<I18nKey, string> = {
   "projectActions.toast.multipleServers": "Запустилося кілька серверів — оберіть у панелі браузера",
   "contextPanel.browser.devServers.justStarted": "Щойно запущені",
   "contextPanel.browser.devServers.unavailable": "Не вдалося перевірити запущені dev-сервери.",
-  "contextPanel.browser.devServers.remoteOnly": "Вони працюють на машині, де запущено OpenChamber. Щоб їх відкрити, потрібен десктопний застосунок.",
+  "contextPanel.browser.devServers.remoteOnly": "Вони працюють на машині, де запущено OpenChamber. Щоб їх відкрити, потрібен десктопний або мобільний застосунок.",
+  "contextPanel.browser.unsafeWebView": "З Android System WebView цього телефона сторінки не можна показати безпечно. Оновіть його в Google Play.",
   "contextPanel.browser.annotate.toggle": "Анотувати сторінку",
   "contextPanel.browser.annotate.intro": "Це анотований фрагмент із вбудованого браузера.",
   "contextPanel.browser.annotate.attached": "Анотацію додано до чату",
@@ -1898,7 +1915,6 @@ export const dict: Record<I18nKey, string> = {
   "contextPanel.browser.annotate.tool.draw": "Малювання",
   "contextPanel.browser.annotate.commentPlaceholder": "Опишіть зміну...",
   "contextPanel.browser.annotate.submit": "Додати",
-  "contextPanel.browser.trustNotice": "Сторінки, відкриті тут, працюють із повним доступом до OpenChamber — це потрібно для inspect і скріншотів. Відкривайте лише сайти, яким довіряєте: шкідлива сторінка може прочитати ваші дані чи діяти від вашого імені.",
   "contextPanel.tab.closeTabAria": "Закрити вкладку {label}",
   "contextPanel.tab.menu.close": "Закрити",
   "contextPanel.tab.menu.moveToRegion": "Перемістити в область",
@@ -2113,6 +2129,7 @@ export const dict: Record<I18nKey, string> = {
   "contextSidebar.tokens.cacheRead": "Читання кешу",
   "contextSidebar.tokens.cacheWrite": "Запис кешу",
   "contextSidebar.tokens.cacheHit": "Влучання в кеш",
+  "chat.workStatus.replyCacheHit": "Влучання в кеш (відповідь)",
   "contextSidebar.actions.copyJson": "Скопіювати JSON",
   "contextSidebar.actions.copy": "Копіювати",
   "contextSidebar.actions.copied": "Скопійовано",
@@ -2352,6 +2369,7 @@ export const dict: Record<I18nKey, string> = {
   "rightSidebar.contextNotesTodo.toast.readPlanFileFailed": "Не вдалося прочитати файл плану",
   "inlineComment.range.lines": "Рядки {start}-{end}",
   "inlineComment.range.wholeFile": "Весь файл",
+  "inlineComment.card.codeChanged": "Код під цим коментарем змінився",
     "inlineComment.input.placeholder": "Додайте коментар... ({shortcut}, щоб зберегти)",
   "inlineComment.input.placeholderShort": "Додайте коментар...",
   "inlineComment.actions.cancel": "Скасувати",
@@ -2671,21 +2689,11 @@ export const dict: Record<I18nKey, string> = {
   "session.githubIntegration.tabs.pullRequests": "PR",
   "session.githubIntegration.validation.branchAlreadyCheckedOut": "Гілку вже відкрито в worktree",
   "session.githubIntegration.validation.failed": "Помилка перевірки",
-  "chat.fileAttachment.toast.attachFailed": "Не вдалося прикріпити файл",
   "chat.fileAttachment.toast.tooLarge": "{name} завеликий, щоб прикріпити (понад {size}). Якщо файл є в проєкті, згадайте його через @.",
   "chat.fileAttachment.toast.heicConversionFailed": "Не вдалося конвертувати {name} з HEIC у JPEG, тому файл не додано. Збережіть фото як JPEG і додайте його знову.",
   "chat.fileAttachment.toast.overSendLimit": "{name} завеликий, щоб прикріпити (понад {size}).",
-  "chat.fileAttachment.toast.someFilesSkipped": "Деякі файли були пропущені:\n{summary}",
-  "chat.fileAttachment.toast.vscodePickFailed": "Не вдалося вибрати файли в VS Code",
-  "chat.fileAttachment.fileFallback": "файл",
-  "chat.fileAttachment.skippedFallback": "пропущено",
-  "chat.fileAttachment.actions.attachAria": "Прикріпити файли",
-  "chat.fileAttachment.actions.attach": "Прикріпити файли",
-  "chat.fileAttachment.actions.removeNamed": "Видалити {name}",
-  "chat.fileAttachment.actions.removeImage": "Видалити зображення",
   "chat.fileAttachment.activeEditor.addFile": "Додати файл:{name} до контексту",
   "chat.fileAttachment.activeEditor.pinSelection": "Прикріпити вибір у контексті",
-  "chat.fileAttachment.activeEditor.remove": "Видалити з контексту",
   "chat.fileAttachment.openInDiagram": "Відкрити в перегляді діаграми",
   "chat.changedFiles.title": "Змінені файли",
   "chat.changedFiles.actions.openFileTitle": "Відкрити {path}",
@@ -2764,6 +2772,7 @@ export const dict: Record<I18nKey, string> = {
   "chat.toast.opencodeRestartInterrupted.description": "OpenCode перезапустився, поки відповідь ще формувалася. Надішліть повідомлення, щоб продовжити.",
   "chat.toast.opencodeRestartInterrupted.autoResumeDescription": "OpenCode перезапустився, поки відповідь ще формувалася. Чат буде відновлено автоматично; надішліть повідомлення, якщо ні.",
   "chat.toast.opencodeRestartInterrupted.openSession": "Відкрити сесію",
+  "chat.toast.shareAnswer.openSession": "Відкрити сесію",
   "chat.errorBoundary.title": "Помилка чату",
   "chat.errorBoundary.description": "В інтерфейсі чату сталася помилка. Причиною може бути тимчасова проблема з мережею або пошкоджені дані повідомлення.",
   "chat.errorBoundary.sessionLabel": "Сесія",
@@ -2908,6 +2917,19 @@ export const dict: Record<I18nKey, string> = {
   "chat.messageBody.toast.copied": "Скопійовано в буфер обміну",
   "chat.messageBody.actions.savingImage": "Збереження зображення...",
   "chat.messageBody.actions.saveAsImage": "Зберегти як зображення",
+  "chat.messageSelection.action": "Вибрати повідомлення",
+  "chat.messageSelection.count": "Вибрано: {count}",
+  "chat.messageSelection.empty": "Нічого не вибрано",
+  "chat.messageSelection.cancel": "Скасувати",
+  "chat.messageSelection.copyMarkdown": "Копіювати Markdown",
+  "chat.messageSelection.copyMarkdownShort": "Markdown",
+  "chat.messageSelection.saveImage": "Зберегти зображення",
+  "chat.messageSelection.saveImageShort": "Зображення",
+  "chat.messageSelection.selectPrompt": "Вибрати запит",
+  "chat.messageSelection.selectAnswer": "Вибрати відповідь",
+  "chat.messageSelection.toast.copied": "Markdown скопійовано",
+  "chat.messageSelection.toast.copyFailed": "Не вдалося скопіювати в буфер обміну",
+  "chat.messageSelection.toast.missing": "Деяких вибраних повідомлень уже немає в цьому чаті, тому вибір із них знято. Перевірте вибір і спробуйте ще раз.",
   "chat.messageBody.actions.saveAsPlan": "Зберегти як план",
   "chat.messageBody.actions.startNewSession": "Почати нову сесію із цієї відповіді",
   "chat.messageBody.actions.startNewMultiRun": "Почніть новий Multi-run із цієї відповіді",
@@ -2943,13 +2965,6 @@ export const dict: Record<I18nKey, string> = {
   "chat.chatInput.actions.sendMessageAria": "Надіслати повідомлення",
   "chat.chatInput.actions.queueMessageAria": "Поставити повідомлення в чергу",
   "chat.chatInput.actions.stopGeneratingAria": "Припинити генерацію",
-  "chat.chatInput.linked.byAuthor": "за {author}",
-  "chat.chatInput.linked.issue.openInBrowserAria": "Відкрити issue в браузері",
-  "chat.chatInput.linked.issue.removeAria": "Видалити пов’язану issue",
-  "chat.chatInput.linked.pr.openInBrowserAria": "Відкрити PR в браузері",
-  "chat.chatInput.linked.mr.openInBrowserAria": "Відкрити merge request у браузері",
-  "chat.chatInput.linked.pr.removeAria": "Видалити пов’язаний PR",
-  "chat.chatInput.linked.mr.removeAria": "Прибрати пов'язаний merge request",
   "chat.chatInput.placeholder.shell": "Введіть shell-команду...",
   "chat.chatInput.placeholder.chat": "Плануйте, створюйте або запитуйте. @ щоб згадати, $ для навичок, / для команд",
   "chat.chatInput.placeholder.chatCompact": "Плануйте, створюйте або запитуйте",
@@ -2987,6 +3002,8 @@ export const dict: Record<I18nKey, string> = {
   "chat.chatInput.toast.unsupportedAttachmentModalities": "{model} не підтримує вхідні дані {modalities}, потрібні для {files}. Повідомлення все одно можна надіслати, але ці вкладення можуть бути проігноровані.",
   "chat.chatInput.toast.imagesSaving": "Зберігаю {files}…",
   "chat.chatInput.toast.imagesSavedForTextModel": "{model} не читає зображень. {files} збережено в {folder}.",
+  "chat.chatInput.toast.imagesSentAsPathsForTextModel": "{model} не читає зображення. Замість {files} повідомлення передасть шлях до файлу.",
+  "chat.chatInput.toast.textModelImageSaveFailed": "Не вдалося зберегти {files} як файли для моделі, яка не читає зображення. Повідомлення не надіслано.",
   "chat.chatInput.toast.imageSaveFailed": "Не вдалося зберегти {files}. Додано як вкладення.",
   "chat.chatInput.toast.imagesSaved": "{files} збережено в {folder}.",
   "chat.chatInput.toast.imageCopySaveFailed": "Не вдалося зберегти {files}.",
@@ -2995,9 +3012,7 @@ export const dict: Record<I18nKey, string> = {
   "chat.chatInput.toast.openSessionFirst": "Спочатку відкрийте сесію",
   "chat.chatInput.toast.dictationKeptForOriginalSession": "Диктування збережено як чернетку в сесії, де ви його почали",
   "chat.chatInput.toast.togglePermissionAutoAcceptFailed": "Не вдалося ввімкнути автоматичне прийняття дозволів",
-  "chat.chatInput.reviewComments": "Коментарі рев’ю:",
   "chat.chatInput.reviewCommentsRemove": "Прибрати коментарі рев’ю",
-  "chat.chatInput.previewAnnotations": "Анотації перегляду:",
   "chat.chatInput.previewContext": "Контекст перегляду:",
   "chat.chatInput.previewContextRemove": "Прибрати контекст перегляду",
   "chat.chatInput.projectRoot": "Корінь проєкту",
@@ -3331,8 +3346,8 @@ export const dict: Record<I18nKey, string> = {
   "projects.sharedTrust.actions": "Дії",
   "projects.sharedTrust.skip": "Не цього разу",
   "projects.sharedTrust.trust": "Довірити й виконати",
-  "projects.opencodeTrust.title": "Дозволити OpenCode запускати код із цієї папки?",
-  "projects.opencodeTrust.description": "OpenCode запускає плагіни й команди з конфігурації {path}, щойно відкриває папку. Довірте їм один раз, і OpenChamber спитає знову тільки тоді, коли вони зміняться.",
+  "projects.opencodeTrust.title": "Довіряти конфігурації OpenCode у цій папці?",
+  "projects.opencodeTrust.description": "OpenCode застосовує все, що нижче, з конфігурації {path}, щойно відкриває папку. Довірте їй один раз, і OpenChamber спитає знову тільки тоді, коли це зміниться.",
   "projects.opencodeTrust.plugins": "Плагіни",
   "projects.opencodeTrust.commands": "Команди",
   "projects.opencodeTrust.kind.package": "{name} (пакет npm)",
@@ -3341,6 +3356,12 @@ export const dict: Record<I18nKey, string> = {
   "projects.opencodeTrust.kind.lsp": "Мовний сервер {name}",
   "projects.opencodeTrust.kind.formatter": "Форматувальник {name}",
   "projects.opencodeTrust.kind.shell": "Оболонка",
+  "projects.opencodeTrust.kind.env": "Змінна середовища {name}",
+  "projects.opencodeTrust.kind.file": "Файл {path}",
+  "projects.opencodeTrust.values": "Значення з вашого компʼютера, які вона може надіслати назовні",
+  "projects.opencodeTrust.permissions": "Дозволи, які вона дає",
+  "projects.opencodeTrust.permission.agent": "Агент {name}",
+  "projects.opencodeTrust.permission.everyAgent": "Усі агенти",
   "projects.opencodeTrust.paused": "Без довіри агенти в цій папці не працюватимуть, але переглядати файли й зміни Git можна.",
   "projects.opencodeTrust.skip": "Не цього разу",
   "projects.opencodeTrust.trust": "Довіряти й відкрити",
@@ -4137,6 +4158,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.telemetry.toolDurationDescription': 'Час виконання інструментів, включно з невдалими викликами. Паралельне виконання рахується один раз, а не додається кілька разів.',
   'chat.workStatus.telemetry.ttft': 'Середній TTFT',
   'chat.workStatus.telemetry.ttftDescription': 'Середнє очікування до початку тексту або міркувань на кожному кроці моделі. Не показуємо, якщо хоча б один крок не має початку після створення, як часто буває з кроками лише з інструментами та з частинами, позначеними часом створення.',
+  'chat.workStatus.telemetry.firstOutput': 'Середній перший вивід',
+  'chat.workStatus.telemetry.firstOutputDescription': 'Середнє очікування від початку кожного кроку моделі до її першого виводу будь-якого типу: тексту, міркувань або виклику інструмента. На відміну від TTFT, кроки, що починаються з виклику інструмента, теж рахуються. Не показуємо для кроків з OpenCode, старішого за 2.3.0.',
   'chat.workStatus.telemetry.steps': 'Кроки',
   'chat.workStatus.telemetry.stepsDescription': 'Скільки разів зверталися до моделі для цього промпту. Прочитати результат інструмента й вирішити, що робити далі, зазвичай означає ще один крок.',
   'chat.workStatus.telemetry.tokens': 'Токени',
@@ -4174,6 +4197,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.breakdown.planCountSingle': '{count} план',
   'chat.workStatus.breakdown.planCountPlural': '{count} плани',
   'chat.workStatus.linkedPlans.open': 'Відкрити план {title}',
+  'chat.workStatus.loadedSkills.open': 'Відкрити скіл {name}',
   'chat.workStatus.sections.open': 'Обрати секції',
   'chat.workStatus.sections.dialogTitle': 'Секції панелі',
   'chat.workStatus.sections.reorder': 'Перетягніть {label}, щоб змінити порядок',
@@ -4239,6 +4263,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.formCard.connectionLostReason': 'Зʼєднання з сервером втрачено ({reason}). Нічого не надіслано; спробуйте ще раз, коли зʼєднання відновиться.',
   'chat.formCard.notConnected': 'Ще немає зʼєднання з сервером. Нічого не надіслано; спробуйте ще раз, коли зʼєднання встановиться.',
   'chat.formCard.recoveredNotice': 'Хід зупинився під час очікування. Надсилання розпочне новий платний хід.',
+  'chat.formCard.deferredNotice': 'Ви надіслали повідомлення до відповіді. Надсилання передасть вашу відповідь новим повідомленням.',
   'chat.formDock.progress': '{current} з {total}',
   'chat.formDock.waiting': 'ще {count} в черзі',
   'chat.formDock.back': 'Назад',
@@ -4456,7 +4481,6 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.startup.fellBackToLocal': 'З\'єднання не відкрилося, тож OpenChamber запустився на Local. Підключіть інстанс через перемикач, щойно він стане доступним.',
   'desktopSafeStart.title': 'OpenChamber раз у раз аварійно закривався',
   'desktopSafeStart.description': 'Панелі закрито, папки згорнуто.',
-  'chat.chatInput.contextPreview.saveEdit': 'Зберегти коментар',
   'chat.chatInput.contextPreview.cancelEdit': 'Скасувати редагування',
   'sessions.scheduledTasks.dialog.actions.openSession': 'Відкрити сесію',
   'sessions.scheduledTasks.dialog.actions.openSessionAria': 'Відкрити сесію останнього запуску {taskName}',

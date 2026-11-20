@@ -78,3 +78,24 @@ first-entry preset trees for modes the project has never visited.
 The mode offer (`offerWorkspaceMode`) and its card
 (`WorkspaceModeOffer`) are the only sanctioned auto-surface: a run or a link
 may *suggest* a mode, never take the screen without the click that accepts.
+
+# Workspace zone state
+
+Upstream's zone model, from before this fork replaced the zone layout with
+the region tree. What survives of it here is `zones.ts`: the `ContextZone`
+vocabulary, the placement record, and the size and view helpers that the
+store's legacy (zone-shaped) panel entries and the work-status sizing still
+read. Dragging, fitting and the drag-target geometry upstream documented
+under this heading moved to the region world instead
+(`regionDropTargets`, `regionDropGesture`, `layoutTree`), and their upstream
+v2.7.3 counterparts (`zoneDropTargets`, `zoneFit`, `zoneDrag`, `zoneFitWatch`)
+do not exist in this fork.
+
+## Ownership
+
+This module owns pure zone placement, sizing decisions and drag-target geometry. The surface registry and mounted layout own availability and rendering; their contract is in `../surfaces/DOCUMENTATION.md`. In this fork, that ownership narrows to what `zones.ts` still holds; the layout itself is the region tree (`layoutTree.ts`).
+
+## Invariants
+
+- Right is the unstored placement default and retains the legacy top-level view fields. Left and bottom use nested views; every resolved tab must still exist and belong to that zone (`resolveZoneActiveTab` answers only with a tab the placement puts there).
+- Upstream's drag-target and fit invariants (targets measured once per drag and never overlapping; moving the visible surface opens its destination and closes its source; a side zone preserving the chat minimum by folding the session sidebar before closing the opposite zone) applied to the zone drag this fork removed. The region tree keeps their intent — conflict-free drops, a move that lands the tab it was given, a chat that never disappears, sizes that belong to surfaces — through `regionDropTargets` and the store's layout actions.

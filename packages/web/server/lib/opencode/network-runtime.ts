@@ -1,0 +1,133 @@
+import { readOpenCodeInfo, isSupportedOpenCodeVersion } from './compatibility.js';
+import type { OpenCodeLifecycleState } from './lifecycle.js';
+
+export interface OpenCodeNetworkDependencies {
+  state: Pick<OpenCodeLifecycleState, 'openCodePort' | 'openCodeBaseUrl' | 'openCodeApiPrefix' | 'openCodeApiPrefixDetected' | 'openCodeApiDetectionTimer'>;
+  getOpenCodeAuthHeaders: () => Record<string, string>;
+  configuredOpenCodeHostname?: string | undefined;
+}
+
+export const createOpenCodeNetworkRuntime = (deps: OpenCodeNetworkDependencies) => {
+  const {
+    state,
+    getOpenCodeAuthHeaders,
+    configuredOpenCodeHostname = '127.0.0.1',
+    // Multi-engine routing seam: buildOpenCodeUrl is the one function the
+    // whole repo asks "where is the engine" through (~30 modules). When the
+    // ACTIVE engine descriptor declares its own address, all engine requests
+    // reroute there. null (or never provided) keeps byte-for-byte legacy
+    // behavior — late-bound in server/index.js, called at request time only.
+    resolveActiveEngineUrl = null,
+  } = deps;
+
+  const resolveConnectHostname = () => {
+    const raw = configuredOpenCodeHostname.trim();
+    const hostname = raw || '127.0.0.1';
+    if (hostname === '0.0.0.0' || hostname === '::' || hostname === '[::]') {
+      return '127.0.0.1';
+    }
+    if (hostname.startsWith('[') && hostname.endsWith(']')) {
+      return hostname;
+    }
+    return hostname.includes(':') ? `[${hostname}]` : hostname;
+  };
+
+  const normalizeApiPrefix = (prefix?: string | null): string => {
+    if (!prefix) {
+      return '';
+    }
+
+    if (prefix.includes('://')) {
+      try {
+        const parsed = new URL(prefix);
+        return normalizeApiPrefix(parsed.pathname);
+      } catch {
+        return '';
+      }
+    }
+
+    const trimmed = prefix.trim();
+    if (!trimmed || trimmed === '/') {
+      return '';
+    }
+    const withLeading = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return withLeading.endsWith('/') ? withLeading.slice(0, -1) : withLeading;
+  };
+
+  const waitForReady = async (url: string, timeoutMs = 10000) => {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+      try {
+        const controller = new AbortController();
+        timeout = setTimeout(() => controller.abort(), 3000);
+        const response = await fetch(`${url.replace(/\/+$/, '')}/api/info`, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            ...getOpenCodeAuthHeaders(),
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        timeout = null;
+
+        const info = await readOpenCodeInfo(response);
+        if (info && isSupportedOpenCodeVersion(info.version)) return true;
+      } catch (error) {
+        void error;
+      } finally {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return false;
+  };
+
+  const setDetectedOpenCodeApiPrefix = () => {
+    state.openCodeApiPrefix = '';
+    state.openCodeApiPrefixDetected = true;
+    if (state.openCodeApiDetectionTimer) {
+      clearTimeout(state.openCodeApiDetectionTimer);
+      state.openCodeApiDetectionTimer = null;
+    }
+  };
+
+  const buildOpenCodeUrl = (path: string, prefixOverride?: string | null) => {
+    // A declared engine URL beats everything: it is explicit config against an
+    // implicit default, and it carries its own port — the host's port state is
+    // not relevant to it (do not throw below for it).
+    const activeEngineUrl = resolveActiveEngineUrl?.() ?? null;
+    if (!activeEngineUrl && !state.openCodePort) {
+      throw new Error('OpenCode port is not available');
+    }
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const prefix = normalizeApiPrefix(prefixOverride !== undefined ? prefixOverride : '');
+    const fullPath = `${prefix}${normalizedPath}`;
+    const base = activeEngineUrl ?? state.openCodeBaseUrl ?? `http://${resolveConnectHostname()}:${state.openCodePort}`;
+    return `${base}${fullPath}`;
+  };
+
+  const detectOpenCodeApiPrefix = () => {
+    state.openCodeApiPrefixDetected = true;
+    state.openCodeApiPrefix = '';
+    return true;
+  };
+
+  const ensureOpenCodeApiPrefix = () => detectOpenCodeApiPrefix();
+
+  const scheduleOpenCodeApiDetection = () => {
+    return;
+  };
+
+  return {
+    waitForReady,
+    normalizeApiPrefix,
+    setDetectedOpenCodeApiPrefix,
+    buildOpenCodeUrl,
+    ensureOpenCodeApiPrefix,
+    scheduleOpenCodeApiDetection,
+  };
+};

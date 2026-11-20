@@ -17,7 +17,7 @@ import { trackerPresentation } from '@/lib/trackers/presentation';
 import { REPOSITORY_KIND_ICONS } from '@/components/references/referencePickerItems';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
 import { copyTextToClipboard } from '@/lib/clipboard';
-import { isDesktopShell } from '@/lib/desktop';
+import { isBrowserClientRuntime, isDesktopShell } from '@/lib/desktop';
 import { getDisambiguatingFolders } from '@/lib/path-utils';
 
 // Heavy views stay on-demand (same as MainLayout): importing GitView or the
@@ -29,6 +29,9 @@ const JiraIssuesPanel = lazyWithChunkRecovery(() => import('@/components/jira/Ji
 const ConfluencePagesPanel = lazyWithChunkRecovery(() => import('@/components/confluence/ConfluencePagesPanel').then((m) => ({ default: m.ConfluencePagesPanel })));
 const ReviewDashboard = lazyWithChunkRecovery(() => import('@/components/review/ReviewDashboard').then((m) => ({ default: m.ReviewDashboard })));
 const WorkflowsPanel = lazyWithChunkRecovery(() => import('@/components/chat/workflows/WorkflowsPanel').then((m) => ({ default: m.WorkflowsPanel })));
+import { ReceivedPagesTab } from '@/components/chat/sharePages/received/ReceivedPagesTab';
+import { SubagentsPanel } from '@/components/chat/subagents/SubagentsPanel';
+import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { areTitleMapsEqual, buildSessionTitleMap, EMPTY_SESSION_TITLE_MAP, getSessionIDFromDedupeKey } from './contextPanelSessionTitles';
 import { ProjectContextPanel } from './RightSidebarTabs';
 import { TeamBoardView } from '@/components/chat/work-status/TeamBoardView';
@@ -37,7 +40,7 @@ import { ChatView } from '@/components/views/ChatView';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { useChangeRequestTerm } from '@/lib/source-control/providers/registry';
 import { useGuestSurfaces } from '@/hooks/useGuestSurfaces';
-import { cn } from '@/lib/utils';
+import { cn, getRevealLabelKey } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { toast } from '@/components/ui';
 import { useBrowserFaviconStore } from '@/stores/useBrowserFaviconStore';
@@ -62,6 +65,7 @@ import { FALLBACK_GUEST_ICON } from '@/lib/guests/icon';
 import { isPluginContextPanelMode, pluginIdFromMode } from '@/lib/surfaces/modes';
 import { changeRequestCopy } from '@/lib/source-control/changeRequestCopy';
 import { ContextPanelHeaderSlotProvider } from './contextPanelHeaderSlot';
+import { getRelativePathLabel } from './contextPanelPaths';
 import { closeZoneOnEscape } from './zoneEscape';
 import { setRegionBody, setRegionHeaderSlot } from './regionHosts';
 import { findLeaf, leavesOf } from '@/lib/workspace/layoutTree';
@@ -88,18 +92,6 @@ const normalizeDirectoryKey = (value: string): string => {
   }
 
   return normalized;
-};
-
-const getRelativePathLabel = (filePath: string | null, directory: string): string => {
-  if (!filePath) {
-    return '';
-  }
-  const normalizedFile = filePath.replace(/\\/g, '/');
-  const normalizedDir = directory.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (normalizedDir && normalizedFile.startsWith(normalizedDir + '/')) {
-    return normalizedFile.slice(normalizedDir.length + 1);
-  }
-  return normalizedFile;
 };
 
 // A region's header drag starts only after the pointer moves this far, so a
@@ -129,6 +121,8 @@ const getModeLabel = (
   if (mode === 'confluence') return t('contextPanel.mode.confluence');
   if (mode === 'review') return t('contextPanel.mode.review');
   if (mode === 'workflows') return t('contextPanel.mode.workflows');
+  if (mode === 'subagents') return t('contextPanel.mode.subagents');
+  if (mode === 'pages') return t('contextPanel.mode.pages');
   if (mode === 'board') return t('contextPanel.mode.board');
   if (mode === 'mcp-console') return t('contextPanel.mode.mcp-console');
   if (isPluginContextPanelMode(mode)) {
@@ -324,6 +318,14 @@ const getTabIcon = (
     return <Icon name="flow-chart" className="h-3.5 w-3.5" />;
   }
 
+  if (tab.mode === 'subagents') {
+    return <Icon name="ai-agent" className="h-3.5 w-3.5" />;
+  }
+
+  if (tab.mode === 'pages') {
+    return <Icon name="pages" className="h-3.5 w-3.5" />;
+  }
+
   if (tab.mode === 'chat') {
     const sessionId = getSessionIDFromDedupeKey(tab.dedupeKey);
     return sessionId
@@ -412,6 +414,7 @@ const truncateTabLabel = (value: string, maxChars: number): string => {
 const isRemountedSurface = (mode: ContextPanelMode): boolean => (
   mode === 'context' || mode === 'git' || mode === 'pr' || mode === 'notes' || mode === 'workflows'
     || mode === 'team' || mode === 'pulls' || mode === 'jira' || mode === 'confluence' || mode === 'review'
+    || mode === 'subagents'
 );
 
 /**
@@ -422,6 +425,9 @@ const isRemountedSurface = (mode: ContextPanelMode): boolean => (
  */
 export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = ({ leafId, chatCovered }) => {
   const { t } = useI18n();
+  // Runtime APIs for the file tab's context menu: revealing a file needs a
+  // host that can, and the browser client runtime has none.
+  const { files, runtime } = useRuntimeAPIs();
   const effectiveDirectory = useEffectiveDirectory() ?? '';
   const changeRequestTerm = useChangeRequestTerm(effectiveDirectory || null);
   // Tab names in this repository's words: a GitLab project's change request tab is a merge request.
@@ -570,7 +576,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
   // The rail switches between surfaces (modes); the in-region strip only lists
   // instances of the active multi-instance surface (open files, split chats,
   // browser targets).
-  const isMultiInstanceMode = activeTab?.mode === 'file' || activeTab?.mode === 'chat' || activeTab?.mode === 'browser' || activeTab?.mode === 'pr';
+  const isMultiInstanceMode = activeTab?.mode === 'file' || activeTab?.mode === 'chat' || activeTab?.mode === 'browser' || activeTab?.mode === 'pr' || activeTab?.mode === 'pages';
   const activeModeTabs = React.useMemo(() => {
     if (!activeTab) return [];
     const modeTabs = tabs.filter((tab) => tab.mode === activeTab.mode);
@@ -654,6 +660,10 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
                 ? <React.Suspense fallback={null}><ReviewDashboard /></React.Suspense>
             : activeTab?.mode === 'workflows'
                 ? <React.Suspense fallback={null}><ContextPanelHeaderSlotProvider value={headerSlotEl}><WorkflowsPanel directory={effectiveDirectory || null} /></ContextPanelHeaderSlotProvider></React.Suspense>
+            : activeTab?.mode === 'subagents'
+                ? <SubagentsPanel directory={effectiveDirectory || null} />
+            : activeTab?.mode === 'pages' && !activeTab.targetPath
+                ? <ReceivedPagesTab />
             : null;
 
   const isFileTabActive = activeTab?.mode === 'file';
@@ -696,23 +706,50 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
       return (
         <>
           {filePath != null ? (
-            <ContextMenuItem
-              onClick={() => {
-                void copyTextToClipboard(filePath).then((result) => {
-                  if (result.ok) {
-                    toast.success(t('sidebarFilesTree.toast.pathCopied'));
-                    return;
-                  }
-                  toast.error(t('sidebarFilesTree.toast.copyFailed'));
-                });
-              }}
-            >
-              <Icon name="file-copy" className="me-2 size-4" />
-              {t('sidebarFilesTree.menu.copyPath')}
-              <span className="ms-2 max-w-40 truncate text-muted-foreground" title={filePath}>
-                {filePath}
-              </span>
-            </ContextMenuItem>
+            <>
+              <ContextMenuItem
+                onClick={() => {
+                  void copyTextToClipboard(filePath).then((result) => {
+                    if (result.ok) {
+                      toast.success(t('sidebarFilesTree.toast.pathCopied'));
+                      return;
+                    }
+                    toast.error(t('sidebarFilesTree.toast.copyFailed'));
+                  });
+                }}
+              >
+                <Icon name="file-copy" className="me-2 size-4" />
+                {t('sidebarFilesTree.menu.copyPath')}
+                <span className="ms-2 max-w-40 truncate text-muted-foreground" title={filePath}>
+                  {filePath}
+                </span>
+              </ContextMenuItem>
+              <ContextMenuItem
+                onClick={() => {
+                  void copyTextToClipboard(getRelativePathLabel(filePath, effectiveDirectory)).then((result) => {
+                    if (result.ok) {
+                      toast.success(t('filesView.toast.relativePathCopied'));
+                      return;
+                    }
+                    toast.error(t('sidebarFilesTree.toast.copyFailed'));
+                  });
+                }}
+              >
+                <Icon name="file-copy-2" className="me-2 size-4" />
+                {t('filesView.tree.menu.copyRelativePath')}
+              </ContextMenuItem>
+              {files.revealPath && !isBrowserClientRuntime(runtime.platform) ? (
+                <ContextMenuItem
+                  onClick={() => {
+                    void files.revealPath?.(filePath).catch(() => toast.error(t('sidebarFilesTree.toast.revealFailed')));
+                  }}
+                >
+                  <Icon name="folder-received" className="me-2 size-4" />
+                  {t(getRevealLabelKey())}
+                </ContextMenuItem>
+              ) : null}
+              <ContextMenuSeparator />
+            </>
           ) : null}
           <ContextMenuItem onClick={close}>
             <Icon name="close" className="me-2 size-4" />
@@ -744,7 +781,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
         </>
       );
     },
-    [closeContextPanelTabs, directoryKey, leafId, moveContextPanelTabToLeaf, panelState, t],
+    [closeContextPanelTabs, directoryKey, effectiveDirectory, files, leafId, moveContextPanelTabToLeaf, panelState, runtime.platform, t],
   );
 
   const header = (
@@ -779,6 +816,7 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
             if (directoryKey) pinContextPanelTab(directoryKey, tabID);
           }}
           layoutMode="scrollable"
+          scrollWithWheel={isFileTabActive}
           variant="default"
           onTabDragOut={handleTabDragOut}
           tabContextMenu={renderTabContextMenu}

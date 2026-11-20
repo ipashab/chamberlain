@@ -1,7 +1,4 @@
-// A crash counts as "in a row" when it comes within this long of the previous
-// one. Issue 4907 crashed every 20-45 s after each reload.
 const CRASH_IN_A_ROW_GAP_MS = 2 * 60_000;
-// The crash in a row whose reload skips the saved layout.
 const SAFE_START_AT_CRASH = 3;
 
 const RECOVERABLE_REASONS = new Set([
@@ -13,16 +10,10 @@ const RECOVERABLE_REASONS = new Set([
 
 const RELOAD_DELAY_MS = 100;
 
-/**
- * True for the renderer exit reasons a reload can plausibly fix. Other exits
- * (a clean quit, a kill from outside) reload nothing, crash pages included.
- */
+// True for the renderer exit reasons a reload can plausibly fix. Other exits
+// (a clean quit, a kill from outside) reload nothing, crash pages included.
 const isRecoverableRendererExit = (reason) => RECOVERABLE_REASONS.has(reason);
 
-/**
- * Decide what follows a renderer exit: `reload`, `safe-start` (reload without
- * the saved layout), `stop` (leave the window as it is), or `ignore`.
- */
 export const createRendererRecoveryPolicy = (now = Date.now) => {
   let lastCrashAt = -Infinity;
   let crashesInARow = 0;
@@ -44,21 +35,11 @@ export const createRendererRecoveryPolicy = (now = Date.now) => {
 
 const pendingSafeStarts = new WeakSet();
 
-/**
- * True once for the page that loads after a safe-start reload; preload asks
- * before any page script runs, so the UI starts without its saved layout.
- */
 export const takeSafeStart = (webContents) => pendingSafeStarts.delete(webContents);
 
-/**
- * Reload a window whose renderer process died. A restored layout that crashes
- * the window on every load would loop forever, so the third crash in a row
- * reloads without it and a fourth leaves the window alone.
- * Shared by every BrowserWindow so the desktop shell has one recovery policy.
- * Once the policy says `stop`, `onGaveUp(details)` hands the window over: main
- * answers with the crashed-window recovery page, which carries ways out a
- * reload cannot offer.
- */
+// Once the policy says `stop`, `onGaveUp(details)` hands the window over: main
+// answers with the crashed-window recovery page, which carries ways out a
+// reload cannot offer.
 export const attachRendererRecovery = (browserWindow, { log, label, onGaveUp }) => {
   const policy = createRendererRecoveryPolicy();
   browserWindow.webContents.on('render-process-gone', (_event, details) => {

@@ -189,6 +189,9 @@
     "agentUsageToolEnabled": {
       "scope": "instance"
     },
+    "agentTerminalToolEnabled": {
+      "scope": "instance"
+    },
     "agentImageToolEnabled": {
       "scope": "instance"
     },
@@ -214,6 +217,9 @@
       "scope": "instance"
     },
     "agentWorkflowToolEnabled": {
+      "scope": "instance"
+    },
+    "agentWorkflowAutoApprove": {
       "scope": "instance"
     },
     "isolatedSpacesEnabled": {
@@ -363,6 +369,9 @@
       "scope": "profile",
       "perSurface": true
     },
+    "sidebarSessionBatchSize": {
+      "scope": "profile"
+    },
     "sidebarProjectSortOrder": {
       "scope": "profile"
     },
@@ -446,6 +455,10 @@
       "perSurface": true
     },
     "promptNavigatorEnabled": {
+      "scope": "profile",
+      "perSurface": true
+    },
+    "chatWidth": {
       "scope": "profile",
       "perSurface": true
     },
@@ -551,6 +564,12 @@
         "desktop"
       ]
     },
+    "agentBrowserSharesLogins": {
+      "scope": "profile",
+      "surfaces": [
+        "desktop"
+      ]
+    },
     "openTrackerLinksOnBoard": {
       "scope": "profile",
       "surfaces": [
@@ -565,6 +584,13 @@
         "web",
         "desktop",
         "mobile"
+      ]
+    },
+    "terminalOpenOnProjectAction": {
+      "scope": "profile",
+      "surfaces": [
+        "web",
+        "desktop"
       ]
     },
     "autoCreateWorktree": {
@@ -1037,6 +1063,14 @@
       "local": true
     },
     "alwaysShowScrollbars": {
+      "scope": "device",
+      "local": true
+    },
+    "mobileKeepScreenAwake": {
+      "scope": "device",
+      "local": true
+    },
+    "questionsInChat": {
       "scope": "device",
       "local": true
     },

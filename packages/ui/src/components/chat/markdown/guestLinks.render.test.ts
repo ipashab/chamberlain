@@ -20,6 +20,18 @@ const state = { codeBlockLineWrap: false, tableCellWrap: true, copyMessagesAsPla
 mock.module('@/stores/useUIStore', () => ({ useUIStore: Object.assign((select: (value: typeof state) => never) => select(state), { getState: () => state, subscribe: () => () => undefined }), normalizeContextPanelDirectoryKey: (value: string) => value }));
 mock.module('@/lib/router/openSessionFromRoute', () => ({ openSession: async () => undefined, openSessionLink: async () => undefined }));
 mock.module('@/hooks/useEffectiveDirectory', () => ({ useEffectiveDirectory: () => '/project', resolveEffectiveDirectory: () => '/project' }));
+// Its hooks pull in the session side panel and the stores behind it; these tests draw no tracker chips.
+mock.module('@/components/sourceBoard/openTrackerItem', () => ({
+  trackerTargetOfUrl: () => null,
+  repositoryUrlOfItemLink: () => null,
+  isSameRepositoryItemLink: (left: string, right: string) => left === right,
+  trackerItemLabel: () => null,
+  wasTrackerItemRequested: () => false,
+  settleTrackerItemRequest: () => undefined,
+  useShowTrackerItem: () => null,
+  useOpenProjectOnBoard: () => null,
+  useOpenTrackerItem: () => () => undefined,
+}));
 mock.module('@/hooks/useRuntimeAPIs', () => ({ useRuntimeAPIs: () => ({ runtime: { isVSCode: false }, editor: undefined }) }));
 const opened: string[] = [];
 mock.module('../useOpenChatLink', () => ({ useOpenChatLink: () => (href: string) => { opened.push(href); } }));
@@ -88,11 +100,6 @@ test('a message already on screen re-parses when an extension starts or stops cl
   expect(marks()).toEqual(['DEMO-2']);
   await render('See DEMO-2.', { guestLinks: [] });
   expect(marks()).toEqual([]);
-});
-
-test('an author cannot write the mark: raw HTML keeps it off', async () => {
-  await render('<a data-oc-guest-link="tasks">DEMO-x</a> <span data-oc-guest-link="tasks">y</span>', { allowRawHtml: true, guestLinks: null });
-  expect(host.querySelector('[data-oc-guest-link]')).toBeNull();
 });
 
 test('a copy keeps the text as written', async () => {

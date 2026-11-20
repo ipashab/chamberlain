@@ -26,26 +26,32 @@ import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
 import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
 import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
+import { questionsInChatI18n } from './questions-in-chat.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { settingsHintsI18n } from './settings-hints.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { sessionWarmingI18n } from './session-warming.i18n';
+import { connectionHeartbeatI18n } from './connection-heartbeat.i18n';
 import { compactionSettingsI18n } from './compaction-settings.i18n';
 import { heapSnapshotI18n } from './heap-snapshot.i18n';
 import { consoleBudgetsI18n } from './console-budgets.i18n';
 import { imageToolI18n } from './image-tool.i18n';
+import { sharePagesI18n } from './share-pages.i18n';
+import { receivedPagesI18n } from './received-pages.i18n';
 import { memoryDreamingI18n } from './memory-dreaming.i18n';
 import { usageToolI18n } from './usage-tool.i18n';
 import { openchamberToolsLayoutI18n } from './openchamber-tools-layout.i18n';
 import { openchamberToolOutputI18n } from './openchamber-tool-output.i18n';
 import { opencodeToolOutputI18n } from './opencode-tool-output.i18n';
 import { agentStatusI18n } from './agent-status.i18n';
+import { androidWidgetsI18n } from './android-widgets.i18n';
 import { selectionApprovalI18n } from './selection-approval.i18n';
 import { snippetsI18n } from './snippets.i18n';
 import { sidebarWorkI18n } from './sidebar-work.i18n';
 import { sidebarSectionsI18n } from './sidebar-sections.i18n';
 import { worktreeArchiveI18n } from './worktree-archive.i18n';
+import { operatorChildrenI18n } from './operator-children.i18n';
 import { omniSearchI18n } from './omni-search.i18n';
 import { overviewI18n } from './overview.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
@@ -65,6 +71,7 @@ import { markdownOutlineI18n } from './markdown-outline.i18n';
 import { markdownGithubI18n } from './markdown-github.i18n';
 import { autocompleteScopeI18n } from './autocomplete-scope.i18n';
 import { workflowsI18n } from './workflows.i18n';
+import { subagentsI18n } from './subagents.i18n';
 import { sessionReferencesI18n } from './session-references.i18n';
 import { guestStatusViewI18n } from './guest-status-view.i18n';
 import { tooltipsDiffI18n } from './tooltips-diff.i18n';
@@ -215,25 +222,31 @@ export const dict: Record<I18nKey, string> = {
   ...aboutReleaseNotesI18n.ja,
   ...updateCheckErrorsI18n.ja,
   ...secretRequestI18n.ja,
+  ...questionsInChatI18n.ja,
   ...sessionNoticesI18n.ja,
   ...settingsHintsI18n.ja,
   ...usageStatsI18n.ja,
   ...webSearchI18n.ja,
   ...sessionWarmingI18n.ja,
+  ...connectionHeartbeatI18n.ja,
   ...compactionSettingsI18n.ja,
   ...heapSnapshotI18n.ja,
   ...consoleBudgetsI18n.ja,
   ...imageToolI18n.ja,
+  ...sharePagesI18n.ja,
+  ...receivedPagesI18n.ja,
   ...memoryDreamingI18n.ja,
   ...usageToolI18n.ja,
   ...openchamberToolsLayoutI18n.ja,
   ...openchamberToolOutputI18n.ja,
   ...opencodeToolOutputI18n.ja,
   ...agentStatusI18n.ja,
+  ...androidWidgetsI18n.ja,
   ...snippetsI18n.ja,
   ...sidebarWorkI18n.ja,
   ...sidebarSectionsI18n.ja,
   ...worktreeArchiveI18n.ja,
+  ...operatorChildrenI18n.ja,
   ...omniSearchI18n.ja,
   ...overviewI18n.ja,
   ...isolatedSpacesI18n.ja,
@@ -253,6 +266,7 @@ export const dict: Record<I18nKey, string> = {
   ...markdownGithubI18n['ja'],
   ...autocompleteScopeI18n['ja'],
   ...workflowsI18n['ja'],
+  ...subagentsI18n['ja'],
   ...sessionReferencesI18n['ja'],
   ...guestStatusViewI18n['ja'],
   ...tooltipsDiffI18n['ja'],
@@ -282,7 +296,6 @@ export const dict: Record<I18nKey, string> = {
   'chat.message.context.chatQuote': '以前のメッセージからの引用',
   'chat.message.context.showQuoteSource': '元のメッセージで表示',
   'chat.message.context.fileQuote': '{file} からの選択',
-  'chat.chatInput.chatQuoteContext': 'チャット引用',
   'chat.chatInput.chatQuoteContextRemove': 'チャット引用を削除',
   'chat.message.context.debugVariable': 'デバッグ変数 {name}',
   'chat.chatInput.debugVariables': 'デバッグ変数',
@@ -290,15 +303,17 @@ export const dict: Record<I18nKey, string> = {
   'chat.chatInput.contextPreview.commentLabel': 'ユーザーのコメント',
   'chat.chatInput.contextPreview.edit': 'コメントを編集',
   'chat.chatInput.contextPreview.remove': '削除',
+  'chat.chatInput.contextPreview.removeScreenshot': 'スクリーンショットを削除',
   'chat.message.context.browserAnnotation': 'ブラウザ注釈（{page}）',
   'chat.message.context.prComment': 'GitHub PR コメント（{label}）',
   'chat.message.context.mrComment': 'GitLab MR コメント（{label}）',
   'chat.message.context.prCheck': '失敗した GitHub PR チェック（{label}）',
   'chat.message.context.mrCheck': '失敗した GitLab パイプラインジョブ（{label}）',
   'chat.chatInput.terminalContext': '{terminal}、{start}〜{end}行',
+  'chat.chatInput.context.more': 'さらに {count} 件',
+  'chat.chatInput.context.showLess': '表示を減らす',
+  'chat.chatInput.attachment.unavailable': '添付されていません: アプリの再読み込みでファイルが失われました。もう一度添付するか、このチップを削除してください。',
   'chat.chatInput.terminalContextRemove': 'ターミナルコンテキストを削除',
-  'chat.chatInput.prCommentContext': 'PRコメント',
-  'chat.chatInput.mrCommentContext': 'MRコメント',
   'chat.chatInput.waitingForOpenCode': 'OpenCode を待機中…',
   'chat.chatInput.waitingForOpenCodeHint': 'OpenCode が起動するとすぐにメッセージが送信されます',
   'chat.chatInput.prCommentContextRemove': 'PRコメントのコンテキストを削除',
@@ -939,7 +954,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.session.status.backgroundCommand': 'コマンドがバックグラウンドで実行中',
   'sessions.sidebar.session.status.backgroundImage': 'バックグラウンドで画像を生成中',
   'sessions.sidebar.session.status.waitingOnPullRequest': 'チェックまたはレビューを待機中',
-  'sessions.sidebar.session.status.waitingOnExtension': '拡張機能を待機中',
+  'sessions.sidebar.session.status.waitingOnExtension': 'タイマーまたは拡張機能を待機中',
   'sessions.sidebar.session.status.pinned': 'ピン留めされたセッション',
   'sessions.sidebar.session.status.movingToWorktree': 'セッションを新しいworktreeへ移動中',
   'sessions.sidebar.session.status.permissionRequired': '権限が必要です',
@@ -1876,14 +1891,15 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.browser.device.schemeSystem': '自動',
   'contextPanel.browser.device.schemeLight': 'ライト',
   'contextPanel.browser.device.schemeDark': 'ダーク',
+  'contextPanel.browser.device.scheme': "ページの外観",
   'contextPanel.browser.device.schemeFailed': 'ページの外観を変更できませんでした',
   'contextPanel.browser.frameTitle': 'ブラウザ',
   'contextPanel.browser.loadFailed': 'このページを読み込めませんでした',
   'contextPanel.browser.waitingForServer': '開発サーバーを待っています',
-  'contextPanel.browser.waitingForServerHint': 'まだ接続を受け付けていません。受け付け次第このページを読み込みます。',
+  'contextPanel.browser.waitingForServerHint': 'まだ準備ができていません。準備ができ次第このページを読み込みます。',
   'contextPanel.browser.tunnelFailed': 'この開発サーバーに接続できませんでした',
   'contextPanel.browser.remoteLoopback.title': '{url} は OpenChamber のマシン上にあります',
-  'contextPanel.browser.remoteLoopback.hint': 'ブラウザーのタブからは、そこで動いているページを開けません。デスクトップアプリで開いてください。',
+  'contextPanel.browser.remoteLoopback.hint': 'ブラウザーのタブからは、そこで動いているページを開けません。OpenChamber のデスクトップアプリかモバイルアプリで開いてください。',
   'contextPanel.browser.tunnelFailedHint': '{url} は OpenChamber が動いているマシン上にあり、そこへの接続を開けませんでした。あなたのマシンの内容はここには表示されません。',
   'contextPanel.browser.loadFailedUnknown': 'ページに到達できませんでした。',
   'contextPanel.browser.crashed': 'このページは応答しなくなりました',
@@ -1892,7 +1908,8 @@ export const dict: Record<I18nKey, string> = {
   'projectActions.toast.multipleServers': '複数のサーバーが起動しました。ブラウザパネルで選んでください',
   'contextPanel.browser.devServers.justStarted': '起動したばかり',
   'contextPanel.browser.devServers.unavailable': '実行中の開発サーバーを確認できませんでした。',
-  'contextPanel.browser.devServers.remoteOnly': 'これらは OpenChamber を動かしているマシン上で動作しています。開くにはデスクトップアプリが必要です。',
+  'contextPanel.browser.devServers.remoteOnly': 'これらは OpenChamber を動かしているマシン上で動作しています。開くにはデスクトップアプリかモバイルアプリが必要です。',
+  'contextPanel.browser.unsafeWebView': 'この端末の Android System WebView ではページを安全に表示できません。Google Play で更新してください。',
   'contextPanel.browser.annotate.toggle': 'ページに注釈を付ける',
   'contextPanel.browser.annotate.intro': 'これはアプリ内ブラウザで注釈を付けた選択範囲です。',
   'contextPanel.browser.annotate.attached': '注釈をチャットに添付しました',
@@ -1904,7 +1921,6 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.browser.annotate.tool.draw': '描画',
   'contextPanel.browser.annotate.commentPlaceholder': '変更内容を記述...',
   'contextPanel.browser.annotate.submit': '添付',
-  'contextPanel.browser.trustNotice': 'ここで開かれたページはOpenChamberへの完全なアクセス権を持ちます — 検査とスクリーンショットに必要です。信頼できるサイトのみを開いてください: 悪意のあるページがデータを読み取ったりあなたの代わりに行動したりする可能性があります。',
   'contextPanel.tab.closeTabAria': '{label}タブを閉じる',
   'contextPanel.tab.menu.close': '閉じる',
   'contextPanel.tab.menu.moveToRegion': '領域に移動',
@@ -2153,6 +2169,7 @@ export const dict: Record<I18nKey, string> = {
   'contextSidebar.tokens.cacheRead': 'キャッシュ読み取り',
   'contextSidebar.tokens.cacheWrite': 'キャッシュ書き込み',
   'contextSidebar.tokens.cacheHit': 'キャッシュヒット',
+  'chat.workStatus.replyCacheHit': 'キャッシュヒット（応答）',
   'contextSidebar.actions.copyJson': 'JSONをコピー',
   'contextSidebar.actions.copy': 'コピー',
   'contextSidebar.actions.copied': 'コピーしました',
@@ -2380,6 +2397,7 @@ export const dict: Record<I18nKey, string> = {
   'rightSidebar.contextNotesTodo.toast.readPlanFileFailed': '計画ファイルの読み込みに失敗しました',
   'inlineComment.range.lines': '{start}行目～{end}行目',
   'inlineComment.range.wholeFile': 'ファイル全体',
+  'inlineComment.card.codeChanged': 'このコメントの対象コードが変更されました',
     'inlineComment.input.placeholder': 'コメントを追加...（{shortcut}で保存）',
   'inlineComment.input.placeholderShort': 'コメントを追加...',
   'inlineComment.actions.cancel': 'キャンセル',
@@ -2699,21 +2717,11 @@ export const dict: Record<I18nKey, string> = {
   'session.githubIntegration.tabs.pullRequests': 'プルリクエスト',
   'session.githubIntegration.validation.branchAlreadyCheckedOut': 'ブランチはすでにワークツリーでチェックアウトされています',
   'session.githubIntegration.validation.failed': '検証に失敗しました',
-  'chat.fileAttachment.toast.attachFailed': 'ファイルの添付に失敗しました',
   'chat.fileAttachment.toast.tooLarge': '{name} は大きすぎるため添付できません（{size} 超）。プロジェクト内のファイルなら @ でメンションしてください。',
   'chat.fileAttachment.toast.heicConversionFailed': '{name} を HEIC から JPEG に変換できなかったため、添付されませんでした。写真を JPEG で保存してから、もう一度添付してください。',
   'chat.fileAttachment.toast.overSendLimit': '{name} は大きすぎるため添付できません（{size} 超）。',
-  'chat.fileAttachment.toast.someFilesSkipped': '一部のファイルがスキップされました:\n{summary}',
-  'chat.fileAttachment.toast.vscodePickFailed': 'VS Codeでのファイル選択に失敗しました',
-  'chat.fileAttachment.fileFallback': 'ファイル',
-  'chat.fileAttachment.skippedFallback': 'スキップ',
-  'chat.fileAttachment.actions.attachAria': 'ファイルを添付',
-  'chat.fileAttachment.actions.attach': 'ファイルを添付',
-  'chat.fileAttachment.actions.removeNamed': '{name}を削除',
-  'chat.fileAttachment.actions.removeImage': '画像を削除',
   'chat.fileAttachment.activeEditor.addFile': 'ファイル {name}をコンテキストに追加',
   'chat.fileAttachment.activeEditor.pinSelection': '選択範囲をコンテキストに固定',
-  'chat.fileAttachment.activeEditor.remove': 'コンテキストから削除',
   'chat.fileAttachment.openInDiagram': 'ダイアグラムビューで開く',
   'chat.changedFiles.title': '変更されたファイル',
   'chat.changedFiles.actions.openFileTitle': '{path}を開く',
@@ -2792,6 +2800,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.toast.opencodeRestartInterrupted.description': '応答の生成中に OpenCode が再起動しました。続行するにはメッセージを送信してください。',
   'chat.toast.opencodeRestartInterrupted.autoResumeDescription': '応答の生成中に OpenCode が再起動しました。チャットは自動的に再開されます。再開しない場合はメッセージを送信してください。',
   'chat.toast.opencodeRestartInterrupted.openSession': 'セッションを開く',
+  'chat.toast.shareAnswer.openSession': 'セッションを開く',
   'chat.errorBoundary.title': 'チャットエラー',
   'chat.errorBoundary.description': 'チャットインターフェースでエラーが発生しました。一時的なネットワーク問題または破損したメッセージデータが原因の可能性があります。',
   'chat.errorBoundary.sessionLabel': 'セッション',
@@ -2936,6 +2945,19 @@ export const dict: Record<I18nKey, string> = {
   'chat.messageBody.toast.copied': 'クリップボードにコピーしました',
   'chat.messageBody.actions.savingImage': '画像を保存中...',
   'chat.messageBody.actions.saveAsImage': '画像として保存',
+  'chat.messageSelection.action': 'メッセージを選択',
+  'chat.messageSelection.count': '{count} 件選択中',
+  'chat.messageSelection.empty': '何も選択されていません',
+  'chat.messageSelection.cancel': 'キャンセル',
+  'chat.messageSelection.copyMarkdown': 'Markdown をコピー',
+  'chat.messageSelection.copyMarkdownShort': 'Markdown',
+  'chat.messageSelection.saveImage': '画像を保存',
+  'chat.messageSelection.saveImageShort': '画像',
+  'chat.messageSelection.selectPrompt': 'プロンプトを選択',
+  'chat.messageSelection.selectAnswer': '回答を選択',
+  'chat.messageSelection.toast.copied': 'Markdown をコピーしました',
+  'chat.messageSelection.toast.copyFailed': 'クリップボードにコピーできませんでした',
+  'chat.messageSelection.toast.missing': '選択したメッセージの一部がこのチャットにもうないため、選択を解除しました。選択内容を確認して、もう一度お試しください。',
   'chat.messageBody.actions.saveAsPlan': '計画として保存',
   'chat.messageBody.actions.startNewSession': 'この回答から新しいセッションを開始',
   'chat.messageBody.actions.startNewMultiRun': 'この回答から新しいマルチランを開始',
@@ -2971,13 +2993,6 @@ export const dict: Record<I18nKey, string> = {
   'chat.chatInput.actions.sendMessageAria': 'メッセージを送信',
   'chat.chatInput.actions.queueMessageAria': 'メッセージをキュー',
   'chat.chatInput.actions.stopGeneratingAria': '生成を停止',
-  'chat.chatInput.linked.byAuthor': '{author}による',
-  'chat.chatInput.linked.issue.openInBrowserAria': 'ブラウザでIssueを開く',
-  'chat.chatInput.linked.issue.removeAria': 'リンクされたIssueを削除',
-  'chat.chatInput.linked.pr.openInBrowserAria': 'ブラウザでプルリクエストを開く',
-  'chat.chatInput.linked.mr.openInBrowserAria': 'マージリクエストをブラウザで開く',
-  'chat.chatInput.linked.pr.removeAria': 'リンクされたプルリクエストを削除',
-  'chat.chatInput.linked.mr.removeAria': 'リンクされたマージリクエストを削除',
   'chat.chatInput.placeholder.shell': 'シェルコマンドを入力...',
   'chat.chatInput.placeholder.chat': '計画、構築、質問。@でメンション、$でスキル、/でコマンド',
   'chat.chatInput.placeholder.chatCompact': '計画、構築、質問',
@@ -3030,6 +3045,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.chatInput.toast.unsupportedAttachmentModalities': '{model} は {files} に必要な {modalities} 入力をサポートしていません。メッセージは送信できますが、これらの添付ファイルは無視される可能性があります。',
   'chat.chatInput.toast.imagesSaving': '{files} を保存中…',
   'chat.chatInput.toast.imagesSavedForTextModel': '{model} は画像を読み取れません。{files} を {folder} に保存しました。',
+  'chat.chatInput.toast.imagesSentAsPathsForTextModel': '{model} は画像を読めません。メッセージでは {files} の代わりにファイルのパスを渡します。',
+  'chat.chatInput.toast.textModelImageSaveFailed': '画像を読めないモデル向けに {files} をファイルとして保存できませんでした。メッセージは送信されていません。',
   'chat.chatInput.toast.imageSaveFailed': '{files} を保存できませんでした。代わりに添付しました。',
   'chat.chatInput.toast.imagesSaved': '{files} を {folder} に保存しました。',
   'chat.chatInput.toast.imageCopySaveFailed': '{files} を保存できませんでした。',
@@ -3038,9 +3055,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.chatInput.toast.openSessionFirst': '先にセッションを開いてください',
   'chat.chatInput.toast.dictationKeptForOriginalSession': '音声入力は、開始したセッションの下書きとして保存されました',
   'chat.chatInput.toast.togglePermissionAutoAcceptFailed': '権限の自動承認の切り替えに失敗しました',
-  'chat.chatInput.reviewComments': 'レビューコメント:',
   'chat.chatInput.reviewCommentsRemove': 'レビューコメントを削除',
-  'chat.chatInput.previewAnnotations': 'プレビュー注釈:',
   'chat.chatInput.previewContext': 'プレビューコンテキスト:',
   'chat.chatInput.previewContextRemove': 'プレビューコンテキストを削除',
   'chat.chatInput.projectRoot': 'プロジェクトルート',
@@ -3374,8 +3389,8 @@ export const dict: Record<I18nKey, string> = {
   'projects.sharedTrust.actions': 'アクション',
   'projects.sharedTrust.skip': '今回は実行しない',
   'projects.sharedTrust.trust': '信頼して実行',
-  'projects.opencodeTrust.title': 'このフォルダーのコードを OpenCode に実行させますか？',
-  'projects.opencodeTrust.description': 'OpenCode はフォルダーを開いた時点で、{path} の設定にあるプラグインとコマンドを実行します。一度信頼すると、変更があった場合のみ OpenChamber が再度確認します。',
+  'projects.opencodeTrust.title': 'このフォルダーの OpenCode 設定を信頼しますか？',
+  'projects.opencodeTrust.description': 'OpenCode はフォルダーを開いた時点で、{path} の設定から以下のすべてを適用します。一度信頼すると、変更があった場合のみ OpenChamber が再度確認します。',
   'projects.opencodeTrust.plugins': 'プラグイン',
   'projects.opencodeTrust.commands': 'コマンド',
   'projects.opencodeTrust.kind.package': '{name}（npm パッケージ）',
@@ -3384,6 +3399,12 @@ export const dict: Record<I18nKey, string> = {
   'projects.opencodeTrust.kind.lsp': '言語サーバー {name}',
   'projects.opencodeTrust.kind.formatter': 'フォーマッター {name}',
   'projects.opencodeTrust.kind.shell': 'シェル',
+  'projects.opencodeTrust.kind.env': '環境変数 {name}',
+  'projects.opencodeTrust.kind.file': 'ファイル {path}',
+  'projects.opencodeTrust.values': '外部に送信される可能性のある、このマシンの値',
+  'projects.opencodeTrust.permissions': '許可される権限',
+  'projects.opencodeTrust.permission.agent': 'エージェント {name}',
+  'projects.opencodeTrust.permission.everyAgent': 'すべてのエージェント',
   'projects.opencodeTrust.paused': '信頼しない場合、このフォルダーではエージェントは動作しませんが、ファイルと Git の変更は引き続き閲覧できます。',
   'projects.opencodeTrust.skip': '今回は開かない',
   'projects.opencodeTrust.trust': '信頼して開く',
@@ -4146,6 +4167,8 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.telemetry.toolDurationDescription': '失敗した呼び出しも含むツールの実行時間です。同時に動いたツールの時間は重複して加算しません。',
   'chat.workStatus.telemetry.ttft': '平均 TTFT',
   'chat.workStatus.telemetry.ttftDescription': '各モデルステップで最初のテキストや推論が始まるまでの平均待ち時間です。作成後に開始時刻がないステップがあれば表示しません。ツールのみのステップや、作成時刻だけが記録されたパートでよく起こります。',
+  'chat.workStatus.telemetry.firstOutput': '平均初回出力',
+  'chat.workStatus.telemetry.firstOutputDescription': '各モデルステップの開始から、テキスト・推論・ツール呼び出しのいずれかの最初の出力までの平均待ち時間。TTFT と異なり、ツール呼び出しで始まるステップも含みます。OpenCode 2.3.0 より前のステップでは表示されません。',
   'chat.workStatus.telemetry.steps': 'ステップ数',
   'chat.workStatus.telemetry.stepsDescription': 'このプロンプトでモデルを呼び出した回数です。ツールの結果を読み、次の処理を決める際は通常もう一度呼び出します。',
   'chat.workStatus.telemetry.tokens': 'トークン',
@@ -4183,6 +4206,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.breakdown.planCountSingle': 'プラン {count} 件',
   'chat.workStatus.breakdown.planCountPlural': 'プラン {count} 件',
   'chat.workStatus.linkedPlans.open': 'プラン「{title}」を開く',
+  'chat.workStatus.loadedSkills.open': 'スキル「{name}」を開く',
   'chat.workStatus.sections.open': 'セクションを選択',
   'chat.workStatus.sections.dialogTitle': 'パネルのセクション',
   'chat.workStatus.sections.reorder': '{label}をドラッグして並び替え',
@@ -4238,6 +4262,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.formCard.connectionLostReason': 'サーバーとの接続が切れました（{reason}）。何も送信されていません。再接続後にもう一度お試しください。',
   'chat.formCard.notConnected': 'まだサーバーに接続されていません。何も送信されていません。接続後にもう一度お試しください。',
   'chat.formCard.recoveredNotice': '待機中にターンが停止しました。送信すると、新しい有料ターンが開始します。',
+  'chat.formCard.deferredNotice': '回答する前にメッセージを送信しました。送信すると、回答は新しいメッセージとして送られます。',
   'chat.formDock.progress': '{current} / {total}',
   'chat.formDock.waiting': 'あと {count} 件が待機中',
   'chat.formDock.back': '戻る',
@@ -4455,7 +4480,6 @@ export const dict: Record<I18nKey, string> = {
   'desktopHostSwitcher.startup.fellBackToLocal': '接続を開けなかったため、OpenChamber は Local で起動しました。到達できるようになったら、インスタンス切り替えから接続してください。',
   'desktopSafeStart.title': 'OpenChamber が繰り返しクラッシュしました',
   'desktopSafeStart.description': 'パネルを閉じ、フォルダを折りたたみました。',
-  'chat.chatInput.contextPreview.saveEdit': 'コメントを保存',
   'chat.chatInput.contextPreview.cancelEdit': '編集をキャンセル',
   'sessions.scheduledTasks.dialog.actions.openSession': 'セッションを開く',
   'sessions.scheduledTasks.dialog.actions.openSessionAria': '{taskName} の前回の実行のセッションを開く',

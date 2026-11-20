@@ -53,7 +53,6 @@ const StatusPill: React.FC<{
   blocked: boolean;
 }> = ({ status, enabled, blocked }) => {
   const { t } = useI18n();
-  // OpenCode never loads a blocked server, so it has no status of its own to show.
   if (blocked) return <SettingsCardPill tone="warning">{t('settings.mcp.grid.status.blockedByPolicy')}</SettingsCardPill>;
   if (!enabled) return <SettingsCardPill tone="neutral">{t('settings.mcp.grid.status.disabled')}</SettingsCardPill>;
   const pill: { tone: SettingsCardTone; label: string } | null = status === 'connected'
@@ -68,7 +67,6 @@ const StatusPill: React.FC<{
   return pill ? <SettingsCardPill tone={pill.tone}>{pill.label}</SettingsCardPill> : null;
 };
 
-/** Browse view of the MCP page: one card per configured server with its live status. */
 export const McpGrid: React.FC = () => {
   const { t } = useI18n();
   const settingsDirectory = useSettingsDirectory();
@@ -83,9 +81,6 @@ export const McpGrid: React.FC = () => {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const servers = useMcpConfigStore((state) => selectMcpServersForDirectory(state, settingsDirectory));
   const mcpStatus = useMcpStore((state) => state.getStatusForDirectory(settingsDirectory));
-  // Runtime-only rows wait for the config catalog: before it is read, every
-  // server the runtime reports would read as runtime-only, and a configured
-  // server would flash as one while its config entry was still loading.
   const configsLoaded = useMcpConfigStore((state) => hasLoadedMcpConfigsForDirectory(state, settingsDirectory));
   const isBlocked = useIntegrationPolicyBlock(settingsDirectory);
   const refreshStatus = useMcpStore((state) => state.refresh);
@@ -100,7 +95,6 @@ export const McpGrid: React.FC = () => {
   const handleRefresh = () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    // Keep the spinner up long enough to read as a refresh.
     const minSpin = new Promise((resolve) => setTimeout(resolve, 500));
     void Promise.all([refreshStatus({ directory: settingsDirectory, silent: true }), minSpin])
       .then(() => {
@@ -153,9 +147,7 @@ export const McpGrid: React.FC = () => {
     setIsDeleting(false);
   };
 
-  // OpenCode adds servers at runtime that live in no config file — the Console
-  // MCP of a signed-in workspace. They still run, so the grid shows them as
-  // read-only rows beside the configured ones (#5935).
+  // external: #5935 OpenCode reports Console MCP servers with no editable config entry.
   const configNames = new Set(servers.map((server) => server.name));
   const runtimeServers = configsLoaded
     ? Object.values(mcpStatus).filter((server) => !configNames.has(server.name))
@@ -215,8 +207,6 @@ export const McpGrid: React.FC = () => {
         {filtered.map((row) => {
           if (row.kind === 'runtime') {
             const blocked = isBlocked(`mcp:${row.server.name}`);
-            // No config entry backs this server, so it opens nothing and offers
-            // no delete: the row is what the runtime reports, read-only.
             return (
               <SettingsCard
                 key={row.server.name}
