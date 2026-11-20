@@ -4,8 +4,8 @@ import { isOpenCodeOlderThan } from '../opencode/compatibility.js';
 import { webPackagePaths } from '../web-package-paths.js';
 import type { Application, QueryValue } from '../shared/http-contracts.js';
 import type { JsonValue } from '../shared/json-values.js';
-import type { UpdateCheckResult } from '../package-manager.js';
 import type { DesktopUpdater } from '../../index.js';
+import type { UpdateCheckResult } from '../package-manager.js';
 import type { createNotificationTemplateRuntime } from '../notifications/template-runtime.js';
 import { isString } from '../shared/object-guards.js';
 

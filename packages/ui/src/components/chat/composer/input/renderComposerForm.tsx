@@ -34,6 +34,7 @@ import type { useComposerCompletions } from './useComposerCompletions';
 import type { useComposerColumn } from './useComposerColumn';
 import type { useComposerAutocompleteState } from './useComposerAutocompleteState';
 import { ParallelComposerStrip } from '../../composer/parallel/ParallelComposerStrip';
+import { JiraIssueMentionHint } from '@/components/jira/JiraIssueMentionHint';
 import { BtwPanel } from '../../btw/BtwPanel';
 import { ActiveEditorFileSuggestion } from '../../FileAttachment';
 import { withAttachmentChips } from '../../message/parts/attachmentCitationChips';
@@ -70,7 +71,7 @@ type Dependencies = {
     dropState: Pick<ReturnType<typeof useComposerDropState>, 'isDragging' | 'dropZoneRef' | 'isInternalDrag'>;
     i18n: Pick<ReturnType<typeof useI18n>, 't'>;
     editorState: Pick<ReturnType<typeof useComposerEditorState>, 'composerRef' | 'composerViewStore'>;
-    draftText: Pick<ReturnType<typeof useComposerDraftText>, 'composerText' | 'editorValueRevision'>;
+    draftText: Pick<ReturnType<typeof useComposerDraftText>, 'composerText' | 'editorValueRevision' | 'hasText'>;
     mobilePanels: Pick<ReturnType<typeof useComposerMobilePanels>, 'mobileControlsPanel' | 'setMobileControlsPanel'>;
     sessionScope: Pick<ReturnType<typeof useComposerSessionScope>, 'isBtwActive' | 'claimAttachmentSlot' | 'messageSelectionActive' | 'currentSessionId' | 'currentSessionDirectoryForSync' | 'currentDirectory' | 'newSessionDraftOpen' | 'inputMode' | 'btwComposerSessionId' | 'isBtwPanelVisible' | 'hasPendingPermission' | 'btwPanel'>;
     sessionLifecycle: Pick<ReturnType<typeof useComposerSessionLifecycle>, 'handleExitBtw'>;
@@ -88,7 +89,7 @@ type Dependencies = {
     sendAvailability: Pick<ReturnType<typeof useComposerSendAvailability>, 'hasContent' | 'pendingFirstSend' | 'canAbort' | 'canSend'>;
     runtime: Pick<ReturnType<typeof useComposerRuntime>, 'isVSCode'>;
     referenceActions: Pick<ReturnType<typeof useComposerReferenceActions>, 'trackerPickers' | 'guestAttachItems' | 'openGuestAttach'>;
-    rows: Pick<ReturnType<typeof useComposerRows>, 'composerTopRows' | 'contextRows' | 'mobileModelAgentRow'>;
+    rows: Pick<ReturnType<typeof useComposerRows>, 'composerTopRows' | 'contextRows' | 'mobileModelAgentRow' | 'handleStageToBacklog' | 'message'>;
     filePicker: Pick<ReturnType<typeof useComposerFilePicker>, 'handlePickLocalFiles'>;
     referencePicker: Pick<ReturnType<typeof useComposerReferencePicker>, 'openGitHubPicker' | 'repositoryProvider'>;
     editorActions: Pick<ReturnType<typeof useComposerEditorActions>, 'handleAbort' | 'autocompleteOverlayPosition' | 'dictationHeightHostRef' | 'dictationContentHeight' | 'dictationHeightLimit' | 'useCompactChatPlaceholder' | 'handleDictationContentHeightChange'>;
@@ -118,7 +119,7 @@ export function renderComposerForm({
     const { isDragging, dropZoneRef, isInternalDrag } = dropState;
     const { t } = i18n;
     const { composerRef, composerViewStore } = editorState;
-    const { composerText, editorValueRevision } = draftText;
+    const { composerText, editorValueRevision, hasText } = draftText;
     const { mobileControlsPanel, setMobileControlsPanel } = mobilePanels;
     const {
         isBtwActive, claimAttachmentSlot, messageSelectionActive, currentSessionId,
@@ -160,9 +161,10 @@ export function renderComposerForm({
     const { hasContent, pendingFirstSend, canAbort, canSend } = sendAvailability;
     const { isVSCode } = runtime;
     const { trackerPickers, guestAttachItems, openGuestAttach } = referenceActions;
-    const { composerTopRows, contextRows, mobileModelAgentRow } = rows;
+    const { composerTopRows, contextRows, mobileModelAgentRow, handleStageToBacklog, message } = rows;
     const { handlePickLocalFiles } = filePicker;
     const { openGitHubPicker, repositoryProvider } = referencePicker;
+    const jiraMentionHint = !isBtwActive ? <JiraIssueMentionHint message={message} /> : null;
     const {
         handleAbort, autocompleteOverlayPosition, dictationHeightHostRef, dictationContentHeight,
         dictationHeightLimit, useCompactChatPlaceholder, handleDictationContentHeightChange,
@@ -298,7 +300,7 @@ export function renderComposerForm({
                         stopIconSizeClass={stopIconSizeClass}
                         topRow={composerTopRows}
                         attachments={(
-                            contextRows ? <div className="px-3 pt-1">{contextRows}</div> : null
+                            contextRows || jiraMentionHint ? <div className="px-3 pt-1">{contextRows}{jiraMentionHint}</div> : null
                         )}
                         bottomRow={mobileModelAgentRow}
                         onExpand={mobileShell.expand}
@@ -417,6 +419,7 @@ export function renderComposerForm({
                             </div>
                         ) : null}
                         {contextRows ? <div className="relative z-10 px-1.5">{contextRows}</div> : null}
+                        {jiraMentionHint ? <div className="relative z-10 px-1.5">{jiraMentionHint}</div> : null}
                         <div
                             ref={dictationHeightHostRef}
                             className={cn("relative overflow-hidden", isComposerExpanded && 'flex flex-1 min-h-0 flex-col')}
@@ -496,6 +499,7 @@ export function renderComposerForm({
                         canSend={canSend}
                         canAbort={canAbort}
                         hasContent={Boolean(hasContent)}
+                        canStageToBacklog={Boolean(currentSessionId) && hasText}
                         permissionMode={shownPermissionMode}
                         isPermissionAutoAcceptInteractive={isPermissionAutoAcceptInteractive}
                         dictationActive={mobileShell.dictationActive}
@@ -509,6 +513,7 @@ export function renderComposerForm({
                         onOpenAttachSheet={openMobileAttachSheet}
                         onCyclePermissionMode={handlePermissionModeCycle}
                         onPrimaryAction={handlePrimaryAction}
+                        onStageToBacklog={handleStageToBacklog}
                         onAbort={handleAbort}
                         onStartDictation={toggleDictation}
                         onDictationInsert={handleDictationInsert}

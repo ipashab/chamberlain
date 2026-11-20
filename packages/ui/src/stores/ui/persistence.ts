@@ -189,7 +189,7 @@ export const uiStorePersistOptions = {
     delete state.rightSidebarTab;
 
     const legacySizes: LegacyZoneSizes[] = [];
-    state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory, legacySizes);
+    state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory, state.contextSurfaceZones, legacySizes);
     if (version < 26) {
       const latest = legacySizes
         .filter((entry) => Object.keys(entry.sizes).length > 0)
@@ -213,11 +213,11 @@ export const uiStorePersistOptions = {
     }
 
     if (version < 6) {
-      state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory);
+      state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory, state.contextSurfaceZones);
     }
 
     if (version < 7) {
-      state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory);
+      state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory, state.contextSurfaceZones);
     }
 
     if (version < 8) {
@@ -260,6 +260,24 @@ export const uiStorePersistOptions = {
 
     return state;
   },
+  // Каталог панели — единственная часть сохраняемого состояния, чья форма
+  // постоянно растёт; merge — граница, которая перечитывает её независимо
+  // от того, какая версия писала, поэтому реhydrate на той же версии
+  // проходит очистку точно так же.
+  merge: (persistedState, currentState) => {
+    // SAFETY: zustand отдаёт этой границе всё, что лежит в хранилище,
+    // возможно, ничего. Тогда каждое читаемое ниже поле проходит через
+    // собственную схему — каталог через очистку выше.
+    const persisted = (persistedState ?? {}) as Partial<UIStore>;
+    return {
+      ...currentState,
+      ...persisted,
+      contextPanelByDirectory: sanitizeContextPanelByDirectory(
+        persisted.contextPanelByDirectory,
+        persisted.contextSurfaceZones,
+      ),
+    };
+  },
   partialize: (state) => ({
     theme: state.theme,
     isSidebarOpen: state.isSidebarOpen,
@@ -299,6 +317,8 @@ export const uiStorePersistOptions = {
     sessionSuggestionEnabled: state.sessionSuggestionEnabled,
     sessionWorkEnabled: state.sessionWorkEnabled,
     sessionReviewOfferEnabled: state.sessionReviewOfferEnabled,
+    sessionAdvisorEnabled: state.sessionAdvisorEnabled,
+    sessionCheckpointsEnabled: state.sessionCheckpointsEnabled,
     sessionGoalEnabled: state.sessionGoalEnabled,
     sessionGoalChecker: state.sessionGoalChecker,
     sessionGoalMaxAutoTurns: state.sessionGoalMaxAutoTurns,
@@ -398,6 +418,7 @@ export const uiStorePersistOptions = {
     agentMemoryDreamingModel: state.agentMemoryDreamingModel,
     agentMemoryDreamingVariant: state.agentMemoryDreamingVariant,
     agentRenderToolEnabled: state.agentRenderToolEnabled,
+    agentDebuggerToolEnabled: state.agentDebuggerToolEnabled,
     agentSecretToolEnabled: state.agentSecretToolEnabled,
     agentWorkflowToolEnabled: state.agentWorkflowToolEnabled,
     isolatedSpacesEnabled: state.isolatedSpacesEnabled,

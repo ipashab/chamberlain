@@ -42,6 +42,7 @@ import { withRegisteredSharedPages } from '../../sharePages/received/takeShareLi
 import type { ChatInputProps } from './chatInputProps';
 import { collectInlineSkillMentions } from './composerMentionTokens';
 import { recordLinkedReferences } from './recordLinkedReferences';
+import { backlogApi } from '@/lib/session-backlog/backlogApi';
 
 type Dependencies = {
     inlineContext: Pick<ReturnType<typeof useComposerInlineContext>, 'isMobileCommentOpen' | 'hasDrafts' | 'attachmentsToSend' | 'inlineDraftTarget' | 'consumeDrafts'>;
@@ -354,7 +355,43 @@ export function useComposerQueueActions({
         void handleSubmitRef.current({ queuedOnly: true, queuedMessageId: messageId, delivery: 'steer' });
     }, [handleSubmitRef]);
 
+    // Park the draft as a staged backlog item. The text leaves verbatim, with
+    // no resolved mentions, attachments or send configuration — what the
+    // strip lists is exactly what the drain will one day send — and
+    // everything else stays on the composer for sends that need it.
+    const handleStageToBacklog = React.useCallback(async () => {
+        // The comment's exit paths are attach/cancel; staging a real prompt
+        // underneath comment mode must never fire.
+        if (isMobileCommentOpen()) return;
+        const inputSnapshot = getCurrentInputSnapshot();
+        const text = inputSnapshot.message.trim();
+        if (!currentSessionId || !text) return;
+
+        // A local or extension command is run, not staged: the drain hands
+        // the text to the session as an ordinary follow-up, and `/compact`
+        // or a guest command means nothing there.
+        if (planLocalSlashCommand(inputSnapshot.message, inputMode, hasDrafts, true)
+            || routeGuestSlashCommand(inputSnapshot.message, inputMode, guestCommands)) {
+            toast.error(t('chat.backlog.stageCommandRefused'));
+            return;
+        }
+        try {
+            await backlogApi.add(currentSessionId, text);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : t('chat.backlog.stageFailed'));
+            return;
+        }
+        // Only the text leaves. The attachments, drafts and context chips
+        // stay on the composer: the staged item is the prompt alone.
+        setMessage('');
+        confirmedMentionsRef.current.clear();
+        if (!isMobile) {
+            composerRef.current?.focus();
+        }
+        toast.success(t('chat.backlog.stageSuccess'));
+    }, [getCurrentInputSnapshot, currentSessionId, inputMode, hasDrafts, guestCommands, isMobile, isMobileCommentOpen, setMessage, confirmedMentionsRef, composerRef, t]);
+
     return {
-        handleQueueMessage, handleQueuedMessageEdit, handleQueuedMessageSend,
+        handleQueueMessage, handleQueuedMessageEdit, handleQueuedMessageSend, handleStageToBacklog,
     };
 }

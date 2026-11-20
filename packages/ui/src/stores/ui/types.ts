@@ -10,10 +10,15 @@ import type { PermissionMode } from '../utils/permissionAutoAccept';
 import type { ContextPanelMode, PluginContextPanelMode } from '@/lib/surfaces/modes';
 import type { MobileWorkspaceTab } from '@/lib/mobileWorkspaceTabs';
 import type { ContextZone, ContextZonePlacement, MovedZoneViews } from '@/lib/workspace/zones';
+import type { WorkspaceTree } from '@/lib/workspace/layoutTree';
+import type { WorkspaceMode, WorkspaceModeLayouts } from '@/lib/workspace/modePresets';
 import type { WorkStatusPanelSectionId } from '@/components/chat/work-status/sections';
 import type { StateCreator } from 'zustand';
 
 export type PendingDiffScope = 'working' | 'staged' | 'turn' | 'branch' | 'commit' | 'pr';
+
+/** Что просило режим: запущенный прогон отладки или элемент трекера, открытый из чата. */
+export type WorkspaceModeOfferReason = 'debug-run' | 'tracker-item';
 
 type MermaidRenderingMode = 'svg' | 'ascii';
 
@@ -77,6 +82,25 @@ export type ContextPanelDirectoryState = {
   tabs: ContextPanelTab[];
   activeTabId: string | null;
   zones: MovedZoneViews;
+  /**
+   * Та же панель в виде дерева раскладки: любые разбиения областей,
+   * рекурсивно, с чатом как одной из позиций. Пишется рядом с зонами,
+   * пока рендерер не перейдёт на чтение одного дерева.
+   */
+  layout: WorkspaceTree;
+  /**
+   * Активный режим рабочего пространства проекта (lib/workspace/modePresets.ts).
+   * 'chat' — раскладка, которая была в приложении всегда; 'debug' и 'board' —
+   * именованные пресеты, в которые входит первый переключатель. Сохраняется
+   * на каталог.
+   */
+  workspaceMode: WorkspaceMode;
+  /**
+   * Сохранённые деревья режимов, которые не активны: дерево активного режима —
+   * сам `layout`, поэтому переключение пишет сюда уходящее дерево и загружает
+   * входящее, не теряя ни одной вкладки.
+   */
+  modeLayouts: WorkspaceModeLayouts;
   touchedAt: number;
 };
 
@@ -106,6 +130,10 @@ export interface UIStore {
   sidebarFoldedForExpandedZone: boolean;
   sidebarWidth: number;
   contextPanelByDirectory: Record<string, ContextPanelDirectoryState>;
+  /** Единственная видимая карточка предложения режима, когда что-то подсказало режим. Преходящее. */
+  workspaceModeOffer: { directory: string; mode: WorkspaceMode; reason: WorkspaceModeOfferReason } | null;
+  /** Причины предложений, отклонённые за этот запуск приложения; до перезапуска они остаются выключенными. Преходящее. */
+  workspaceModeOfferDismissed: WorkspaceModeOfferReason[];
   contextRailOrder: string[];
   contextRailHiddenSurfaces: string[];
   mobileWorkspaceTabOrder: string[];
@@ -137,6 +165,13 @@ export interface UIStore {
   pendingTurnDiffFile: { file: string; sessionId: string | null } | null;
   pendingFileNavigation: PendingFileNavigation | null;
   pendingFileFocusPath: string | null;
+  // Эстафеты доски ревью: одна ссылка на pull для поверхности pulls,
+  // одна ссылка на задачу для поверхности jira; ставятся в момент клика
+  // и забираются при открытии — тот же уговор, что у эстафеты диффа,
+  // чтобы поверхность, которой велено открыться на цели, не угадывала её
+  // по собственной памяти.
+  pendingPullUrl: string | null;
+  pendingIssueRef: string | null;
   isMobile: boolean;
   isCommandPaletteOpen: boolean;
   isHelpDialogOpen: boolean;
@@ -146,8 +181,12 @@ export interface UIStore {
   openCodeStatusText: string;
   isSessionCreateDialogOpen: boolean;
   isScheduledTasksDialogOpen: boolean;
+  isMissionsDialogOpen: boolean;
+  isAssistantsDialogOpen: boolean;
   isArchivePageOpen: boolean;
   isIntegrationsCatalogOpen: boolean;
+  /** Запрос, с которым открылась страница архива; пустой при простом открытии. */
+  archivePageSearch: string;
   archivePageOpenCount: number;
   isUsageStatsPageOpen: boolean;
   isSourceBoardOpen: boolean;
@@ -177,6 +216,10 @@ export interface UIStore {
   sessionSuggestionEnabled: boolean;
   sessionWorkEnabled: boolean;
   sessionReviewOfferEnabled: boolean;
+  /** Пост-ток-советник: находки правил, якорных проверок и Small Model под ответом. */
+  sessionAdvisorEnabled: boolean;
+  /** Контрольные точки по ходу: закрепить worktree на старте хода, вернуть файлы хода по запросу. */
+  sessionCheckpointsEnabled: boolean;
   sessionGoalEnabled: boolean;
   sessionGoalChecker: SessionGoalChecker;
   sessionGoalMaxAutoTurns: number;
@@ -294,6 +337,8 @@ export interface UIStore {
   agentMemoryDreamingModel: string;
   agentMemoryDreamingVariant: string;
   agentRenderToolEnabled: boolean;
+  /** Может ли агент вести прогон debugpy панели отладки. */
+  agentDebuggerToolEnabled: boolean;
   agentSecretToolEnabled: boolean;
   agentWorkflowToolEnabled: boolean;
   agentWorkflowAutoApprove: boolean;
@@ -370,6 +415,51 @@ export interface UIStore {
   setContextZoneSize: (zone: ContextZone, size: number) => void;
   setContextZoneExpandedChatSize: (zone: ContextZone, size: number) => void;
   moveContextSurfaceToZone: (mode: ContextPanelMode, zone: ContextZone) => void;
+  /**
+   * Делит одну область раскладки надвое: лист дерева по его id или `'chat'`
+   * для области чата. Новая область начинается пустой, занимая `fraction`
+   * пространства. Отвечает id нового листа или null, если деления не было.
+   * `placement` ставит свежий лист в начало пары, а не в её конец.
+   */
+  splitLayoutRegion: (directory: string, target: { leafId: string } | 'chat', axis: 'row' | 'column', fraction?: number, placement?: 'start' | 'end') => string | null;
+  /** Закрывает область. Её вкладки остаются в ленте и вернутся в область при следующем открытии. */
+  closeLayoutRegion: (directory: string, leafId: string) => void;
+  /** Завершает перетаскивание разделителя: замыкающий потомок пары получает `trailingShare` пары. */
+  balanceLayoutSplit: (directory: string, splitId: string, leadingIndex: number, trailingIndex: number, trailingShare: number) => void;
+  /** Переносит одну вкладку в лист области, активируя её там. */
+  moveContextPanelTabToLeaf: (directory: string, tabId: string, leafId: string, index?: number) => void;
+  /**
+   * Открывает поверхность в выбранный лист: активирует её последнюю вкладку
+   * или открывает новую, затем переносит её в лист — невзирая на то, куда
+   * её поставили бы правила размещения. Лист должен уже существовать.
+   */
+  openContextSurfaceInLeaf: (directory: string, mode: ContextPanelMode, leafId: string) => void;
+  /**
+   * Открывает выбранную вкладку в выбранный лист — путь выбора сессии и
+   * сброса в сайдбаре для чата: вкладка дедуплицируется с уже открытым
+   * дубликатом той же сессии, и в лист переносится именно он.
+   * Лист должен уже существовать.
+   */
+  openContextPanelTabToLeaf: (directory: string, tab: ContextPanelTabDescriptor, leafId: string) => void;
+  /**
+   * Переключает режим рабочего пространства каталога (lib/workspace/modePresets.ts):
+   * сохраняет дерево уходящего режима, загружает входящее — его сохранённое
+   * дерево или пресет первого входа — и для свежего пресета открывает его
+   * поверхности в именованные листья. Вкладки и панели переживают
+   * переключение; область чата сохраняет свою сессию.
+   */
+  switchWorkspaceMode: (directory: string, mode: WorkspaceMode) => void;
+  /**
+   * Показывает единственную карточку предложения режима: прогон или открытый
+   * элемент может подсказать режим, но не занять экран без клика, который
+   * принимает. Подавляется для причин, уже отклонённых в этом запуске;
+   * преходяще, никогда не сохраняется.
+   */
+  offerWorkspaceMode: (directory: string, mode: WorkspaceMode, reason: WorkspaceModeOfferReason) => void;
+  /** Прячет карточку предложения без переключения; та же причина выключена до конца запуска. */
+  dismissWorkspaceModeOffer: () => void;
+  /** Id всех вкладок одной поверхности — вся группа `mode` в ленте. */
+  closeContextSurfaceTabs: (directory: string, mode: ContextPanelMode) => void;
   setWorkStatusSectionExpanded: (sectionId: string, expanded: boolean) => void;
   setMessageQueueExpanded: (expanded: boolean) => void;
   setWorkStatusScrollTop: (scrollTop: number) => void;
@@ -393,7 +483,11 @@ export interface UIStore {
   setPendingFileNavigation: (navigation: PendingFileNavigation | null) => void;
   setPendingFileFocusPath: (path: string | null) => void;
   navigateToDiff: (filePath: string, staged?: boolean, scope?: PendingDiffScope | null) => void;
+  setPendingPull: (url: string | null) => void;
+  setPendingIssue: (ref: string | null) => void;
   consumePendingDiffFile: () => string | null;
+  consumePendingPull: () => string | null;
+  consumePendingIssue: () => string | null;
   setIsMobile: (isMobile: boolean) => void;
   toggleCommandPalette: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
@@ -405,7 +499,10 @@ export interface UIStore {
   setOpenCodeStatusText: (text: string) => void;
   setSessionCreateDialogOpen: (open: boolean) => void;
   setScheduledTasksDialogOpen: (open: boolean) => void;
-  setArchivePageOpen: (open: boolean) => void;
+  setMissionsDialogOpen: (open: boolean) => void;
+  setAssistantsDialogOpen: (open: boolean) => void;
+  /** `search` заполняет поле поиска страницы — для поиска в сайдбаре, не нашедшего ничего. */
+  setArchivePageOpen: (open: boolean, search?: string) => void;
   setIntegrationsCatalogOpen: (open: boolean) => void;
   setUsageStatsPageOpen: (open: boolean) => void;
   setSourceBoardOpen: (open: boolean) => void;
@@ -436,6 +533,8 @@ export interface UIStore {
   setSessionSuggestionEnabled: (value: boolean) => void;
   setSessionWorkEnabled: (value: boolean) => void;
   setSessionReviewOfferEnabled: (value: boolean) => void;
+  setSessionAdvisorEnabled: (value: boolean) => void;
+  setSessionCheckpointsEnabled: (value: boolean) => void;
   setSessionGoalEnabled: (value: boolean) => void;
   setSessionGoalChecker: (value: SessionGoalChecker) => void;
   setSessionGoalMaxAutoTurns: (value: number) => void;
@@ -561,6 +660,7 @@ export interface UIStore {
   setAgentMemoryDreamingModel: (value: string) => void;
   setAgentMemoryDreamingVariant: (value: string) => void;
   setAgentRenderToolEnabled: (value: boolean) => void;
+  setAgentDebuggerToolEnabled: (value: boolean) => void;
   setAgentSecretToolEnabled: (value: boolean) => void;
   setAgentWorkflowToolEnabled: (value: boolean) => void;
   setIsolatedSpacesEnabled: (value: boolean) => void;

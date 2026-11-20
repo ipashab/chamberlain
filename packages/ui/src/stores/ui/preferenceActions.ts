@@ -14,6 +14,8 @@ export const createPreferenceActions: UIStoreSlice<
   | 'setSessionSuggestionEnabled'
   | 'setSessionWorkEnabled'
   | 'setSessionReviewOfferEnabled'
+  | 'setSessionAdvisorEnabled'
+  | 'setSessionCheckpointsEnabled'
   | 'setSessionGoalEnabled'
   | 'setSessionGoalChecker'
   | 'setSessionGoalMaxAutoTurns'
@@ -130,6 +132,14 @@ export const createPreferenceActions: UIStoreSlice<
 
   setSessionReviewOfferEnabled: (value) => {
     set({ sessionReviewOfferEnabled: value });
+  },
+
+  setSessionAdvisorEnabled: (value: boolean) => {
+    set({ sessionAdvisorEnabled: value });
+  },
+
+  setSessionCheckpointsEnabled: (value: boolean) => {
+    set({ sessionCheckpointsEnabled: value });
   },
 
   setSessionGoalEnabled: (value) => {

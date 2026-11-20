@@ -225,6 +225,7 @@ type BooleanSettingsKey =
   | 'openTrackerLinksOnBoard' | 'diffWrapLines' | 'diffHideWhitespace' | 'allowPromptingSubagentSessions'
   | 'savePastedImagesAsFiles' | 'showOpenCodeRestartConfirm' | 'sessionTabsEnabled' | 'sessionTabsPerWorkspace'
   | 'terminalCloseOnExit' | 'terminalOpenOnProjectAction' | 'sessionRecapEnabled' | 'sessionSuggestionEnabled'
+  | 'sessionAdvisorEnabled' | 'sessionCheckpointsEnabled'
   | 'sessionWorkEnabled' | 'sessionReviewOfferEnabled' | 'sessionGoalEnabled' | 'sessionGoalDefaultBudgetEnabled'
   | 'collapsibleThinkingBlocks' | 'showTextJustificationActivity' | 'showDeletionDialog' | 'nativeNotificationsEnabled'
   | 'notifyOnSubtasks' | 'notifyOnCompletion' | 'notifyOnPullRequests' | 'notifyOnError' | 'notifyOnQuestion'
@@ -247,7 +248,7 @@ type StringSettingsKey =
   | 'terminalShell' | 'openInAppId' | 'globalBehaviorPrompt' | 'responseStylePreset' | 'responseStyleCustomInstructions'
   | 'sttServerUrl' | 'sttModel' | 'sttEndpointPath' | 'sttLocalModel' | 'sttLanguage' | 'sidebarProjectDisplayMode'
   | 'sidebarViewMode' | 'sidebarListSessionGrouping' | 'sidebarGrouping' | 'sidebarProjectSortOrder'
-  | 'selectionApprovalText';
+  | 'selectionApprovalText' | 'pythonInterpreter';
 
 type ClearableStringSettingsKey =
   | 'managedRemoteTunnelHostname' | 'managedRemoteTunnelSelectedPresetId' | 'defaultModel' | 'defaultVariant'

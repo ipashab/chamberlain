@@ -17,6 +17,8 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'sidebarFoldedForExpandedZone'
   | 'sidebarWidth'
   | 'contextPanelByDirectory'
+  | 'workspaceModeOffer'
+  | 'workspaceModeOfferDismissed'
   | 'contextRailOrder'
   | 'contextRailHiddenSurfaces'
   | 'mobileWorkspaceTabOrder'
@@ -48,6 +50,8 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'pendingTurnDiffFile'
   | 'pendingFileNavigation'
   | 'pendingFileFocusPath'
+  | 'pendingPullUrl'
+  | 'pendingIssueRef'
   | 'isMobile'
   | 'isCommandPaletteOpen'
   | 'isHelpDialogOpen'
@@ -57,8 +61,11 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'openCodeStatusText'
   | 'isSessionCreateDialogOpen'
   | 'isScheduledTasksDialogOpen'
+  | 'isMissionsDialogOpen'
+  | 'isAssistantsDialogOpen'
   | 'isArchivePageOpen'
   | 'isIntegrationsCatalogOpen'
+  | 'archivePageSearch'
   | 'archivePageOpenCount'
   | 'isUsageStatsPageOpen'
   | 'isSourceBoardOpen'
@@ -87,6 +94,8 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'sessionSuggestionEnabled'
   | 'sessionWorkEnabled'
   | 'sessionReviewOfferEnabled'
+  | 'sessionAdvisorEnabled'
+  | 'sessionCheckpointsEnabled'
   | 'sessionGoalEnabled'
   | 'sessionGoalChecker'
   | 'sessionGoalMaxAutoTurns'
@@ -192,6 +201,7 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'agentMemoryDreamingModel'
   | 'agentMemoryDreamingVariant'
   | 'agentRenderToolEnabled'
+  | 'agentDebuggerToolEnabled'
   | 'agentSecretToolEnabled'
   | 'agentWorkflowToolEnabled'
   | 'agentWorkflowAutoApprove'
@@ -242,6 +252,8 @@ export const createInitialUIState = (): Pick<UIStore,
   sidebarFoldedForExpandedZone: false,
   sidebarWidth: LEFT_SIDEBAR_DEFAULT_WIDTH,
   contextPanelByDirectory: {},
+  workspaceModeOffer: null,
+  workspaceModeOfferDismissed: [],
   contextRailOrder: [],
   contextRailHiddenSurfaces: [],
   mobileWorkspaceTabOrder: [],
@@ -249,7 +261,7 @@ export const createInitialUIState = (): Pick<UIStore,
   mobileWorkStatusHiddenSections: ['subagents'],
   contextSurfaceZones: {},
   contextEditorTreeVisible: true,
-  fileTreeSide: 'right',
+  fileTreeSide: 'left',
   contextEditorVisible: true,
   contextEditorTreeWidth: DEFAULT_CONTEXT_EDITOR_TREE_WIDTH,
   contextZoneSizes: {},
@@ -273,6 +285,8 @@ export const createInitialUIState = (): Pick<UIStore,
   pendingTurnDiffFile: null,
   pendingFileNavigation: null,
   pendingFileFocusPath: null,
+  pendingPullUrl: null,
+  pendingIssueRef: null,
   isMobile: false,
   isCommandPaletteOpen: false,
   isHelpDialogOpen: false,
@@ -282,8 +296,11 @@ export const createInitialUIState = (): Pick<UIStore,
   openCodeStatusText: '',
   isSessionCreateDialogOpen: false,
   isScheduledTasksDialogOpen: false,
+  isMissionsDialogOpen: false,
+  isAssistantsDialogOpen: false,
   isArchivePageOpen: false,
   isIntegrationsCatalogOpen: false,
+  archivePageSearch: '',
   archivePageOpenCount: 0,
   isUsageStatsPageOpen: false,
   isSourceBoardOpen: false,
@@ -312,6 +329,8 @@ export const createInitialUIState = (): Pick<UIStore,
   sessionSuggestionEnabled: true,
   sessionWorkEnabled: true,
   sessionReviewOfferEnabled: false,
+  sessionAdvisorEnabled: false,
+  sessionCheckpointsEnabled: true,
   sessionGoalEnabled: true,
   sessionGoalChecker: 'small-model',
   sessionGoalMaxAutoTurns: DEFAULT_SESSION_GOAL_MAX_AUTO_TURNS,
@@ -422,6 +441,7 @@ export const createInitialUIState = (): Pick<UIStore,
   agentMemoryDreamingModel: '',
   agentMemoryDreamingVariant: '',
   agentRenderToolEnabled: true,
+  agentDebuggerToolEnabled: true,
   agentSecretToolEnabled: true,
   agentWorkflowToolEnabled: false,
   agentWorkflowAutoApprove: false,

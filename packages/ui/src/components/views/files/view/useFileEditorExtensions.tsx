@@ -15,6 +15,10 @@ import { highlightSelectionMatches, getSearchQuery, SearchQuery, setSearchQuery 
 import { codeFolding } from '@/lib/codemirror/codeFolding';
 import { bracketAids, multipleCursors } from '@/lib/codemirror/editingAids';
 import { gitChangeGutter, setGitChangeBaseline } from '@/lib/codemirror/gitChangeGutter';
+import { pythonDebugGutter, type PythonRunTarget } from '@/lib/codemirror/pythonDebugGutter';
+import { debuggerApi } from '@/lib/debugger/debugger-api';
+import { useDebuggerLiveState } from '@/lib/debugger/useDebuggerLiveState';
+import { loadDesktopSettings } from '@/lib/persistence';
 import { importLinks, resolveRelativeImport } from '@/lib/codemirror/importLinks';
 import { indentGuides } from '@/lib/codemirror/indentGuides';
 import { isLintedJsonPath, jsonSyntaxLint } from '@/lib/codemirror/jsonSyntaxLint';
@@ -58,7 +62,7 @@ export function useFileEditorExtensions({ editor, fileLanguage, mobileKeyboard, 
   fileLanguage: Pick<ReturnType<typeof useFileLanguage>, 'dynamicLanguageExtension' | 'staticLanguageExtension'>;
   mobileKeyboard: Pick<ReturnType<typeof useFileMobileKeyboard>, 'nudgeEditorSelectionAboveKeyboard'>;
   scope: Pick<ReturnType<typeof useFileScope>, 'currentDirectory' | 'panelRoot' | 'root'>;
-  tabs: Pick<ReturnType<typeof useFileTabs>, 'selectedFile'>;
+  tabs: Pick<ReturnType<typeof useFileTabs>, 'selectedFile' | 'selectedFileIsOutsideWorkspace'>;
   themes: Pick<ReturnType<typeof useFileThemes>, 'currentTheme' | 'darkTheme' | 'lightTheme'>;
   files: ReturnType<typeof useRuntimeAPIs>['files'];
   git: ReturnType<typeof useRuntimeAPIs>['git'];
@@ -69,7 +73,7 @@ export function useFileEditorExtensions({ editor, fileLanguage, mobileKeyboard, 
   const { dynamicLanguageExtension, staticLanguageExtension } = fileLanguage;
   const { nudgeEditorSelectionAboveKeyboard } = mobileKeyboard;
   const { currentDirectory, panelRoot, root } = scope;
-  const { selectedFile } = tabs;
+  const { selectedFile, selectedFileIsOutsideWorkspace } = tabs;
   const { currentTheme, darkTheme, lightTheme } = themes;
 
   const editorFontSize = useUIStore((state) => state.editorFontSize);
@@ -173,6 +177,88 @@ export function useFileEditorExtensions({ editor, fileLanguage, mobileKeyboard, 
   };
   const importLinksExtension = React.useMemo(() => importLinks((specifier) => openRelativeImportRef.current(specifier)), []);
 
+  // Gutter отладчика Python: полоска слева от номеров строк, клик ставит или
+  // снимает точку останова, стрелка на def верхнего уровня запускает его.
+  // Читает ту же проекцию отладчика, которую показывает панель отладки.
+  const debuggerLive = useDebuggerLiveState();
+  const debuggerLiveRef = React.useRef(debuggerLive);
+  debuggerLiveRef.current = debuggerLive;
+
+  const pythonDebugPath = /\.pyi?$/.test(selectedFile?.path ?? '') && !selectedFileIsOutsideWorkspace
+    ? selectedFile?.path ?? null
+    : null;
+
+  const pythonBreakpointLines = React.useMemo(() => (
+    pythonDebugPath == null
+      ? []
+      : debuggerLive?.breakpoints.find((entry) => entry.path === pythonDebugPath)?.lines ?? []
+  ), [pythonDebugPath, debuggerLive]);
+
+  const pythonExecutionLine = React.useMemo(() => {
+    if (pythonDebugPath == null) return null;
+    const debugSession = debuggerLive?.session;
+    if (debugSession?.status !== 'stopped') return null;
+    const frame = debugSession.stack[debugSession.currentFrameIndex ?? 0];
+    return frame?.path === pythonDebugPath ? frame.line : null;
+  }, [pythonDebugPath, debuggerLive]);
+
+  const togglePythonBreakpoint = React.useCallback((line: number) => {
+    if (pythonDebugPath == null) return;
+    const current = debuggerLiveRef.current?.breakpoints.find((entry) => entry.path === pythonDebugPath)?.lines ?? [];
+    const next = current.includes(line)
+      ? current.filter((candidate) => candidate !== line)
+      : [...current, line];
+    void debuggerApi.setBreakpoints(pythonDebugPath, [...new Set(next)].sort((a, b) => a - b))
+      .catch((error) => {
+        // Сбой отладчика не должен захватывать файловую панель: страница
+        // ошибки заменила бы редактор. Тост говорит, что сломалось.
+        toast.error(t('debug.breakpoints.error'), { description: String(error instanceof Error ? error.message : error) });
+      });
+  }, [pythonDebugPath, t]);
+
+  const runPythonTarget = React.useCallback((target: PythonRunTarget) => {
+    if (pythonDebugPath == null) return;
+    const filePath = pythonDebugPath;
+    const relativePath = filePath.startsWith(`${root}/`) ? filePath.slice(root.length + 1) : filePath;
+    void (async () => {
+      const settings = await loadDesktopSettings().catch(() => null);
+      await debuggerApi.start({
+        // Победляет настроенный интерпретатор; `python3` позволяет серверу
+        // сначала попробовать venv проекта, а уже потом PATH.
+        pythonPath: settings?.pythonInterpreter?.trim() || 'python3',
+        cwd: root,
+        module: target.kind === 'test' ? 'pytest' : null,
+        program: target.kind === 'script' ? filePath : null,
+        args: target.kind === 'test' ? [`${relativePath}::${target.name}`] : [],
+        breakpoints: debuggerLiveRef.current?.breakpoints ?? [],
+      });
+      // Запуск из гаттера должен сразу показать панель отладки; ключуем
+      // каталогом панели раскладки (panelRoot), а не каталогом draft-space —
+      // панель рендерится по ключу эффективного каталога.
+      useUIStore.getState().openContextPanelTab(panelRoot, { mode: 'debug' }, { reveal: true });
+    })().catch((error) => {
+      // Ошибка запуска выходит тостом (панель отладки хранит журнал выхода
+      // запуска), файловая панель остаётся как была.
+      toast.error(t('debug.launch.error'), { description: String(error instanceof Error ? error.message : error) });
+    });
+  }, [currentDirectory, pythonDebugPath, root, t]);
+
+  const pythonDebugGutters = React.useMemo(() => (
+    pythonDebugPath == null
+      ? []
+      : [pythonDebugGutter({
+        breakpointLines: pythonBreakpointLines,
+        executionLine: pythonExecutionLine,
+        onToggleBreakpoint: togglePythonBreakpoint,
+        onRun: (target) => runPythonTarget(target),
+        labels: {
+          breakpoint: t('debug.gutter.breakpoint'),
+          runTest: t('debug.gutter.runTest'),
+          runScript: t('debug.gutter.runScript'),
+        },
+      })]
+  ), [pythonDebugPath, pythonBreakpointLines, pythonExecutionLine, togglePythonBreakpoint, runPythonTarget, t]);
+
   const editorExtensions = React.useMemo(() => {
     if (!selectedFile?.path) {
       return [createFlexokiCodeMirrorTheme(currentTheme, { fontSize: editorFontSize })];
@@ -242,7 +328,7 @@ export function useFileEditorExtensions({ editor, fileLanguage, mobileKeyboard, 
     [lightTheme, darkTheme],
   );
   return {
-  previewFontStyle, editorCode, applyGitBaseline, editorExtensions, pierreTheme,
+  previewFontStyle, editorCode, applyGitBaseline, editorExtensions, pierreTheme, pythonDebugGutters,
   };
 }
 

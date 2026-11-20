@@ -17,14 +17,11 @@ export interface GitOptions {
 export interface GitCommandOptions {
   env?: NodeJS.ProcessEnv;
   timeoutMs?: number;
-  // Binary output (checkpoint blob reads) must not travel as text.
-  encoding?: 'utf8' | 'buffer';
 }
 export interface GitCommandResult {
   success: boolean;
   exitCode: number | null;
-  // A buffer when the command ran with `encoding: 'buffer'`, text otherwise.
-  stdout: string | Buffer;
+  stdout: string;
   stderr: string;
   message?: string;
   timedOut?: boolean;

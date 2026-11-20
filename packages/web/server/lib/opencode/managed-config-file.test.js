@@ -328,7 +328,7 @@ describe('managed OpenCode config file', () => {
 
     // On with every other default: turning the debugger off must not lose the rest.
     expect(agentToolRuntime.materializePlugin).toHaveBeenLastCalledWith(expect.objectContaining({ includeDebugger: true, includeRender: true }));
-    expect((await readConfigFile()).plugins).toHaveLength(3);
+    expect((await readConfigFile()).plugins).toHaveLength(4);
 
     current.settings = { agentDebuggerToolEnabled: false };
     await runtime.refreshManagedConfigFile();

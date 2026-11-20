@@ -13,7 +13,10 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const contextPanelSource = readFileSync(join(__dirname, '..', 'ContextSurfacePanes.tsx'), 'utf-8');
-const filesViewSource = readFileSync(join(__dirname, '..', '..', 'views', 'FilesView.tsx'), 'utf-8');
+const readViewModule = (name: string) => readFileSync(join(__dirname, '..', '..', 'views', 'files', 'view', name), 'utf-8');
+const fileViewTypesSource = readViewModule('fileViewTypes.ts');
+const fileTabsSource = readViewModule('useFileTabs.tsx');
+const fileNavigationSource = readViewModule('useFileNavigation.tsx');
 
 describe('context panel regional file panes', () => {
   test('renders one pane per file tab, keyed per tab', () => {
@@ -36,20 +39,20 @@ describe('context panel regional file panes', () => {
   test('pins each editor to its own tab file, so two regions show two files', () => {
     expect(contextPanelSource).toContain('const filePath = tab.targetPath ?? null;');
     expect(contextPanelSource).toContain('pinnedPath={filePath}');
-    expect(filesViewSource).toContain('pinnedPath?: string | null;');
-    expect(filesViewSource).toContain('return openPaths.find((path) => toComparablePath(path) === comparablePinned) ?? pinnedPath;');
+    expect(fileViewTypesSource).toContain('pinnedPath?: string | null;');
+    expect(fileTabsSource).toContain('return openPaths.find((path) => toComparablePath(path) === comparablePinned) ?? pinnedPath;');
   });
 
   test('a pinned editor does not heal the shared per-root selection', () => {
     // Without the pin guard, the heal effect would drag the shared selection
     // back to the pinned pane's file and fight the other regions' reveals.
-    expect(filesViewSource).toContain('if (pinnedPath) return;');
+    expect(fileTabsSource).toContain('if (pinnedPath) return;');
   });
 
   test('a pinned editor ignores jumps into other files', () => {
     // Every file tab mounts a pane, parked ones included; without the gate a
     // hidden pane consumed the global pendingFileNavigation, selected its
     // own file, and a dirty one threw its unsaved prompt over the screen.
-    expect(filesViewSource).toContain('if (pinnedPath && normalizePath(pinnedPath) !== targetPath)');
+    expect(fileNavigationSource).toContain('if (pinnedPath && normalizePath(pinnedPath) !== targetPath)');
   });
 });

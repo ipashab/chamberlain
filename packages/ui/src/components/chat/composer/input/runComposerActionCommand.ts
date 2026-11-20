@@ -65,8 +65,17 @@ export async function runComposerActionCommand({
                 openTimelineDialog();
             } else if (actionName === 'handoff-review') {
                 setReviewDialogOpen(true);
-            } else if (actionName === 'fork') {
+            } else if (actionName === 'fork' || actionName === 'compactnew') {
+                if (actionName === 'compactnew') {
+                    // The long chat is summarized first, so the fresh session
+                    // starts from the summary, not from the pages it replaced.
+                    await sessionActions.waitForConnectionOrThrow();
+                    const compactDirectory = useSessionUIStore.getState().getDirectoryForSession(currentSessionId) || currentDirectory || undefined;
+                    await sessionActions.compactSession(currentSessionId, null, compactDirectory);
+                }
                 const forkOutcome = await runForkCommand(currentSessionId, commandPlan.command.argument, {
+                    // The fork branches the main session, so it keeps that session's
+                    // selection even while the btw panel owns the composer.
                     providerID: capturedSendConfig?.providerID ?? currentProviderId,
                     modelID: capturedSendConfig?.modelID ?? currentModelId,
                     agent: capturedSendConfig?.agent ?? currentAgentName,
@@ -103,6 +112,14 @@ export async function runComposerActionCommand({
             }
         } catch (error) {
             restoreComposerText();
+            if (actionName === 'compactnew') {
+                // Compact runs first; a fork-shaped failure is only the
+                // NothingToFork case, everything else names compaction.
+                toast.error(error instanceof sessionActions.NothingToForkError
+                    ? t('chat.chatInput.toast.forkNothingToFork')
+                    : getSubmitErrorMessage(error, t('chat.chatInput.toast.compactFailed')));
+                return;
+            }
             if (actionName === 'fork') {
                 toast.error(error instanceof sessionActions.NothingToForkError
                     ? t('chat.chatInput.toast.forkNothingToFork')

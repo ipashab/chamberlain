@@ -49,7 +49,7 @@ import { renderFileViewer } from './files/view/renderFileViewer';
 import { renderFileTreePanel } from './files/view/renderFileTreePanel';
 import { renderFullscreenFileViewer } from './files/view/renderFullscreenFileViewer';
 
-export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = true, onCloseFile }) => {
+export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = true, pinnedPath = null, onCloseFile }) => {
   const { t } = useI18n();
   const { files, runtime, git } = useRuntimeAPIs();
   const { isMobile, isTablet, screenWidth } = useDeviceInfo();
@@ -59,7 +59,7 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
   const themes = useFileThemes();
   const scope = useFileScope({ isMobile, mode, visible });
   const layout = useFileLayout({ isMobile, mode });
-  const tabs = useFileTabs({ scope });
+  const tabs = useFileTabs({ scope, pinnedPath });
   const viewModes = useFileViewModes();
   const fileDocument = useFileDocument({ scope });
   const draft = useFileDraft();
@@ -82,8 +82,8 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     isMarkdownPreview: () => fileKinds.isMarkdown && filePreviewModes.getMdViewMode() === 'preview', isMobile,
   });
   const fileOpening = useFileOpening({
-    canvasState, closeState, diagram, draft, fileDirectory, fileDocument, fileSaving, layout, scope, search, tabs,
-    viewModes, isMobile, runtime, t, visible,
+    canvasState, closeState, diagram, draft, fileDirectory, fileDocument, fileSaving, layout, pinnedPath, scope,
+    search, tabs, viewModes, isMobile, runtime, t, visible,
   });
   const fileFreshness = useFileFreshness({ diagram, draft, fileDocument, fileSaving, scope, tabs, t, visible });
   const fileClosing = useFileClosing({
@@ -105,7 +105,8 @@ export const FilesView: React.FC<FilesViewProps> = ({ mode = 'full', visible = t
     viewModes, files, isMobile, t,
   });
   useFileNavigation({
-    closeState, draft, editor, fileDocument, fileKinds, fileOpening, navigationRequests, scope, tabs, viewModes,
+    closeState, draft, editor, fileDocument, fileKinds, fileOpening, navigationRequests, pinnedPath, scope, tabs,
+    viewModes,
   });
   const mobileKeyboard = useFileMobileKeyboard({ editor, isMobile });
   useFileEditorKeybinds({ editor, fileKinds, viewModes, isMobile });

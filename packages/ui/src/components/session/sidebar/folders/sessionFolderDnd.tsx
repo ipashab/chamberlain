@@ -242,6 +242,19 @@ export const SessionFolderDndScope: React.FC<{
       onDragEnd={handleDragEnd}
     >
       {children}
+      {/* The drag ghost's own overlay must not own the pointer: without this
+          it sits fixed under the cursor and swallows the elementFromPoint the
+          region targets read, and the regions' hover highlight too. */}
+      <DragOverlay style={{ pointerEvents: 'none' }}>
+        {/* The ghost now always shows: a drag can also land on a workspace
+            region far from the sidebar, and half the gesture's meaning is
+            seeing what is being carried there. */}
+        {activeDragId ? (
+          <div
+            style={{
+              width: activeDragWidth ? `${activeDragWidth}px` : 'auto',
+              height: activeDragHeight ? `${activeDragHeight}px` : 'auto',
+            }}
             className="flex items-center rounded-lg border border-[var(--interactive-border)] bg-[var(--surface-elevated)] px-2.5 py-1 shadow-none pointer-events-none"
           >
             <Icon name="sticky-note" className="h-4 w-4 text-muted-foreground me-2 flex-shrink-0" />

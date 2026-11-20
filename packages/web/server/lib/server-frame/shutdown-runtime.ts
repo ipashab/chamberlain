@@ -23,6 +23,9 @@ interface ShutdownDependencies {
   chatDirectoryCleanupRuntime?: Stop | null;
   sessionRuntime: { dispose: Cleanup };
   sessionAssistRuntime?: OptionalStop;
+  // Post-turn advisor rides the assist's event hub; stopping it ends payload
+  // intake so no queued turn writes findings during teardown.
+  advisorRuntime?: OptionalStop;
   sessionWorkRuntime?: OptionalStop;
   sessionGoalRuntime?: OptionalStop;
   contextObligatoryRuntime?: OptionalStop;
@@ -80,6 +83,7 @@ export const createGracefulShutdownRuntime = (dependencies: ShutdownDependencies
     chatDirectoryCleanupRuntime,
     sessionRuntime,
     sessionAssistRuntime,
+    advisorRuntime,
     sessionWorkRuntime,
     sessionGoalRuntime,
     contextObligatoryRuntime,
@@ -166,6 +170,7 @@ export const createGracefulShutdownRuntime = (dependencies: ShutdownDependencies
       () => openCodeWatcherRuntime.stop(),
       () => sessionRuntime.dispose(),
       () => sessionAssistRuntime?.stop?.(),
+      () => advisorRuntime?.stop?.(),
       () => sessionWorkRuntime?.stop?.(),
       () => sessionGoalRuntime?.stop?.(),
       () => contextObligatoryRuntime?.stop?.(),

@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 
-import { asNonEmptyString, isBoolean } from '../shared/guards.js';
+import { asNonEmptyString, isBoolean, isRecord } from '../shared/guards.js';
 import {
   OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS,
   OPENCHAMBER_AGENT_TOOL_ACTIONS,
@@ -111,6 +111,9 @@ interface ActionDefinition {
 
 export interface AgentToolInput extends ControlInput {
   action?: unknown;
+  // Contact and backlog dispatches carry the calling session under this name;
+  // the agent's own input object stays untouched.
+  callerSessionID?: unknown;
   overwrite?: unknown;
   script?: unknown;
   runId?: unknown;
@@ -156,6 +159,14 @@ export interface AgentToolDependencies {
   getActiveHost?: () => string | null | undefined;
   executeAction?: ReturnType<typeof createOpenChamberControlService>['execute'];
   resolveSessionDirectory?: ReturnType<typeof createOpenChamberControlService>['resolveSessionDirectory'];
+  // Team Mode dispatch: reads and writes the roster, mailbox and board for
+  // the session that called the openchamber_team tool.
+  executeTeamAction?: ReturnType<typeof import('../team/service.js').createTeamService>['executeAction'] | null;
+  // Tracker dispatch: one action on a Bitbucket pull request or a Jira
+  // issue, against the connections the user configured.
+  executeTrackerAction?: ReturnType<typeof import('../tracker/service.js').createTrackerService>['executeAction'] | null;
+  executeContactAction?: ReturnType<typeof import('../contact-run/service.js').createContactRunService>['executeAction'] | null;
+  executeBacklogAction?: ReturnType<typeof import('../session-backlog/service.js').createBacklogService>['executeAction'] | null;
 }
 
 interface ToolEntryOptions {
@@ -763,6 +774,10 @@ const SECRET_RUN_PERMISSION = String.raw`        if (args.action === "secret.run
         }
 `;
 
+// Service failures carry an HTTP status the usage/runtime grading reads;
+// anything else has none and grades as runtime, like an undefined status did.
+const statusCodeOf = (error: unknown): number => Number(isRecord(error) && 'statusCode' in error ? error.statusCode : undefined);
+
 const createToolEntry = ({ name, description, definitions, parameters, codeMode, answers = null, longRunning = false, secretRun = false }: ToolEntryOptions) => {
   const normalizeBooleans = booleanNormalizationBlock(parameters);
   const reviveDependsOn = dependsOnRevivalBlock(parameters);
@@ -1206,7 +1221,7 @@ export const createAgentToolRuntime = (dependencies: AgentToolDependencies) => {
     // the member: every roster check is per call, on the team side.
     if (asNonEmptyString(payload.tool) === 'openchamber_team') {
       const resolution = resolveTeamAction(requested);
-      if (resolution.error) {
+      if ('error' in resolution) {
         return createResult({ ok: false, action: requested, error: { message: resolution.error, kind: 'usage' } });
       }
       const action = resolution.action;
@@ -1226,7 +1241,7 @@ export const createAgentToolRuntime = (dependencies: AgentToolDependencies) => {
         );
         return createResult({ ok: true, action, data });
       } catch (error) {
-        const statusCode = Number(error?.statusCode);
+        const statusCode = statusCodeOf(error);
         return createResult({
           ok: false,
           action,
@@ -1245,7 +1260,7 @@ export const createAgentToolRuntime = (dependencies: AgentToolDependencies) => {
     // ref, the text, a missing transition) and runtime for the rest.
     if (asNonEmptyString(payload.tool) === 'openchamber_tracker') {
       const resolution = resolveTrackerAction(requested);
-      if (resolution.error) {
+      if ('error' in resolution) {
         return createResult({ ok: false, action: requested, error: { message: resolution.error, kind: 'usage' } });
       }
       const action = resolution.action;
@@ -1256,7 +1271,7 @@ export const createAgentToolRuntime = (dependencies: AgentToolDependencies) => {
         const data = await executeTrackerAction(action, { ...payload.input, action });
         return createResult({ ok: true, action, data });
       } catch (error) {
-        const statusCode = Number(error?.statusCode);
+        const statusCode = statusCodeOf(error);
         return createResult({
           ok: false,
           action,
@@ -1274,7 +1289,7 @@ export const createAgentToolRuntime = (dependencies: AgentToolDependencies) => {
     // grade the same way the tracker's do.
     if (asNonEmptyString(payload.tool) === 'openchamber_contacts') {
       const resolution = resolveContactAction(requested);
-      if (resolution.error) {
+      if (resolution.error !== undefined) {
         return createResult({ ok: false, action: requested, error: { message: resolution.error, kind: 'usage' } });
       }
       const action = resolution.action;
@@ -1290,7 +1305,7 @@ export const createAgentToolRuntime = (dependencies: AgentToolDependencies) => {
         const data = await executeContactAction(action, contactInput);
         return createResult({ ok: true, action, data });
       } catch (error) {
-        const statusCode = Number(error?.statusCode);
+        const statusCode = statusCodeOf(error);
         return createResult({
           ok: false,
           action,
@@ -1307,7 +1322,7 @@ export const createAgentToolRuntime = (dependencies: AgentToolDependencies) => {
     // its own name, the agent's input untouched.
     if (asNonEmptyString(payload.tool) === 'openchamber_backlog') {
       const resolution = resolveBacklogAction(requested);
-      if (resolution.error) {
+      if (resolution.error !== undefined) {
         return createResult({ ok: false, action: requested, error: { message: resolution.error, kind: 'usage' } });
       }
       const action = resolution.action;
@@ -1320,7 +1335,7 @@ export const createAgentToolRuntime = (dependencies: AgentToolDependencies) => {
         const data = await executeBacklogAction(action, backlogInput);
         return createResult({ ok: true, action, data });
       } catch (error) {
-        const statusCode = Number(error?.statusCode);
+        const statusCode = statusCodeOf(error);
         return createResult({
           ok: false,
           action,

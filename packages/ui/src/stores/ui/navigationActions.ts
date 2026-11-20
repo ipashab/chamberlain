@@ -11,6 +11,10 @@ export const createNavigationActions: UIStoreSlice<
   | 'setPendingFileFocusPath'
   | 'navigateToDiff'
   | 'consumePendingDiffFile'
+  | 'setPendingPull'
+  | 'setPendingIssue'
+  | 'consumePendingPull'
+  | 'consumePendingIssue'
   | 'setIsMobile'
   | 'toggleCommandPalette'
   | 'setCommandPaletteOpen'
@@ -22,6 +26,8 @@ export const createNavigationActions: UIStoreSlice<
   | 'setOpenCodeStatusText'
   | 'setSessionCreateDialogOpen'
   | 'setScheduledTasksDialogOpen'
+  | 'setMissionsDialogOpen'
+  | 'setAssistantsDialogOpen'
   | 'setArchivePageOpen'
   | 'setIntegrationsCatalogOpen'
   | 'setUsageStatsPageOpen'
@@ -109,6 +115,26 @@ export const createNavigationActions: UIStoreSlice<
     return pendingDiffFile;
   },
 
+  setPendingPull: (url) => {
+    set({ pendingPullUrl: url });
+  },
+
+  setPendingIssue: (ref) => {
+    set({ pendingIssueRef: ref });
+  },
+
+  consumePendingPull: () => {
+    const { pendingPullUrl } = get();
+    set({ pendingPullUrl: null });
+    return pendingPullUrl;
+  },
+
+  consumePendingIssue: () => {
+    const { pendingIssueRef } = get();
+    set({ pendingIssueRef: null });
+    return pendingIssueRef;
+  },
+
   setIsMobile: (isMobile) => {
     set({ isMobile });
   },
@@ -151,13 +177,25 @@ export const createNavigationActions: UIStoreSlice<
 
   setScheduledTasksDialogOpen: (open) => {
     set(open
-      ? { isScheduledTasksDialogOpen: true, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+      ? { isScheduledTasksDialogOpen: true, isMissionsDialogOpen: false, isAssistantsDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
       : { isScheduledTasksDialogOpen: false });
   },
 
-  setArchivePageOpen: (open) => {
+  setMissionsDialogOpen: (open) => {
     set(open
-      ? { isArchivePageOpen: true, archivePageOpenCount: get().archivePageOpenCount + 1, isUsageStatsPageOpen: false, isIntegrationsCatalogOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+      ? { isMissionsDialogOpen: true, isScheduledTasksDialogOpen: false, isAssistantsDialogOpen: false, isArchivePageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+      : { isMissionsDialogOpen: false });
+  },
+
+  setAssistantsDialogOpen: (open) => {
+    set(open
+      ? { isAssistantsDialogOpen: true, isScheduledTasksDialogOpen: false, isMissionsDialogOpen: false, isArchivePageOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+      : { isAssistantsDialogOpen: false });
+  },
+
+  setArchivePageOpen: (open, search = '') => {
+    set(open
+      ? { isArchivePageOpen: true, archivePageSearch: search, archivePageOpenCount: get().archivePageOpenCount + 1, isUsageStatsPageOpen: false, isIntegrationsCatalogOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, isScheduledTasksDialogOpen: false, isMissionsDialogOpen: false, isAssistantsDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
       : { isArchivePageOpen: false });
   },
 
@@ -169,13 +207,13 @@ export const createNavigationActions: UIStoreSlice<
 
   setUsageStatsPageOpen: (open) => {
     set(open
-      ? { isUsageStatsPageOpen: true, isSourceBoardOpen: false, isOverviewOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+      ? { isUsageStatsPageOpen: true, isSourceBoardOpen: false, isOverviewOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isScheduledTasksDialogOpen: false, isMissionsDialogOpen: false, isAssistantsDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
       : { isUsageStatsPageOpen: false });
   },
 
   setSourceBoardOpen: (open) => {
     set(open
-      ? { isSourceBoardOpen: true, isOverviewOpen: false, isUsageStatsPageOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isScheduledTasksDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
+      ? { isSourceBoardOpen: true, isOverviewOpen: false, isUsageStatsPageOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isScheduledTasksDialogOpen: false, isMissionsDialogOpen: false, isAssistantsDialogOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null, openGuestPageId: null }
       : { isSourceBoardOpen: false });
   },
 
@@ -188,28 +226,30 @@ export const createNavigationActions: UIStoreSlice<
 
   setWorktreesPageProjectId: (projectId) => {
     set(projectId
-      ? { worktreesPageProjectId: projectId, spacesPageProjectId: null, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, runOverviewKey: null, openGuestPageId: null }
+      ? { worktreesPageProjectId: projectId, spacesPageProjectId: null, isScheduledTasksDialogOpen: false, isMissionsDialogOpen: false, isAssistantsDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, runOverviewKey: null, openGuestPageId: null }
       : { worktreesPageProjectId: null });
   },
 
   setSpacesPageProjectId: (projectId) => {
     set(projectId
-      ? { spacesPageProjectId: projectId, worktreesPageProjectId: null, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, runOverviewKey: null, openGuestPageId: null }
+      ? { spacesPageProjectId: projectId, worktreesPageProjectId: null, isScheduledTasksDialogOpen: false, isMissionsDialogOpen: false, isAssistantsDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, runOverviewKey: null, openGuestPageId: null }
       : { spacesPageProjectId: null });
   },
 
   setOpenGuestPage: (id) => {
-    set(id ? { openGuestPageId: id, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null }
+    set(id ? { openGuestPageId: id, isScheduledTasksDialogOpen: false, isMissionsDialogOpen: false, isAssistantsDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, runOverviewKey: null }
       : { openGuestPageId: null });
   },
 
   closeMainSurfaces: () => {
     const state = get();
-    if (!state.isScheduledTasksDialogOpen && !state.isArchivePageOpen && !state.isIntegrationsCatalogOpen && !state.isUsageStatsPageOpen && !state.isSourceBoardOpen && !state.isOverviewOpen && !state.worktreesPageProjectId && !state.spacesPageProjectId && !state.runOverviewKey && !state.openGuestPageId) {
+    if (!state.isScheduledTasksDialogOpen && !state.isArchivePageOpen && !state.isIntegrationsCatalogOpen && !state.isUsageStatsPageOpen && !state.isSourceBoardOpen && !state.isOverviewOpen && !state.worktreesPageProjectId && !state.spacesPageProjectId && !state.runOverviewKey && !state.openGuestPageId && !state.isMissionsDialogOpen && !state.isAssistantsDialogOpen) {
       return;
     }
     set({
       isScheduledTasksDialogOpen: false,
+      isMissionsDialogOpen: false,
+      isAssistantsDialogOpen: false,
       isArchivePageOpen: false,
       isIntegrationsCatalogOpen: false,
       isUsageStatsPageOpen: false,
@@ -297,7 +337,7 @@ export const createNavigationActions: UIStoreSlice<
 
   setRunOverviewKey: (runKey) => {
     set(runKey
-      ? { runOverviewKey: runKey, isSessionSwitcherOpen: false, isScheduledTasksDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, openGuestPageId: null }
+      ? { runOverviewKey: runKey, isSessionSwitcherOpen: false, isScheduledTasksDialogOpen: false, isMissionsDialogOpen: false, isAssistantsDialogOpen: false, isArchivePageOpen: false, isIntegrationsCatalogOpen: false, isUsageStatsPageOpen: false, isSourceBoardOpen: false, isOverviewOpen: false, worktreesPageProjectId: null, spacesPageProjectId: null, openGuestPageId: null }
       : { runOverviewKey: null });
   },
 

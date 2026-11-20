@@ -26,6 +26,10 @@ mock.module('@/stores/utils/safeStorage', () => ({
   getSafeStorage: () => makeStorage(backing),
   getSafeSessionStorage: () => makeStorage(sessionBacking),
   getDeferredSafeStorage: () => makeStorage(backing),
+  // The unconfirmed-send path flushes on its own; under the mock nothing
+  // defers, so the flush is a no-op, and the key list it reads starts empty.
+  flushDeferredStorage: () => {},
+  listStorageKeys: () => [],
   createDeferredSafeJSONStorage: () => ({
     getItem: (name: string) => backing.get(name) ?? null,
     setItem: (name: string, value: string) => void backing.set(name, value),

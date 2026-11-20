@@ -369,6 +369,20 @@ function ComposerContextRowsView({ draftTarget, isMobile, onOpenAttachment }: Co
                     editable: true,
                 };
             }
+            case 'debug-variable': {
+                // A value copied out of the debug panel: the title names the
+                // variable, the quoted value is what the model will see. The
+                // raw value rides along unstripped — it is not markdown.
+                return {
+                    icon: 'bug',
+                    title: t('chat.message.context.debugVariable', { name: draft.debugVariable?.name ?? basename(draft.fileLabel) }),
+                    snippet: firstLine(draft.code),
+                    quote: draft.code,
+                    mono: true,
+                    comment: draft.text,
+                    editable: true,
+                };
+            }
             case 'terminal': {
                 const title = t('chat.chatInput.terminalContext', { terminal: draft.fileLabel, start: draft.startLine, end: draft.endLine });
                 return { icon: 'terminal', title, snippet: title, quote: draft.code, mono: true, comment: '', editable: false };

@@ -737,6 +737,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '1 geïsoleerde ruimte van {project} gestopt. Bestanden blijven bewaard.',
     'spaces.close.stoppedPlural': '{count} geïsoleerde ruimtes van {project} gestopt. Bestanden blijven bewaard.',
     'spaces.close.stopFailed': 'Kan "{name}" niet stoppen: {reason}',
+
   },
   de: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} läuft im isolierten Bereich, und die Verbindung dorthin konnte nicht geöffnet werden. Nichts von deinem eigenen Rechner wird hier gezeigt.',
@@ -1106,6 +1107,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '1 isolierter Bereich von {project} angehalten. Dateien bleiben erhalten.',
     'spaces.close.stoppedPlural': '{count} isolierte Bereiche von {project} angehalten. Dateien bleiben erhalten.',
     'spaces.close.stopFailed': '„{name}“ konnte nicht angehalten werden: {reason}',
+
   },
   fr: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} tourne dans l’espace isolé et la connexion n’a pas pu être ouverte. Rien de votre propre machine n’est affiché ici.',
@@ -1475,6 +1477,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '1 espace isolé de {project} arrêté. Les fichiers sont conservés.',
     'spaces.close.stoppedPlural': '{count} espaces isolés de {project} arrêtés. Les fichiers sont conservés.',
     'spaces.close.stopFailed': 'Impossible d’arrêter « {name} » : {reason}',
+
   },
   es: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} se ejecuta dentro del espacio aislado y no se pudo abrir la conexión. Aquí no se muestra nada de tu propia máquina.',
@@ -1844,6 +1847,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': 'Se detuvo 1 espacio aislado de {project}. Los archivos se conservan.',
     'spaces.close.stoppedPlural': 'Se detuvieron {count} espacios aislados de {project}. Los archivos se conservan.',
     'spaces.close.stopFailed': 'No se pudo detener "{name}": {reason}',
+
   },
   ja: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} は隔離スペースの中で動作しており、接続を開けませんでした。ここにはこのマシンのものは表示されません。',
@@ -2213,6 +2217,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '{project} の隔離スペース 1 件を停止しました。ファイルは保持されます。',
     'spaces.close.stoppedPlural': '{project} の隔離スペース {count} 件を停止しました。ファイルは保持されます。',
     'spaces.close.stopFailed': '「{name}」を停止できませんでした: {reason}',
+
   },
   'pt-BR': {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} roda dentro do espaço isolado e a conexão com ele não pôde ser aberta. Nada da sua própria máquina é mostrado aqui.',
@@ -2582,6 +2587,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '1 espaço isolado de {project} foi parado. Os arquivos são mantidos.',
     'spaces.close.stoppedPlural': '{count} espaços isolados de {project} foram parados. Os arquivos são mantidos.',
     'spaces.close.stopFailed': 'Não foi possível parar "{name}": {reason}',
+
   },
   uk: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} працює всередині ізольованого простору, і з\'єднання з ним не вдалося відкрити. Нічого з вашого комп\'ютера тут не показується.',
@@ -2951,6 +2957,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': 'Ізольований простір проєкту {project} зупинено. Файли збережено.',
     'spaces.close.stoppedPlural': 'Зупинено ізольовані простори проєкту {project}: {count}. Файли збережено.',
     'spaces.close.stopFailed': 'Не вдалося зупинити «{name}»: {reason}',
+
   },
   ru: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} работает внутри изолированного пространства, и открыть соединение с ним не удалось. Здесь не показывается ничего с вашего компьютера.',
@@ -2985,6 +2992,7 @@ export const isolatedSpacesI18n = {
     'spaces.create.start.uncommitted': 'Последнего коммита и моих незакоммиченных изменений',
     'spaces.create.start.cleanOnly': 'Начинает с последнего коммита. Незакоммиченных изменений нет.',
     'spaces.create.start.changesUnknown': 'Не удалось прочитать ваши незакоммиченные изменения. Пространство начнёт с последнего коммита.',
+    'spaces.create.start.changesChecking': 'Ищем незакоммиченные изменения…',
     'spaces.create.start.filesSingle': 'Также копирует 1 изменённый файл',
     'spaces.create.start.filesPlural': 'Также копирует изменённых файлов: {count}',
     'spaces.create.start.ignoredNeverTravel': 'Файлы из .gitignore, например .env, никогда не копируются.',
@@ -2998,8 +3006,11 @@ export const isolatedSpacesI18n = {
     'spaces.create.network.openWarning': 'Агент сможет открыть любой публичный сайт и отправить ему что угодно из этой копии проекта.',
     'spaces.create.access.label': 'Доступ к моделям',
     'spaces.create.access.fromEnv': 'Из переменной окружения',
+    'spaces.create.access.stored': 'Ключ сохранён в OpenChamber',
     'spaces.create.access.envNameAria': 'Переменная окружения с ключом {provider}',
     'spaces.create.access.envComesBack': 'OpenChamber сохраняет только имя переменной и перечитывает ключ после каждого перезапуска.',
+    'spaces.create.access.envNamePlaceholder': 'Имя переменной, например MY_API_KEY',
+    'spaces.create.access.storedComesBack': 'После каждого перезапуска OpenChamber заново читает ключ, сохранённый в Настройках → Провайдеры. Агент его не видит.',
     'spaces.create.access.typed': 'Ввести ключ',
     'spaces.create.access.login': 'Использовать мою учётную запись {name}',
     'spaces.create.access.keyAria': 'Ключ {provider}',
@@ -3037,8 +3048,9 @@ export const isolatedSpacesI18n = {
     'spaces.group.state.damaged': 'Часть пространства не работает.',
     'spaces.group.state.gatekeeperGone': 'Это пространство сломано. Удалите его и создайте новое. Неприменённые изменения будут потеряны.',
     'spaces.group.state.containerGone': 'Контейнер этого пространства исчез.',
-    'spaces.group.state.unreachable': 'Не удаётся связаться с машиной.',
     'spaces.group.state.unreachableMachine': 'Не удаётся связаться с {machine}.',
+    'spaces.group.state.openDockerSettings': 'Открыть настройки',
+    'spaces.group.state.dockerNotRunning': 'Docker на этом компьютере не запущен. Файлы пространства сохранены.',
     'spaces.group.state.machineRemoved': 'Машина удалена из настроек.',
     'spaces.group.busy.start': 'Запуск…',
     'spaces.group.busy.stop': 'Остановка…',
@@ -3124,6 +3136,7 @@ export const isolatedSpacesI18n = {
     'spaces.access.models.label': 'Модели',
     'spaces.access.model.granted': 'Есть доступ',
     'spaces.access.model.grantedFromEnv': 'Есть доступ, ключ из {name}',
+    'spaces.access.model.grantedStored': 'Доступ есть, ключ сохранён в OpenChamber',
     'spaces.access.model.grantedLogin': 'Есть доступ, учётная запись {name}',
     'spaces.access.model.needsAgain': 'Введите ключ снова',
     'spaces.access.model.loginNeedsAgain': 'Снова предоставьте учётную запись {name}',
@@ -3161,6 +3174,7 @@ export const isolatedSpacesI18n = {
     'spaces.access.reason.alwaysRefused': 'Всегда блокируется',
     'spaces.access.reason.tooMany': 'Слишком много соединений одновременно',
     'spaces.access.reason.other': 'Заблокировано',
+    'spaces.access.blocked.unreadableHost': 'Запрос, который сетевой фильтр не смог прочитать',
     'spaces.failure.dockerMissing': 'Установите Docker Desktop или Colima.',
     'spaces.failure.dockerUnusable': 'OpenChamber не может запустить Docker.',
     'spaces.failure.dockerNotRunning': 'Запустите Docker Desktop или Colima.',
@@ -3171,6 +3185,8 @@ export const isolatedSpacesI18n = {
     'spaces.failure.projectNotRegistered': 'Проект удалён из OpenChamber. Добавьте его снова.',
     'spaces.failure.featureOff': 'Пространства выключены. Включите их в настройках.',
     'spaces.failure.envNotSet': 'OpenChamber не видит эту переменную. Задайте её и перезапустите OpenChamber или введите ключ.',
+    'spaces.failure.hostCatalogUnreadable': 'OpenChamber не смог прочитать список провайдеров из OpenCode на этом компьютере. Попробуйте ещё раз через минуту.',
+    'spaces.failure.storedKeyMissing': 'У OpenChamber нет сохранённого ключа для этого провайдера. Добавьте его в Настройках → Провайдеры или передайте ключ иначе.',
     'spaces.failure.loginNotFound': 'Нет входа в {name}. Сначала войдите.',
     'spaces.failure.loginExpired': 'Учётная запись истекла. Снова войдите в {name}.',
     'spaces.failure.loginNotSupported': 'Эту учётную запись {name} нельзя использовать в пространствах.',
@@ -3311,6 +3327,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '1 изолированное пространство проекта {project} остановлено. Файлы сохранены.',
     'spaces.close.stoppedPlural': 'Остановлено изолированных пространств {project}: {count}. Файлы сохранены.',
     'spaces.close.stopFailed': 'Не удалось остановить «{name}»: {reason}',
+
   },
   ko: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url}은(는) 격리 공간 안에서 실행 중이며 연결을 열 수 없었습니다. 여기에는 내 컴퓨터의 내용이 표시되지 않습니다.',
@@ -3680,6 +3697,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '{project}의 격리 공간 1개를 중지했습니다. 파일은 유지됩니다.',
     'spaces.close.stoppedPlural': '{project}의 격리 공간 {count}개를 중지했습니다. 파일은 유지됩니다.',
     'spaces.close.stopFailed': '"{name}"을(를) 중지하지 못했습니다: {reason}',
+
   },
   pl: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} działa w izolowanej przestrzeni, a połączenia z nim nie udało się otworzyć. Nic z Twojego komputera nie jest tu pokazywane.',
@@ -4049,6 +4067,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': 'Zatrzymano izolowaną przestrzeń projektu {project}. Pliki są zachowane.',
     'spaces.close.stoppedPlural': 'Zatrzymano izolowane przestrzenie projektu {project}: {count}. Pliki są zachowane.',
     'spaces.close.stopFailed': 'Nie udało się zatrzymać „{name}”: {reason}',
+
   },
   'zh-CN': {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} 运行在隔离空间内，无法建立到它的连接。这里不会显示你自己机器上的任何内容。',
@@ -4418,6 +4437,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '已停止 {project} 的 1 个隔离空间。文件会保留。',
     'spaces.close.stoppedPlural': '已停止 {project} 的 {count} 个隔离空间。文件会保留。',
     'spaces.close.stopFailed': '无法停止“{name}”：{reason}',
+
   },
   'zh-TW': {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} 執行在隔離空間內，無法建立到它的連線。這裡不會顯示你自己機器上的任何內容。',
@@ -4787,6 +4807,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '已停止 {project} 的 1 個隔離空間。檔案會保留。',
     'spaces.close.stoppedPlural': '已停止 {project} 的 {count} 個隔離空間。檔案會保留。',
     'spaces.close.stopFailed': '無法停止「{name}」：{reason}',
+
   },
   tr: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} yalıtılmış alanın içinde çalışıyor ve bağlantı açılamadı. Burada kendi makinenizden hiçbir şey gösterilmez.',
@@ -5156,6 +5177,7 @@ export const isolatedSpacesI18n = {
     'spaces.close.stoppedSingle': '{project} projesinin 1 yalıtılmış alanı durduruldu. Dosyalar korunur.',
     'spaces.close.stoppedPlural': '{project} projesinin {count} yalıtılmış alanı durduruldu. Dosyalar korunur.',
     'spaces.close.stopFailed': '"{name}" durdurulamadı: {reason}',
+
   },
   ar: {
     'contextPanel.browser.spaceTunnelFailedHint': 'يعمل {url} داخل المساحة المعزولة، وتعذّر فتح الاتصال به. لا يُعرض هنا أي شيء من جهازك.',
@@ -5524,7 +5546,8 @@ export const isolatedSpacesI18n = {
     'mobile.projectEdit.spacesTitle': 'المساحات المعزولة',
     'spaces.close.stoppedSingle': 'توقفت مساحة معزولة واحدة في {project}. ستُحفظ الملفات.',
     'spaces.close.stoppedPlural': 'توقفت {count} مساحات معزولة في {project}. ستُحفظ الملفات.',
-    'spaces.close.stopFailed': "تعذّر إيقاف \"{name}\": {reason}",
+    'spaces.close.stopFailed': 'تعذّر إيقاف "{name}": {reason}',
+
   },
   he: {
     'contextPanel.browser.spaceTunnelFailedHint': '{url} רץ בתוך המרחב המבודד, ולא ניתן היה לפתוח אליו חיבור. שום דבר מהמחשב שלך לא מוצג כאן.',
@@ -5893,6 +5916,7 @@ export const isolatedSpacesI18n = {
     'mobile.projectEdit.spacesTitle': 'מרחבים מבודדים',
     'spaces.close.stoppedSingle': 'מרחב מבודד אחד של {project} נעצר. הקבצים נשמרו.',
     'spaces.close.stoppedPlural': '{count} מרחבים מבודדים של {project} נעצרו. הקבצים נשמרו.',
-    'spaces.close.stopFailed': "לא ניתן היה לעצור את \"{name}\": {reason}",
+    'spaces.close.stopFailed': 'לא ניתן היה לעצור את "{name}": {reason}',
+
   },
 } as const;

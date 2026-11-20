@@ -1,4 +1,3 @@
-import type { I18nKey } from './en';
 import { settingsDict } from './ar.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
 import { mcpConsoleI18n } from './mcp-console.i18n';

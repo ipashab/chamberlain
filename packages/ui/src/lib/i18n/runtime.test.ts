@@ -7,10 +7,14 @@ describe('i18n runtime', () => {
   test('uses the first supported browser language after any unsupported choices', () => {
     const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
     const win = new Window({ url: 'http://localhost' });
-    Object.defineProperty(win.navigator, 'languages', { value: ['ru-RU', 'uk-UA', 'fr-FR'], configurable: true });
+    Object.defineProperty(win.navigator, 'languages', { value: ['it-IT', 'uk-UA', 'fr-FR'], configurable: true });
     Object.defineProperty(globalThis, 'window', { value: win, configurable: true });
     try {
       expect(detectInitialLocale()).toBe('uk');
+      // The fork ships Russian, so a Russian browser language resolves to ru
+      // directly; the unsupported choices above prove the fallthrough.
+      Object.defineProperty(win.navigator, 'languages', { value: ['ru-RU', 'de-DE'], configurable: true });
+      expect(detectInitialLocale()).toBe('ru');
       window.__OPENCHAMBER_HOST_LANGUAGE__ = 'de-DE';
       expect(detectInitialLocale()).toBe('de');
       win.localStorage.setItem(LOCALE_STORAGE_KEY, JSON.stringify({ locale: 'es' }));
@@ -21,8 +25,10 @@ describe('i18n runtime', () => {
       expect(detectInitialLocale()).toBe('en');
       Object.defineProperty(win.navigator, 'languages', { value: ['pt-PT', 'fr-CA'], configurable: true });
       expect(detectInitialLocale()).toBe('fr');
+      // Only Russian is offered and the fork supports it: the answer is ru,
+      // not the default.
       Object.defineProperty(win.navigator, 'languages', { value: ['ru-RU'], configurable: true });
-      expect(detectInitialLocale()).toBe('en');
+      expect(detectInitialLocale()).toBe('ru');
       Object.defineProperty(win.navigator, 'languages', { value: [], configurable: true });
       expect(detectInitialLocale()).toBe('en');
       Object.defineProperty(win.navigator, 'languages', { value: ['zh-Hant-HK'], configurable: true });

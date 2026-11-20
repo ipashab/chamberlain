@@ -2,7 +2,20 @@ import { directoryMayHaveActiveProjectAction, useTerminalStore } from '@/stores/
 import { useFilesViewTabsStore } from '../useFilesViewTabsStore';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { noteBrowserTabOpenedWithAddress, requestBrowserTabLoad } from '@/lib/browser/devServerWait';
-import { getZoneView, resolveZoneActiveTabId, withZoneView, zoneOfMode } from '@/lib/workspace/zones';
+import { getZoneView, withZoneView, zoneOfMode } from '@/lib/workspace/zones';
+import {
+  CHAT_NODE,
+  activateTab as activateTabInTree,
+  findLeaf,
+  leavesOf,
+  openSurfaceInTree,
+  sanitizeTree,
+} from '@/lib/workspace/layoutTree';
+import {
+  DEFAULT_WORKSPACE_MODE,
+  restorePresetRegions,
+  workspaceModePreset,
+} from '@/lib/workspace/modePresets';
 import type { ContextPanelTab, ContextPanelDirectoryState, UIStore, UIStoreSlice } from './types';
 import {
   normalizeDirectoryPath,
@@ -71,6 +84,12 @@ export const createContextTabActions: UIStoreSlice<
   | 'closeContextPanelTab'
   | 'closeContextFile'
   | 'closeContextPanelTabs'
+  | 'closeContextSurfaceTabs'
+  | 'openContextSurfaceInLeaf'
+  | 'openContextPanelTabToLeaf'
+  | 'switchWorkspaceMode'
+  | 'offerWorkspaceMode'
+  | 'dismissWorkspaceModeOffer'
 > = (set, get) => ({
   openContextSurface: (directory, mode) => {
     const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
@@ -79,13 +98,20 @@ export const createContextTabActions: UIStoreSlice<
     }
 
     const state = get();
-    const placement = state.contextSurfaceZones;
     const panelState = state.contextPanelByDirectory[normalizedDirectory];
     const tabs = panelState?.tabs ?? [];
-    const zone = zoneOfMode(placement, mode);
-    const zoneView = panelState ? getZoneView(panelState, zone) : null;
-    const activeTabId = resolveZoneActiveTabId(tabs, placement, zone, zoneView?.activeTabId ?? null);
-    const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
+    // Дерево решает, что на экране: поверхность, которую показывает область,
+    // — это активная вкладка её листа. Клик по иконке поверхности в рельсе
+    // закрывает область, в которой та показана, — её вкладки остаются
+    // в ленте, живые для следующего открытия.
+    let shownLeafId: string | null = null;
+    for (const leaf of leavesOf(panelState?.layout ?? CHAT_NODE)) {
+      const tab = tabs.find((entry) => entry.id === leaf.activeTabId);
+      if (tab?.mode === mode) {
+        shownLeafId = leaf.id;
+        break;
+      }
+    }
     const clearTerminalTarget = () => {
       if (mode === 'terminal') {
         const terminalTab = tabs.find((tab) => tab.mode === 'terminal') ?? null;
@@ -100,9 +126,9 @@ export const createContextTabActions: UIStoreSlice<
       }
     };
 
-    if (zoneView?.isOpen && activeTab?.mode === mode) {
+    if (shownLeafId !== null) {
       clearTerminalTarget();
-      state.closeContextZone(normalizedDirectory, zone);
+      state.closeLayoutRegion(normalizedDirectory, shownLeafId);
       return;
     }
 
@@ -129,11 +155,183 @@ export const createContextTabActions: UIStoreSlice<
       return;
     }
 
-    if (mode === 'chat') {
+    // Содержимо-управляемым режимам нужен payload (сессия для разбиения);
+    // рельса рисует их выключенными, пока содержимого нет. 'file' открывает
+    // пустой редактор, чьё встроенное дерево выберет первый файл.
+    if (mode === 'chat' || mode === 'team') {
       return;
     }
 
     state.openContextPanelTab(normalizedDirectory, { mode });
+  },
+
+  openContextSurfaceInLeaf: (directory, mode, leafId) => {
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return;
+    }
+    const state = get();
+    const panelState = state.contextPanelByDirectory[normalizedDirectory];
+    // Лист должен существовать: устаревшая явная цель (перезагрузка,
+    // закрытая область) иначе молча выдумала бы форму дерева.
+    if (!leavesOf(panelState?.layout ?? CHAT_NODE).some((leaf) => leaf.id === leafId)) {
+      return;
+    }
+    const mostRecentOfMode = (tabsOfMode: ContextPanelTab[]) => (
+      // `>=`, чтобы равные отметки времени (открытия в одну миллисекунду)
+      // разрешались в более позднюю вкладку по порядку вставки.
+      tabsOfMode.reduce((best, tab) => (tab.touchedAt >= best.touchedAt ? tab : best))
+    );
+    // Поверхность файлов приходит со своим списком: открытие её в лист,
+    // из рельсы или при переключении режима, показывает приставленное
+    // дерево, даже когда вкладка уже есть и меняется только её размещение.
+    if (mode === 'file' && !state.contextEditorTreeVisible) {
+      set({ contextEditorTreeVisible: true });
+    }
+    const existing = (panelState?.tabs ?? []).filter((tab) => tab.mode === mode);
+    if (existing.length > 0) {
+      // При существующей вкладке открывать нечего — решается только её
+      // размещение. Именно поэтому выделенный в отдельную область чат или
+      // дифф переезжает в пустую область, которую выбрал пользователь.
+      const target = mostRecentOfMode(existing).id;
+      state.moveContextPanelTabToLeaf(normalizedDirectory, target, leafId);
+      return;
+    }
+    // Содержимо-управляемые режимы без вкладки остаются на месте: рельса
+    // их и не предлагала бы. 'file' открывает пустой редактор.
+    if (mode === 'chat' || mode === 'team') {
+      return;
+    }
+    state.openContextPanelTab(normalizedDirectory, { mode });
+    // Открытие только что создало единственную вкладку этого режима; переносим её.
+    const openedTabs = (get().contextPanelByDirectory[normalizedDirectory]?.tabs ?? []).filter((tab) => tab.mode === mode);
+    if (openedTabs.length > 0) {
+      state.moveContextPanelTabToLeaf(normalizedDirectory, mostRecentOfMode(openedTabs).id, leafId);
+    }
+  },
+
+  openContextPanelTabToLeaf: (directory, tab, leafId) => {
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return;
+    }
+    const state = get();
+    const panelState = state.contextPanelByDirectory[normalizedDirectory];
+    // Лист должен существовать: устаревшая цель иначе молча уронила бы
+    // вкладку туда, куда выбрали правила размещения.
+    if (!leavesOf(panelState?.layout ?? CHAT_NODE).some((leaf) => leaf.id === leafId)) {
+      return;
+    }
+    state.openContextPanelTab(normalizedDirectory, tab);
+    // `openContextPanelTab` дедуплицируется на существующую вкладку той же
+    // сессии; в лист встаёт именно она, а не свежая.
+    const opened = (get().contextPanelByDirectory[normalizedDirectory]?.tabs ?? [])
+      .find((entry) => entry.dedupeKey === tab.dedupeKey);
+    if (opened) {
+      state.moveContextPanelTabToLeaf(normalizedDirectory, opened.id, leafId);
+    }
+  },
+
+  switchWorkspaceMode: (directory, mode) => {
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return;
+    }
+    const state = get();
+    // Переключение принимает любое видимое предложение без ещё одного клика.
+    if (state.workspaceModeOffer) {
+      set({ workspaceModeOffer: null });
+    }
+    const prev = touchContextPanelState(
+      state.contextPanelByDirectory[normalizedDirectory],
+      state.contextSurfaceZones,
+    );
+    // Полноэкранная поверхность (страница доски, запланированные задачи,
+    // статистика) закрывает чат; режим показывает само рабочее пространство,
+    // поэтому такие страницы закрываются первыми. Вызов с тем же режимом
+    // остаётся, чтобы их закрыть.
+    state.closeMainSurfaces();
+    if (prev.workspaceMode === mode) {
+      return;
+    }
+
+    // Ни разу не посещённый режим входит со своим пресетом; сохранённое
+    // дерево возвращается таким, каким его оставил пользователь, с областями
+    // режима, отстроенными там, где они были закрыты. В любом случае входящее
+    // дерево чинится по живой ленте, так что вкладки покидают только те
+    // листья, которые их держат.
+    const preset = prev.modeLayouts[mode] ? null : workspaceModePreset(mode);
+    const incomingLayout = restorePresetRegions(
+      mode,
+      sanitizeTree(
+        prev.modeLayouts[mode] ?? preset?.tree ?? CHAT_NODE,
+        new Set(prev.tabs.map((tab) => tab.id)),
+      ),
+    );
+
+    set((state) => {
+      const current = touchContextPanelState(
+        state.contextPanelByDirectory[normalizedDirectory],
+        state.contextSurfaceZones,
+      );
+      const modeLayouts = {
+        ...current.modeLayouts,
+        [current.workspaceMode]: current.layout,
+      };
+      delete modeLayouts[mode];
+      return {
+        contextPanelByDirectory: clampContextPanelRoots({
+          ...state.contextPanelByDirectory,
+          [normalizedDirectory]: {
+            ...current,
+            workspaceMode: mode,
+            layout: incomingLayout,
+            modeLayouts,
+            touchedAt: Date.now(),
+          },
+        }, 20),
+      };
+    });
+
+    // Пустой именованный лист заново берёт свою поверхность при каждом входе,
+    // а не только при первом: лента вкладок общая, поэтому закрытие вкладки
+    // файлов в режиме чата опустошает и лист редактора режима отладки, и
+    // сохранённое дерево без ничего оставило бы режим без его области,
+    // а пользователя — без пути назад. Лист, держащий любую вкладку,
+    // остаётся как его расставил пользователь; область, за которую режим
+    // отвечает, возвращается через `restorePresetRegions` выше.
+    for (const open of workspaceModePreset(mode).opens) {
+      const leaf = findLeaf(incomingLayout, open.leafId);
+      if (leaf && leaf.tabs.length === 0) {
+        state.openContextSurfaceInLeaf(normalizedDirectory, open.mode, open.leafId);
+      }
+    }
+  },
+
+  offerWorkspaceMode: (directory, mode, reason) => {
+    const state = get();
+    if (state.workspaceModeOffer || state.workspaceModeOfferDismissed.includes(reason)) {
+      return;
+    }
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory || mode === 'chat') {
+      return;
+    }
+    // Карточку получает только проект, всё ещё в дефолтном чате: проект,
+    // уже работающий в другом режиме, расставил свою раскладку нарочно.
+    if ((state.contextPanelByDirectory[normalizedDirectory]?.workspaceMode ?? DEFAULT_WORKSPACE_MODE) !== 'chat') {
+      return;
+    }
+    set({ workspaceModeOffer: { directory: normalizedDirectory, mode, reason } });
+  },
+
+  dismissWorkspaceModeOffer: () => {
+    set((state) => ({
+      workspaceModeOffer: null,
+      workspaceModeOfferDismissed: state.workspaceModeOffer
+        ? [...state.workspaceModeOfferDismissed, state.workspaceModeOffer.reason]
+        : state.workspaceModeOfferDismissed,
+    }));
   },
 
   openContextPanelTab: (directory, tab, options) => {
@@ -195,6 +393,9 @@ export const createContextTabActions: UIStoreSlice<
       };
       return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
     });
+    // Элемент трекера, открытый из чата, — собственный предмет доски;
+    // карточка подсказывает режим один раз и никогда не занимает экран сама.
+    get().offerWorkspaceMode(normalizedDirectory, 'board', 'tracker-item');
     return buildContextPanelTabID('pr', dedupeKey);
   },
 
@@ -373,14 +574,27 @@ export const createContextTabActions: UIStoreSlice<
       const zone = zoneOfMode(state.contextSurfaceZones, targetTab.mode);
       const view = getZoneView(current, zone);
 
-      if (view.activeTabId === normalizedTabID && view.isOpen) {
+      // Зона — bookkeeping, который дерево опровергает в момент, когда
+      // область закрывается, а её вкладка остаётся в ленте: `view` всё ещё
+      // говорит «открыта и активна», пока ни один лист не рисует вкладку.
+      // Без сдвига проходит только вкладка, которую область реально
+      // показывает; непоставленная проваливается дальше и входит в область
+      // по единому правилу размещения, которым идёт всякое открытие.
+      const shownInALeaf = leavesOf(current.layout).some((leaf) => leaf.tabs.includes(normalizedTabID));
+      if (view.activeTabId === normalizedTabID && view.isOpen && shownInALeaf) {
         return showsFile ? { contextEditorVisible: true } : state;
       }
+
+      const activatedLayout = activateTabInTree(current.layout, normalizedTabID);
+      const layout = shownInALeaf
+        ? activatedLayout
+        : openSurfaceInTree(current.layout, current.tabs, normalizedTabID, targetTab.mode).tree;
 
       const byDirectory = {
         ...state.contextPanelByDirectory,
         [normalizedDirectory]: withZoneView({
           ...current,
+          layout,
           touchedAt: Date.now(),
           tabs: current.tabs.map((tab) => (tab.id === normalizedTabID
             ? { ...tab, touchedAt: Date.now() }
@@ -504,6 +718,18 @@ export const createContextTabActions: UIStoreSlice<
       if (tab.mode === 'file' && tab.targetPath) {
         useFilesViewTabsStore.getState().removeOpenPath(normalizedDirectory, tab.targetPath);
       }
+    }
+  },
+
+  closeContextSurfaceTabs: (directory, mode) => {
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return;
+    }
+    const panel = get().contextPanelByDirectory[normalizedDirectory];
+    const ids = (panel?.tabs ?? []).filter((tab) => tab.mode === mode).map((tab) => tab.id);
+    if (ids.length > 0) {
+      get().closeContextPanelTabs(normalizedDirectory, ids);
     }
   },
 });

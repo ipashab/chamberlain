@@ -97,6 +97,10 @@ import { createOpenCodeWatcherRuntime } from './lib/opencode/watcher.js';
 import { createTurnStartReader } from './lib/opencode/turn-start.js';
 import { createSessionActivityProbe } from './lib/opencode/session-activity.js';
 import { createSessionAssistRuntime } from './lib/session-assist/runtime.js';
+import { createAdvisorRuntime } from './lib/advisor/runtime.js';
+import { createCheckpointsRuntime } from './lib/checkpoints/runtime.js';
+import { createCheckpointStore } from './lib/checkpoints/store.js';
+import { createBacklogStore } from './lib/session-backlog/store.js';
 import { createSessionGoalRuntime } from './lib/session-goal/runtime.js';
 import { createContextObligatoryRuntime } from './lib/context-obligatory/runtime.js';
 import { createSessionWarmingRuntime } from './lib/session-warming/runtime.js';
@@ -187,7 +191,7 @@ import { createInsideSpaceTaskNaming, SPACE_TASK_TITLE_ROUTE } from './lib/space
 import { dockerHostOf } from './lib/spaces/places/ssh-host.js';
 import { SPACE_IDLE_EXIT_CODE } from './lib/spaces/layout.js';
 import { createSwitchController, registerSpaceRoutes } from './lib/spaces/routes.js';
-import { configureGitEnvironment, getCheckedOutBranch, getWorktreeBootstrapGateStatus, getWorktrees, isWorktreeDirectoryPinned, readRenameableGeneratedBranch, renameGeneratedWorktreeBranch, resolvePrimaryWorktreeRoot, setWorktreeTaskTitle } from './lib/git/service.js';
+import { configureGitEnvironment, getCheckedOutBranch, getWorktreeBootstrapGateStatus, getWorktrees, isWorktreeDirectoryPinned, readRenameableGeneratedBranch, renameGeneratedWorktreeBranch, resolvePrimaryWorktreeRoot, setWorktreeTaskTitle, captureWorktreeSnapshot, restoreSnapshotFiles, deleteCheckpointRef } from './lib/git/service.js';
 import { createEnvironmentStore } from './lib/environment/store.js';
 import { createEnvironmentRuntime } from './lib/environment/runtime.js';
 import { readOpenCodeServiceEnv } from './lib/environment/opencode-service-env.js';
@@ -212,6 +216,19 @@ import { openCodePluginDelivery } from './lib/guests/opencode-plugin.js';
 import { createLimitFailoverRuntime } from './lib/limit-failover/runtime.js';
 import { prepareInstanceDir } from './lib/opencode/instance-dir.js';
 import { createOpenChamberSessionService } from './lib/openchamber-sessions/routes.js';
+import { createOpenCodeClient as createSessionScopedOpenCodeClient } from './lib/openchamber-sessions/opencode-client.js';
+import { createTeamService } from './lib/team/service.js';
+import { createTrackerService } from './lib/tracker/service.js';
+import { createContactRunService, type ContactRunForkPayload } from './lib/contact-run/service.js';
+import { createBacklogService } from './lib/session-backlog/service.js';
+import { createMissionsService } from './lib/missions/service.js';
+import { createDebuggerService } from './lib/debugger/service.js';
+import { createEnginesRuntime } from './lib/engines/index.js';
+import { createAssistantsService } from './lib/assistants/service.js';
+import { createTeamPresetStore } from './lib/team/presets.js';
+import { createBitbucketConfigStore } from './lib/bitbucket/config-store.js';
+import { createJiraConfigStore } from './lib/jira/config-store.js';
+import { createConfluenceConfigStore } from './lib/confluence/config-store.js';
 import { createSessionMetadataStore, createOpenCodeSessionMetadata } from './lib/openchamber-sessions/session-metadata-store.js';
 import { createUnreadBaseline } from './lib/openchamber-sessions/unread-baseline.js';
 import { createTurnDurationRecorder } from './lib/openchamber-sessions/turn-duration.js';
@@ -933,10 +950,22 @@ const openCodeNetworkState = {
   set openCodeApiDetectionTimer(value: typeof openCodeApiDetectionTimer) { openCodeApiDetectionTimer = value; },
 };
 
+// The engines runtime is created LATER (it depends on the network runtime's
+// buildOpenCodeUrl for probe targets), while the network layer needs an "is
+// there an active engine with its own declared URL" reader right now — hence
+// late binding: the ref stays null until the runtime exists. Both sides call
+// it at request time only, so it is always in place by then, and no startup
+// order has to change.
+let enginesRuntimeRef: ReturnType<typeof createEnginesRuntime> | null = null;
+
 const openCodeNetworkRuntime = createOpenCodeNetworkRuntime({
   state: openCodeNetworkState,
   getOpenCodeAuthHeaders,
   configuredOpenCodeHostname: ENV_CONFIGURED_OPENCODE_HOSTNAME,
+  // Multi-engine routing seam: buildOpenCodeUrl is the one function the repo
+  // asks "where is the engine" through (~30 modules), so one declared URL
+  // reroutes every engine request at once. null keeps legacy routing.
+  resolveActiveEngineUrl: () => enginesRuntimeRef?.getActiveEngineOwnUrl?.() ?? null,
 });
 
 const waitForReady: typeof openCodeNetworkRuntime.waitForReady = (...args) => openCodeNetworkRuntime.waitForReady(...args);
@@ -1125,6 +1154,47 @@ const sessionAssistRuntime = createSessionAssistRuntime({
     type: 'openchamber:session-assist',
     properties: { sessionID: sessionId, directory: directory || null, pending },
   }),
+});
+
+// The post-turn advisor shares the assist's event hub, metadata store and
+// Small Model path, and writes its findings under `openchamber.advisor`.
+const advisorRuntime = createAdvisorRuntime({
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  getSmallModelService: async () => import('./lib/small-model/index.js'),
+  persistAdvisor: (sessionID, directory, advisor) =>
+    persistSessionMetadataPatch(sessionID, { openchamber: { advisor } }, { directory }),
+  // Declared further down; only ever called after startup.
+  isSessionArchived: (sessionID) => openChamberSessionService.sessionArchive.isArchived(sessionID),
+  lineage: sessionLineage,
+});
+
+// Per-turn checkpoints: a worktree snapshot pinned when a session turns busy,
+// recorded when the turn touched files, with restore and undo answering from
+// the same registry. Evicted entries hand their refs back before leaving, so
+// their trees stop surviving `git gc`.
+const checkpointStore = createCheckpointStore({
+  dataDir: OPENCHAMBER_DATA_DIR,
+  onEvicted: (evicted) => {
+    for (const entry of evicted) {
+      Promise.resolve(deleteCheckpointRef(entry.directory, entry.baseRefName)).catch(() => {});
+      if (entry.restored) {
+        Promise.resolve(deleteCheckpointRef(entry.directory, entry.restored.refName)).catch(() => {});
+      }
+    }
+  },
+});
+// The session backlog: staged follow-ups per session, one JSON file each,
+// under the same data directory as the checkpoints registry.
+const backlogStore = createBacklogStore({ dataDir: OPENCHAMBER_DATA_DIR });
+const checkpointsRuntime = createCheckpointsRuntime({
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  store: checkpointStore,
+  git: { captureWorktreeSnapshot, restoreSnapshotFiles, deleteCheckpointRef },
+  // Declared further down; only ever called after startup.
+  isSessionArchived: (sessionID) => openChamberSessionService.sessionArchive.isArchived(sessionID),
+  broadcast: (event) => broadcastOpenChamberUiEvent(event),
 });
 
 const sessionGoalRuntime = createSessionGoalRuntime({
@@ -1524,6 +1594,7 @@ globalMessageStreamHub.subscribeStatus((status) => {
 });
 
 console.log('[session-assist] listening for session events');
+console.log('[advisor] listening for session events');
 globalMessageStreamHub.subscribeEvent((event) => {
   const directory = isString(event?.directory) && event.directory && event.directory !== 'global'
     ? event.directory
@@ -1539,12 +1610,17 @@ globalMessageStreamHub.subscribeEvent((event) => {
     sessionLineage.observe(payload);
     turnDurationRecorder.processPayload(payload, directory || payload.properties?.directory || '');
     sessionAssistRuntime.processPayload(payload, directory || payload.properties?.directory || '');
+    advisorRuntime.processPayload(payload, directory || payload.properties?.directory || '');
+    checkpointsRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     sessionWorkRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     sessionGoalRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     contextObligatoryRuntime.processPayload(payload, directory || payload.properties?.directory || '');
     sessionWarmingRuntime.processPayload(payload);
     trackerSessionStatus.processPayload(payload, { spaceId: event?.spaceId ?? null });
     extensionSessionEvents.processPayload(payload, directory || payload.properties?.directory || '');
+    // Team Mode orchestration: member turn ends, failures and deletions. One
+    // Map lookup per event; non-team sessions return immediately.
+    void teamService.processPayload(payload).catch(() => {});
   }
 });
 
@@ -2087,6 +2163,116 @@ const openChamberSessionService = createOpenChamberSessionService({
   isAutoReady: async () => (await routingRuntime.describe()).autoReady,
   readProjectSetup: (projectID) => projectConfigRuntime.readProjectSetup(projectID),
 });
+// Team Mode: lead + teammates as peer sessions coordinated through the
+// `openchamber_team` managed tool. State is OpenChamber's own (teams.json in
+// the data dir); the sessions themselves are ordinary OpenCode sessions.
+const teamService = createTeamService({
+  fsPromises,
+  path,
+  dataDir: OPENCHAMBER_DATA_DIR,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  waitForOpenCodeReady,
+  createOpenCodeClient: createSessionScopedOpenCodeClient,
+  sessionService: openChamberSessionService,
+  broadcastUiEvent: broadcastOpenChamberUiEvent,
+});
+void teamService.init().catch((error: unknown) =>
+  console.warn('[team] could not initialize team state:', error instanceof Error ? error.message : error));
+// Presets for the "New Team" dialog: built-in recipes plus the user's own,
+// persisted next to teams.json.
+const teamPresets = createTeamPresetStore({ fsPromises, path, dataDir: OPENCHAMBER_DATA_DIR });
+// The Bitbucket Data Center connection: one instance, one token, persisted
+// as bitbucket.json beside the team and mission files. Board PR chips read
+// through it; the settings card is its only writer.
+const bitbucketConfigStore = createBitbucketConfigStore({ fsPromises, path, dataDir: OPENCHAMBER_DATA_DIR });
+// The Jira Data Center connection: one instance, one personal access
+// token, persisted as jira.json beside bitbucket.json and the rest. The
+// issue viewer reads through it; the settings card is its only writer.
+const jiraConfigStore = createJiraConfigStore({ fsPromises, path, dataDir: OPENCHAMBER_DATA_DIR });
+// The tracker service: the agent tool's actions on Bitbucket pull requests
+// and Jira issues, executed against the connections above. No store of its
+// own — the refs come in with each action, the connections are read per
+// call, and a write goes out under the configured user's own token.
+const trackerService = createTrackerService({ bitbucketConfigStore, jiraConfigStore });
+// The Confluence Data Center connection: one instance, one personal
+// access token, persisted as confluence.json beside jira.json and the
+// rest. The page reader reads through it; the settings card is its
+// only writer.
+const confluenceConfigStore = createConfluenceConfigStore({ fsPromises, path, dataDir: OPENCHAMBER_DATA_DIR });
+// Missions: goal prompts filed into a paced queue, each in a session or team
+// of its own. Completion is observed through the shared session-state probe.
+const missionsService = createMissionsService({
+  fsPromises,
+  path,
+  dataDir: OPENCHAMBER_DATA_DIR,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  waitForOpenCodeReady,
+  createOpenCodeClient: createSessionScopedOpenCodeClient,
+  sessionService: openChamberSessionService,
+  teamService,
+  getSessionState: (sessionId: string) => sessionRuntime.getSessionState(sessionId),
+  broadcastUiEvent: broadcastOpenChamberUiEvent,
+});
+void missionsService.init().catch((error: unknown) =>
+  console.warn('[missions] could not initialize mission state:', error instanceof Error ? error.message : error));
+// Python debugging: one debugpy DAP session behind the debug panel. The run
+// lives and dies with its process; nothing persists between server starts.
+const debuggerService = createDebuggerService({
+  broadcastUiEvent: broadcastOpenChamberUiEvent,
+});
+// Engines: descriptor-file registry ("add an engine = drop engine.json in
+// OC_ENGINES_DIR", no host restart). Descriptor-only snapshot for /health and
+// /api/openchamber/engines; one real probe for /api/openchamber/engines/active.
+// Lifecycle (spawn/stop) stays where it is — this only describes, resolves,
+// probes and routes.
+const enginesRuntime = createEnginesRuntime({
+  env: process.env,
+  fsPromises,
+  getEngineBaseUrl: () => buildOpenCodeUrl(''),
+  getEngineAuthHeaders: getOpenCodeAuthHeaders,
+});
+enginesRuntimeRef = enginesRuntime;
+// Assistants as contacts: saved personas with one continuing chat each.
+// Opening a contact continues its thread or starts a fresh one with the
+// persona as the opening message.
+const assistantsService = createAssistantsService({
+  fsPromises,
+  path,
+  dataDir: OPENCHAMBER_DATA_DIR,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  waitForOpenCodeReady,
+  createOpenCodeClient: createSessionScopedOpenCodeClient,
+  sessionService: openChamberSessionService,
+  broadcastUiEvent: broadcastOpenChamberUiEvent,
+});
+void assistantsService.init().catch((error: unknown) =>
+  console.warn('[assistants] could not initialize contact state:', error instanceof Error ? error.message : error));
+// Contact delegation: the `openchamber_contacts` tool's executor. It sits on
+// the assistants list for the personas and on the session service for the
+// fork — the child inherits the calling conversation's context.
+const contactRunService = createContactRunService({
+  listContacts: () => assistantsService.listAssistants(),
+  forkSession: (sessionID: string, payload: ContactRunForkPayload) => openChamberSessionService.fork(sessionID, payload),
+  createOpenCodeClient: createSessionScopedOpenCodeClient,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+});
+// Session backlog: staged follow-ups for one dialog, and the drain that runs
+// them. The same service answers the client routes and the agent tool, so a
+// staged item means the same thing everywhere.
+const backlogService = createBacklogService({
+  store: backlogStore,
+  sessionService: openChamberSessionService,
+  resolveSessionDirectory: (sessionID: string) => openChamberControlService.resolveSessionDirectory(sessionID),
+  getSessionState: (sessionId: string) => sessionRuntime.getSessionState(sessionId),
+  createOpenCodeClient: createSessionScopedOpenCodeClient,
+  buildOpenCodeUrl,
+  getOpenCodeAuthHeaders,
+  broadcastUiEvent: broadcastOpenChamberUiEvent,
+});
 const browserControlBroker = createBrowserControlBroker({
   createId: () => `browser-${crypto.randomUUID()}`,
   emitRequest: (request) => {
@@ -2257,6 +2443,11 @@ const openChamberControlService = createOpenChamberControlService({
     const settings = await readSettingsFromDiskMigrated().catch(() => null);
     return settings?.agentSecretToolEnabled !== false;
   },
+  debuggerControl: debuggerService,
+  isDebuggerToolEnabled: async () => {
+    const settings = await readSettingsFromDiskMigrated().catch(() => null);
+    return settings?.agentDebuggerToolEnabled !== false;
+  },
   secretFiles,
   onPageWaitChange: (change) => {
     sessionRuntime.trackWaitingPage(change);
@@ -2363,6 +2554,7 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
   openCodeWatcherRuntime,
   chatDirectoryCleanupRuntime,
   sessionAssistRuntime,
+  advisorRuntime,
   sessionWorkRuntime,
   sessionGoalRuntime,
   contextObligatoryRuntime,
@@ -2441,6 +2633,14 @@ async function main(options: WebUiServerOptions = {}) {
     instanceDir,
     env: process.env,
     executeAction: (...args) => openChamberControlService.execute(...args),
+    executeTeamAction: (action, input, sessionID, options) =>
+      teamService.executeAction(action, input, sessionID, options),
+    executeTrackerAction: (action, input) =>
+      trackerService.executeAction(action, input),
+    executeContactAction: (action, input) =>
+      contactRunService.executeAction(action, input),
+    executeBacklogAction: (action, input) =>
+      backlogService.executeAction(action, input),
     resolveSessionDirectory: (sessionID) => openChamberControlService.resolveSessionDirectory(sessionID),
     getActivePort: () => {
       const address = server?.address?.();
@@ -2737,6 +2937,11 @@ async function main(options: WebUiServerOptions = {}) {
         openCodeApiPrefix: '',
         openCodeApiPrefixDetected: true,
         isOpenCodeReady,
+        // Descriptors only, read from the registry cache — a hot path never
+        // touches a directory or an engine. null before warmup: a not-yet-read
+        // registry is a visible fact, not something to paper over.
+        engine: enginesRuntime.getCachedSnapshot()?.active ?? null,
+        engineRegistry: enginesRuntime.getCachedSnapshot()?.engines ?? null,
         lastOpenCodeError,
         lastOpenCodeLaunchDiagnostics,
         lastOpenCodeHealthFailure,
@@ -2942,6 +3147,8 @@ async function main(options: WebUiServerOptions = {}) {
     listConfiguredProjects,
     messageSearchRuntime,
     sessionWarmingRuntime,
+    checkpointsRuntime,
+    backlogService,
     sessionTodosRuntime,
     scheduledWorktreeBridge,
     crypto,
@@ -2954,6 +3161,15 @@ async function main(options: WebUiServerOptions = {}) {
     createFsSearchRuntime: createFsSearchRuntimeFactory,
     openchamberDataDir: OPENCHAMBER_DATA_DIR,
     openchamberVersion: OPENCHAMBER_VERSION,
+    teamService,
+    teamPresets,
+    bitbucketConfigStore,
+    jiraConfigStore,
+    confluenceConfigStore,
+    missionsService,
+    assistantsService,
+    debuggerService,
+    enginesRuntime,
     onGuestDeactivated: async (event) => {
       guestSurfaceRuntime?.endForGuest(event.guestId);
       setGuestConfigurationNote(event.guestId, null);

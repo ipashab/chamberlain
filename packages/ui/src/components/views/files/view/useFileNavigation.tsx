@@ -13,7 +13,7 @@ import { type useFileTabs } from './useFileTabs';
 import { type useFileViewModes } from './useFilePreviewModes';
 import { useUIStore } from '@/stores/useUIStore';
 
-export function useFileNavigation({ closeState, draft, editor, fileDocument, fileKinds, fileOpening, navigationRequests, scope, tabs, viewModes }: {
+export function useFileNavigation({ closeState, draft, editor, fileDocument, fileKinds, fileOpening, navigationRequests, pinnedPath, scope, tabs, viewModes }: {
   closeState: Pick<ReturnType<typeof useFileCloseState>, 'confirmDiscardOpen'>;
   draft: Pick<ReturnType<typeof useFileDraft>, 'draftContent'>;
   editor: Pick<ReturnType<typeof useFileEditor>, 'editorViewReadyNonce' | 'editorViewRef' | 'setEditorViewReadyNonce'>;
@@ -21,6 +21,7 @@ export function useFileNavigation({ closeState, draft, editor, fileDocument, fil
   fileKinds: Pick<ReturnType<typeof useFileKinds>, 'canEdit' | 'isSelectedImage' | 'isSelectedPdf' | 'isUnsupportedBinary'>;
   fileOpening: Pick<ReturnType<typeof useFileOpening>, 'handleSelectFile'>;
   navigationRequests: Pick<ReturnType<typeof useFileNavigationRequests>, 'pendingFileFocusPath' | 'pendingFileNavigation' | 'pendingNavigationCycleRef' | 'pendingNavigationRafRef' | 'setPendingFileFocusPath' | 'setPendingFileNavigation'>;
+  pinnedPath?: string | null;
   scope: Pick<ReturnType<typeof useFileScope>, 'root' | 'zoneInteractive'>;
   tabs: Pick<ReturnType<typeof useFileTabs>, 'selectedFile' | 'toFileNode'>;
   viewModes: Pick<ReturnType<typeof useFileViewModes>, 'setTextViewMode' | 'textViewMode'>;
@@ -79,6 +80,14 @@ export function useFileNavigation({ closeState, draft, editor, fileDocument, fil
     if (!targetPath) {
       setPendingFileNavigation(null);
       pendingNavigationCycleRef.current = { key: '', attempts: 0, targetShown: false };
+      return;
+    }
+    // Закреплённая панель отзывается только на прыжки в свой файл. Вкладка
+    // файла монтирует по одной панели, и без этой проверки скрытая панель
+    // перехватывает прыжок: выбирает свой закреплённый файл, а грязная к тому
+    // же выкидывает свой запрос несохранённых правок поверх панели, куда
+    // прыжок был адресован.
+    if (pinnedPath && normalizePath(pinnedPath) !== targetPath) {
       return;
     }
 
@@ -189,6 +198,7 @@ export function useFileNavigation({ closeState, draft, editor, fileDocument, fil
     loadedFilePath,
     handleSelectFile,
     pendingFileNavigation,
+    pinnedPath,
     root,
     selectedFile?.path,
     setPendingFileNavigation,

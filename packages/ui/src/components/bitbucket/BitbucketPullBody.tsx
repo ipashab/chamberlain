@@ -5,7 +5,7 @@ import { Icon } from '@/components/icon/Icon';
 import { Button } from '@/components/ui/button';
 import { SimpleMarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { getMarkdownSyntaxVars } from '@/components/chat/markdown/markdownSyntaxVars';
-import { useWorkerHighlightedLines, type WorkerHighlightedLinesResult } from '@/components/code/useWorkerHighlightedLines';
+import { useHighlightedLines, type HighlightedLinesResult } from '@/components/code/useHighlightedLines';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useI18n } from '@/lib/i18n';
 import { openExternalUrl } from '@/lib/url';
@@ -986,7 +986,7 @@ const rowColorOf = (kind: DiffRow['kind']): string | null => {
 const HighlightedCode: React.FC<{
     text: string;
     html: string | undefined;
-    status: WorkerHighlightedLinesResult['status'];
+    status: HighlightedLinesResult['status'];
 }> = ({ text, html, status }) => {
     if (html !== undefined) {
         return <span className="whitespace-pre" dangerouslySetInnerHTML={{ __html: html }} />;
@@ -1012,7 +1012,7 @@ const useHighlightedDiffFile = (path: string, diffText: string) => {
     const rows = React.useMemo(() => parseDiffRows(diffText), [diffText]);
     const codeMap = React.useMemo(() => codeMapOf(rows), [rows]);
     const language = getLanguageFromExtension(path) || 'text';
-    const highlighted = useWorkerHighlightedLines(codeMap.code, language);
+    const highlighted = useHighlightedLines(codeMap.code, language);
     const htmlOf = React.useCallback(
         (rowIndex: number): string | undefined => {
             const codeLine = codeMap.lineOf[rowIndex];

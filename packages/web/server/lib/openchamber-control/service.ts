@@ -7,6 +7,7 @@ import { OPENCHAMBER_ALL_ACTIONS, OPENCHAMBER_KNOWLEDGE_ACTIONS, OPENCHAMBER_DEB
 import { writeScreenshot } from './screenshots.js';
 import { createProjectKnowledgeActions } from './project-knowledge.js';
 import { createDebuggerActions } from './debugger-actions.js';
+import { createDebuggerService } from '../debugger/service.js';
 import { createPageAnswers, createRenderPageAction, isAgentPrompt } from './render-page.js';
 import { completeFormAnswer } from './form-answer.js';
 import { createImageGenerationAction } from './generate-image.js';
@@ -93,6 +94,12 @@ export interface ControlDependencies {
   isRenderToolEnabled?: () => Promise<boolean>;
   isSecretToolEnabled?: () => Promise<boolean>;
   getTerminalRuntime?: TerminalReadDependencies['getTerminalRuntime'];
+  // Drives the debugpy session the debug panel shows; null means this server
+  // runs without the debug surface and every debug.* action answers 503.
+  debuggerControl?: ReturnType<typeof createDebuggerService> | null;
+  // Same stale-plugin rule as knowledge and render: a debugger tool call
+  // from a plugin generated before the setting was switched off is refused.
+  isDebuggerToolEnabled?: () => Promise<boolean>;
   secretFiles?: Parameters<typeof createSecretRequests>[0]['files'];
   onPageWaitChange?: NonNullable<Parameters<typeof createPageAnswers>[0]>['onWaitChange'];
   readPendingRequests?: () => { [sessionID: string]: { forms: object[]; pages: object[]; permissions: PendingPermission[] } };

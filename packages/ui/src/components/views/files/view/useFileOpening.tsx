@@ -8,7 +8,7 @@ import { rebaseMovedPath, rebaseMovedPathKeys, subscribeToFilePathMoves } from '
 import { useFilesViewTabsStore } from '@/stores/useFilesViewTabsStore';
 import { getContextFileSizeLimitMessage } from '@/lib/contextFileOpenGuard';
 import { type FileNode } from './fileViewTypes';
-import { getAncestorPaths } from './fileViewPaths';
+import { getAncestorPaths, toComparablePath } from './fileViewPaths';
 import { isDirectoryReadError } from './fileViewEntries';
 import { isMarkdownFile, opensInFileCanvas, isJsonFile, isHtmlFile } from './fileViewKinds';
 import { type useFileDirectory } from './useFileDirectory';
@@ -24,7 +24,7 @@ import { type useFileTabs } from './useFileTabs';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useI18n } from '@/lib/i18n';
 
-export function useFileOpening({ canvasState, closeState, diagram, draft, fileDirectory, fileDocument, fileSaving, layout, scope, search, tabs, viewModes, isMobile, runtime, t, visible }: {
+export function useFileOpening({ canvasState, closeState, diagram, draft, fileDirectory, fileDocument, fileSaving, layout, pinnedPath, scope, search, tabs, viewModes, isMobile, runtime, t, visible }: {
   canvasState: Pick<ReturnType<typeof useFileCanvasState>, 'setCanvasDirty'>;
   closeState: Pick<ReturnType<typeof useFileCloseState>, 'pendingSelectFileRef' | 'setConfirmDiscardOpen' | 'skipDirtyOnceRef'>;
   diagram: Pick<ReturnType<typeof useFileDiagram>, 'diagramSavedXmlRef' | 'diagramXmlRef'>;
@@ -33,6 +33,7 @@ export function useFileOpening({ canvasState, closeState, diagram, draft, fileDi
   fileDocument: Pick<ReturnType<typeof useFileDocument>, 'activeFileLoadIdRef' | 'editorDocumentPath' | 'fileContentRevision' | 'lastLoadedFileStatRef' | 'loadedFilePath' | 'loadedFilePathRef' | 'loadingFilePathRef' | 'missingSeenPathRef' | 'pendingPathMoveRef' | 'setContentDetectedBinary' | 'setDesktopImageSrc' | 'setDocumentPathAlias' | 'setFailedFilePath' | 'setFileContent' | 'setFileError' | 'setFileLoading' | 'setLoadedFilePath'>;
   fileSaving: Pick<ReturnType<typeof useFileSaving>, 'applyLoadedTextContent' | 'isDirty' | 'readFile' | 'readFileStat'>;
   layout: Pick<ReturnType<typeof useFileLayout>, 'setShowMobilePageContent'>;
+  pinnedPath?: string | null;
   scope: Pick<ReturnType<typeof useFileScope>, 'fileScopeRef' | 'root' | 'treeActive'>;
   search: Pick<ReturnType<typeof useFileSearch>, 'searchQuery' | 'setSearchQuery'>;
   tabs: Pick<ReturnType<typeof useFileTabs>, 'expandPaths' | 'selectedFile' | 'setSelectedPath'>;
@@ -63,7 +64,12 @@ export function useFileOpening({ canvasState, closeState, diagram, draft, fileDi
     const isCurrentLoad = () => {
       if (!root || getRuntimeKey() !== requestRuntime || fileScopeRef.current !== requestScope) return false;
       const rootState = useFilesViewTabsStore.getState().byRoot[root];
-      const currentPath = rootState?.selectedPath ?? rootState?.openPaths[0] ?? null;
+      // Для закреплённой панели авторитетен её закреплённый путь,
+      // сопоставленный так же, как в проходе выделения; общее выделение тут
+      // ничего не решает.
+      const currentPath = pinnedPath
+        ? (rootState?.openPaths ?? []).find((path) => toComparablePath(path) === toComparablePath(pinnedPath)) ?? pinnedPath
+        : rootState?.selectedPath ?? rootState?.openPaths[0] ?? null;
       return activeFileLoadIdRef.current === loadId && currentPath === node.path;
     };
 
@@ -172,7 +178,10 @@ export function useFileOpening({ canvasState, closeState, diagram, draft, fileDi
         }
         if (isDirectoryReadError(error)) {
           setFileLoading(false);
-          if (root) {
+          // Закреплённая панель сообщает о своей ошибке сама; общее выделение
+          // говорит, что открыто в сайдбаре, и закреплённая панель на него
+          // не влияет.
+          if (root && !pinnedPath) {
             setSelectedPath(root, null);
           }
           setFileError(null);
@@ -211,7 +220,7 @@ export function useFileOpening({ canvasState, closeState, diagram, draft, fileDi
           setFileLoading(false);
         }
       });
-  }, [applyLoadedTextContent, expandPaths, isMobile, loadDirectory, readFile, readFileStat, root, runtime.isDesktop, searchQuery, setSelectedPath, t]);
+  }, [applyLoadedTextContent, expandPaths, isMobile, loadDirectory, pinnedPath, readFile, readFileStat, root, runtime.isDesktop, searchQuery, setSelectedPath, t]);
 
   const ensurePathVisible = React.useCallback(async (targetPath: string, includeTarget: boolean) => {
     if (!visible || !root) {

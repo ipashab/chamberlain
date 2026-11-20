@@ -1,5 +1,13 @@
 import { shownMobileWorkspaceTabs, storedMobileWorkspaceTabOrder } from '@/lib/mobileWorkspaceTabs';
 import { carrySurfaceToZone, getZoneView, withZoneView, zoneOfMode, CONTEXT_ZONES } from '@/lib/workspace/zones';
+import {
+  balanceSplitAt,
+  CHAT_NODE,
+  closeLeaf,
+  moveTabToLeaf,
+  splitChat,
+  splitLeaf,
+} from '@/lib/workspace/layoutTree';
 import type { ContextZonePlacement } from '@/lib/workspace/zones';
 import { sanitizeWorkStatusSectionOrder } from '@/components/chat/work-status/sections';
 import { clampContextEditorTreeWidth } from './preferences';
@@ -22,6 +30,10 @@ export const createWorkspaceActions: UIStoreSlice<
   | 'setContextZoneSize'
   | 'setContextZoneExpandedChatSize'
   | 'moveContextSurfaceToZone'
+  | 'splitLayoutRegion'
+  | 'closeLayoutRegion'
+  | 'balanceLayoutSplit'
+  | 'moveContextPanelTabToLeaf'
   | 'setWorkStatusSectionExpanded'
   | 'setMessageQueueExpanded'
   | 'setWorkStatusScrollTop'
@@ -38,7 +50,7 @@ export const createWorkspaceActions: UIStoreSlice<
   | 'setContextRailHiddenSurfaces'
   | 'setMobileWorkspaceTabOrder'
   | 'setMobileWorkspaceTabVisible'
-> = (set, get) => ({
+> = (set) => ({
   toggleSidebar: () => {
     set((state) => ({ isSidebarOpen: !state.isSidebarOpen }));
   },
@@ -82,7 +94,23 @@ export const createWorkspaceActions: UIStoreSlice<
   },
 
   closeContextPanel: (directory) => {
-    get().closeContextZone(directory, 'right');
+    // Вся раскладка сворачивается обратно к чату; вкладки остаются в ленте
+    // и входят в область при следующем открытии.
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return;
+    }
+    set((state) => {
+      const prev = state.contextPanelByDirectory[normalizedDirectory];
+      if (!prev || prev.layout.kind === 'chat') {
+        return state;
+      }
+      const byDirectory = {
+        ...state.contextPanelByDirectory,
+        [normalizedDirectory]: { ...prev, layout: CHAT_NODE },
+      };
+      return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+    });
   },
 
   closeContextZone: (directory, zone) => {
@@ -158,6 +186,94 @@ export const createWorkspaceActions: UIStoreSlice<
       }
 
       return { contextSurfaceZones: placement, contextPanelByDirectory: byDirectory };
+    });
+  },
+
+  splitLayoutRegion: (directory, target, axis, fraction, placement = 'end') => {
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return null;
+    }
+    let newLeafId: string | null = null;
+    set((state) => {
+      const prev = state.contextPanelByDirectory[normalizedDirectory];
+      const current = touchContextPanelState(prev, state.contextSurfaceZones);
+      // Размещение «в начало» ставит свежую область первой: новый лист со
+      // стороны инлайн-начала (ось row) или сверху (ось column) относительно
+      // соседа — туда, куда говорит сброс на этом крае.
+      const split = target === 'chat'
+        ? splitChat(current.layout, axis, { fraction, chatLast: placement === 'start' })
+        : splitLeaf(current.layout, target.leafId, axis, { fraction, newLeafFirst: placement === 'start' });
+      if (split === null) {
+        return state;
+      }
+      newLeafId = split.newLeaf.id;
+      const byDirectory = {
+        ...state.contextPanelByDirectory,
+        [normalizedDirectory]: { ...current, layout: split.tree },
+      };
+      return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+    });
+    return newLeafId;
+  },
+
+  closeLayoutRegion: (directory, leafId) => {
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return;
+    }
+    set((state) => {
+      const prev = state.contextPanelByDirectory[normalizedDirectory];
+      const current = touchContextPanelState(prev, state.contextSurfaceZones);
+      const next = closeLeaf(current.layout, leafId);
+      if (next === current.layout) {
+        return state;
+      }
+      const byDirectory = {
+        ...state.contextPanelByDirectory,
+        [normalizedDirectory]: { ...current, layout: next },
+      };
+      return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+    });
+  },
+
+  balanceLayoutSplit: (directory, splitId, leadingIndex, trailingIndex, trailingShare) => {
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return;
+    }
+    set((state) => {
+      const prev = state.contextPanelByDirectory[normalizedDirectory];
+      const current = touchContextPanelState(prev, state.contextSurfaceZones);
+      const next = balanceSplitAt(current.layout, splitId, leadingIndex, trailingIndex, trailingShare);
+      if (next === current.layout) {
+        return state;
+      }
+      const byDirectory = {
+        ...state.contextPanelByDirectory,
+        [normalizedDirectory]: { ...current, layout: next },
+      };
+      return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
+    });
+  },
+
+  moveContextPanelTabToLeaf: (directory, tabId, leafId, index) => {
+    const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
+    if (!normalizedDirectory) {
+      return;
+    }
+    set((state) => {
+      const prev = state.contextPanelByDirectory[normalizedDirectory];
+      const current = touchContextPanelState(prev, state.contextSurfaceZones);
+      const layout = moveTabToLeaf(current.layout, tabId, leafId, index === undefined ? undefined : { index });
+      if (layout === current.layout) {
+        return state;
+      }
+      const byDirectory = {
+        ...state.contextPanelByDirectory,
+        [normalizedDirectory]: { ...current, layout },
+      };
+      return { contextPanelByDirectory: clampContextPanelRoots(byDirectory, 20) };
     });
   },
 

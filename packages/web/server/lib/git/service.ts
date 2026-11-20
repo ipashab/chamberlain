@@ -1144,8 +1144,7 @@ const isMissingDirectoryError = <Failure>(error: Failure) => {
   return /directory that does not exist|does not exist|no such file or directory/i.test(text);
 };
 
-const runGitCommand = async (cwd: string, args: string[], { env: envOverride, timeoutMs = 0, encoding = 'utf8' }: GitCommandOptions = {}): Promise<GitCommandResult> => {
-  const asBuffer = encoding === 'buffer';
+const runGitCommand = async (cwd: string, args: string[], { env: envOverride, timeoutMs = 0 }: GitCommandOptions = {}): Promise<GitCommandResult> => {
   try {
     const options: import('node:child_process').ExecFileOptionsWithStringEncoding = {
       cwd,
@@ -1156,13 +1155,11 @@ const runGitCommand = async (cwd: string, args: string[], { env: envOverride, ti
       // (a fetch into a temporary clone) keep the default of none.
       ...(timeoutMs > 0 ? { timeout: timeoutMs, killSignal: 'SIGKILL' } : {}),
     };
-    // Binary output (checkpoint blob reads) must not travel as text.
-    if (asBuffer) (options as { encoding?: BufferEncoding }).encoding = 'buffer';
     const { stdout, stderr } = await execFileAsync(getGitBinary(), args, options);
     return {
       success: true,
       exitCode: 0,
-      stdout: asBuffer ? Buffer.from(String(stdout), 'utf8') : String(stdout || ''),
+      stdout: String(stdout || ''),
       stderr: String(stderr || ''),
     };
   } catch (error) {
@@ -1170,7 +1167,7 @@ const runGitCommand = async (cwd: string, args: string[], { env: envOverride, ti
     return {
       success: false,
       exitCode: isInteger(code) ? code : null,
-      stdout: asBuffer ? (Buffer.isBuffer(errorField(error, 'stdout')) ? errorField(error, 'stdout') : Buffer.alloc(0)) : String(errorField(error, 'stdout') || ''),
+      stdout: String(errorField(error, 'stdout') || ''),
       stderr: String(errorField(error, 'stderr') || ''),
       message: parseGitErrorText(error),
       timedOut: errorField(error, 'killed') === true,
@@ -4019,18 +4016,17 @@ export async function revertFile(directory: string, filePath: string, options: {
 
 // --- Turn checkpoints -------------------------------------------------------
 
-const CHECKPOINT_REF_PREFIX = 'refs/openchamber/checkpoints/';
 const CHECKPOINT_REF_PATTERN = /^refs\/openchamber\/checkpoints\/[a-zA-Z0-9][a-zA-Z0-9/_-]*$/;
 const SNAPSHOT_TREE_PATTERN = /^[0-9a-f]{40,64}$/i;
 const WORKTREE_SNAPSHOT_TIMEOUT_MS = 120_000;
 
-const validateCheckpointRefName = (refName) => {
+const validateCheckpointRefName = (refName: unknown) => {
   if (!isString(refName) || !CHECKPOINT_REF_PATTERN.test(refName)) {
     throw new Error(`Invalid checkpoint ref name: ${refName}`);
   }
 };
 
-const validateSnapshotTree = (tree) => {
+const validateSnapshotTree = (tree: unknown) => {
   if (!isString(tree) || !SNAPSHOT_TREE_PATTERN.test(tree)) {
     throw new Error(`Invalid checkpoint snapshot: ${tree}`);
   }
@@ -4046,7 +4042,7 @@ const validateSnapshotTree = (tree) => {
  * dangling and gets pruned within weeks. Ignored files are not snapshotted,
  * which also fences off vendored bulk like `node_modules` and virtualenvs.
  */
-export async function captureWorktreeSnapshot(directory, { refName } = {}) {
+export async function captureWorktreeSnapshot(directory: string, { refName }: { refName: string }) {
   validateCheckpointRefName(refName);
   const { repoRoot } = await createRepositoryGitContext(directory);
   const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'openchamber-checkpoint-'));
@@ -4090,7 +4086,7 @@ export async function captureWorktreeSnapshot(directory, { refName } = {}) {
  * gitlinks (submodules) and directory paths are reported as skipped rather
  * than guessed at.
  */
-export async function restoreSnapshotFiles(directory, tree, files) {
+export async function restoreSnapshotFiles(directory: string, tree: string, files: readonly string[]) {
   validateSnapshotTree(tree);
   if (!Array.isArray(files) || files.length === 0) {
     throw new Error('Checkpoint restore requires at least one file');
@@ -4124,7 +4120,7 @@ export async function restoreSnapshotFiles(directory, tree, files) {
         try {
           await fsp.rm(absolutePath, { force: true });
           removed.push(filePath);
-        } catch (error) {
+        } catch {
           skipped.push({ path: filePath, reason: 'remove-failed' });
         }
       }
@@ -4139,16 +4135,23 @@ export async function restoreSnapshotFiles(directory, tree, files) {
       skipped.push({ path: filePath, reason: fields[1] === 'commit' ? 'submodule' : 'tree' });
       continue;
     }
-    const cat = await runGitCommand(
-      repoRoot,
-      ['cat-file', '--filters', `--path=${repoPath}`, fields[2]],
-      { encoding: 'buffer' },
-    );
+    const cat = await new Promise<{ success: boolean; stdout: Buffer }>((resolve) => {
+      // Binary content (checkpoint blob reads) must not travel as text.
+      execFileAsync(getGitBinary(), ['cat-file', '--filters', `--path=${repoPath}`, fields[2] ?? ''], {
+        cwd: repoRoot,
+        encoding: 'buffer',
+        windowsHide: true,
+        maxBuffer: 20 * 1024 * 1024,
+      }).then(
+        ({ stdout }) => resolve({ success: true, stdout }),
+        () => resolve({ success: false, stdout: Buffer.alloc(0) }),
+      );
+    });
     if (!cat.success) {
       skipped.push({ path: filePath, reason: 'read-failed' });
       continue;
     }
-    const content = Buffer.isBuffer(cat.stdout) ? cat.stdout : Buffer.from(String(cat.stdout), 'utf8');
+    const content = cat.stdout;
     try {
       if (fields[0] === '120000') {
         await fsp.rm(absolutePath, { force: true, recursive: true }).catch(() => {});
@@ -4162,7 +4165,7 @@ export async function restoreSnapshotFiles(directory, tree, files) {
         }
       }
       restored.push(filePath);
-    } catch (error) {
+    } catch {
       skipped.push({ path: filePath, reason: 'write-failed' });
     }
   }
@@ -4174,7 +4177,7 @@ export async function restoreSnapshotFiles(directory, tree, files) {
  * pruning a store that outlived its repository is not an error: `update-ref
  * -d` exits zero on a nonexistent ref, so absence is probed, not assumed.
  */
-export async function deleteCheckpointRef(directory, refName) {
+export async function deleteCheckpointRef(directory: string, refName: string) {
   validateCheckpointRefName(refName);
   const { repoRoot } = await createRepositoryGitContext(directory);
   const verify = await runGitCommand(repoRoot, ['rev-parse', '--verify', '-q', refName]);

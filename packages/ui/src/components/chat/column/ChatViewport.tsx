@@ -1,5 +1,6 @@
 import React from 'react';
 import { SessionRecapNote } from '@/components/chat/SessionRecapSpacer';
+import { AdvisorNote } from '@/components/chat/AdvisorNote';
 import type { Message, Part } from '@/lib/opencode/model';
 import { ChatColumnSessionContext, type ChatColumnSession } from '../chatColumnSession';
 import { Button } from '@/components/ui/button';
@@ -174,6 +175,9 @@ export const ChatViewport = React.memo(({
                     <div className="oc-recap-hint pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-300 ease-out">
                         <div className="chat-message-column">
                             <SessionRecapNote sessionId={currentSessionId} directory={directory} isMobile={isMobile} />
+                            {/* The advisor note rides in the same band: same
+                                column, same arrival rules as the recap. */}
+                            <AdvisorNote sessionId={currentSessionId} directory={directory} isMobile={isMobile} />
                         </div>
                     </div>
                 ) : null}

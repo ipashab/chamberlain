@@ -19,7 +19,7 @@ export function renderFileSourceEditor({ draft, editor, fileComments, fileDocume
   editor: Pick<ReturnType<typeof useFileEditor>, 'editorViewRef' | 'editorWrapperRef' | 'fileEditorKeymap' | 'isSearchOpen' | 'isSymbolsOpen' | 'setEditorViewReadyNonce' | 'setIsSearchOpen' | 'setIsSymbolsOpen'>;
   fileComments: Pick<ReturnType<typeof useFileComments>, 'lineNumbersConfig' | 'lineSelection'>;
   fileDocument: Pick<ReturnType<typeof useFileDocument>, 'filePositionKey'>;
-  fileEditorExtensions: Pick<ReturnType<typeof useFileEditorExtensions>, 'applyGitBaseline' | 'editorExtensions'>;
+  fileEditorExtensions: Pick<ReturnType<typeof useFileEditorExtensions>, 'applyGitBaseline' | 'editorExtensions' | 'pythonDebugGutters'>;
   fileKinds: Pick<ReturnType<typeof useFileKinds>, 'canEdit'>;
   filePreviewRendering: Pick<ReturnType<typeof useFilePreviewRendering>, 'blockWidgets'>;
   fullscreen: Pick<ReturnType<typeof useFileFullscreen>, 'isFullscreen'>;
@@ -33,7 +33,7 @@ export function renderFileSourceEditor({ draft, editor, fileComments, fileDocume
   const { editorViewRef, editorWrapperRef, fileEditorKeymap, isSearchOpen, isSymbolsOpen, setEditorViewReadyNonce, setIsSearchOpen, setIsSymbolsOpen } = editor;
   const { lineNumbersConfig, lineSelection } = fileComments;
   const { filePositionKey } = fileDocument;
-  const { applyGitBaseline, editorExtensions } = fileEditorExtensions;
+  const { applyGitBaseline, editorExtensions, pythonDebugGutters } = fileEditorExtensions;
   const { canEdit } = fileKinds;
   const { blockWidgets } = filePreviewRendering;
   const { isFullscreen } = fullscreen;
@@ -84,6 +84,7 @@ export function renderFileSourceEditor({ draft, editor, fileComments, fileDocume
                     }
                     : undefined}
                   lineNumbersConfig={lineNumbersConfig}
+                  leadingGutters={pythonDebugGutters}
                 />
               </div>
               {shouldMaskEditorForPendingNavigation && (

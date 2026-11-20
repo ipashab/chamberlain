@@ -1,0 +1,367 @@
+import { asNonEmptyString, isRecord, isString } from '../shared/guards.js';
+import { backlogDrainBounds } from './tools.js';
+import type { BacklogItem, BacklogStore } from './store.js';
+import type { createOpenCodeClient } from '../openchamber-sessions/opencode-client.js';
+import type { createOpenChamberSessionService } from '../openchamber-sessions/routes.js';
+import type { SessionState } from '../opencode/session-runtime.js';
+
+/**
+ * Session backlog: staged follow-ups for one dialog, and the drain that
+ * runs them.
+ *
+ * The backlog is the session's own queue of prompts the user staged without
+ * sending — "here is what comes next, but not yet". The store is the
+ * authority on what is staged (per-session JSON, oldest first), and this
+ * service is the single executor over it: the routes, the `openchamber_backlog`
+ * tool, and the drain all pass through the same writes.
+ *
+ * The drain is watched, not assumed. It first waits for the session's own
+ * current turn to end — a drain started from a tool call runs inside that
+ * very turn — then hands each staged item to the session as its own user
+ * message and waits for the turn it started, by records, never by clock
+ * times: a turn is finished when a new `idle` record stands beyond the one
+ * that was newest when the item was sent. An item whose turn never reported
+ * an end inside the window, or a prompt that did not reach the session,
+ * stops the drain there — the rest of the queue stays staged and the report
+ * says exactly that.
+ */
+
+class BacklogError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode = 400) {
+    super(message);
+    this.name = 'BacklogError';
+    this.statusCode = statusCode;
+  }
+}
+
+const delay = (ms: number) => new Promise((resolve) => {
+  setTimeout(resolve, ms);
+});
+
+type BacklogClient = ReturnType<typeof createOpenCodeClient>;
+type BacklogMessagePage = Awaited<ReturnType<BacklogClient['message']['list']>>;
+
+/** Вход действия: каждое поле проверяется отдельно, ничего не доверяется. */
+interface BacklogActionInput {
+  sessionID?: unknown;
+  callerSessionID?: unknown;
+  text?: unknown;
+  itemID?: unknown;
+  position?: unknown;
+}
+
+/** Для сообщения об ошибке: message упавшего, иначе сам упавший. */
+const describeFailure = (error: unknown): unknown =>
+  error !== null && typeof error === 'object' && 'message' in error ? error.message ?? error : error;
+
+export interface BacklogServiceDependencies {
+  store: BacklogStore;
+  sessionService: Pick<ReturnType<typeof createOpenChamberSessionService>, 'send'>;
+  resolveSessionDirectory: (sessionID: string) => Promise<string | null>;
+  getSessionState: (sessionID: string) => SessionState | null;
+  createOpenCodeClient: typeof createOpenCodeClient;
+  buildOpenCodeUrl: (route: string, prefixOverride?: string | null) => string;
+  getOpenCodeAuthHeaders: () => Record<string, string>;
+  broadcastUiEvent?: (event: {
+    type: 'openchamber:session-backlog';
+    properties: { sessionID: string; count: number | null; draining: boolean };
+  }) => void;
+  now?: () => number;
+}
+
+export const createBacklogService = (dependencies: BacklogServiceDependencies) => {
+  const {
+    store,
+    sessionService,
+    resolveSessionDirectory,
+    getSessionState,
+    createOpenCodeClient,
+    buildOpenCodeUrl,
+    getOpenCodeAuthHeaders,
+    broadcastUiEvent = () => {},
+    now = Date.now,
+  } = dependencies;
+
+  if (!store?.add || !store?.list) {
+    throw new Error('backlog service needs a store');
+  }
+  if (!sessionService?.send) {
+    throw new Error('backlog service needs a session service with send()');
+  }
+
+  const clientFor = (directory: string) => createOpenCodeClient({
+    baseUrl: buildOpenCodeUrl('/', '').replace(/\/$/, ''),
+    headers: getOpenCodeAuthHeaders(),
+    directory,
+  });
+
+  const announce = (sessionID: string, count: number | null, draining: boolean) => {
+    broadcastUiEvent({ type: 'openchamber:session-backlog', properties: { sessionID, count, draining } });
+  };
+
+  const readItems = async (sessionID: string) => {
+    try {
+      return await store.list(sessionID);
+    } catch {
+      throw new BacklogError('The backlog for this session could not be read', 500);
+    }
+  };
+
+  const waitWhileBusy = async (sessionID: string, windowMs: number) => {
+    const deadline = now() + windowMs;
+    for (;;) {
+      const state = getSessionState(sessionID);
+      const busy = state?.status === 'busy' || state?.status === 'retry';
+      if (!busy) return true;
+      if (now() >= deadline) return false;
+      await delay(backlogDrainBounds.pollIntervalMs);
+    }
+  };
+
+  /**
+   * The newest `idle` record id at this moment, or null when the session
+   * reported none. The baseline the drain's per-item wait compares against.
+   */
+  const latestIdleRecordID = async (client: BacklogClient, sessionID: string): Promise<string | null> => {
+    let page: BacklogMessagePage | undefined;
+    try {
+      page = await client.message.list({
+        sessionID,
+        limit: backlogDrainBounds.answerPage,
+        order: 'desc',
+      });
+    } catch {
+      return null;
+    }
+    const rows = Array.isArray(page?.data) ? page.data : [];
+    for (const row of rows) {
+      if (row?.type === 'idle' && asNonEmptyString(row?.id)) return row.id;
+    }
+    return null;
+  };
+
+  /**
+   * A turn is finished when a new `idle` record stands beyond the baseline —
+   * record ids, never clock times, so a remote OpenCode with a skewed clock
+   * still matches. The baseline is read right before the send, never taken
+   * from the send's own answer, so even a session with no `idle` records yet
+   * is judged honestly.
+   */
+  const waitTurnEnd = async (
+    client: BacklogClient,
+    sessionID: string,
+    baselineIdleRecordID: string | null,
+    windowMs: number,
+  ) => {
+    const deadline = now() + windowMs;
+    for (;;) {
+      const page = await client.message.list({
+        sessionID,
+        limit: backlogDrainBounds.answerPage,
+        order: 'desc',
+      }).catch(() => null);
+      const rows = Array.isArray(page?.data) ? page.data : [];
+      // Newest first: the baseline `idle` row is the boundary — rows before
+      // it are the turn's own records, rows after it are the copied history,
+      // and an older `idle` from before the baseline must never count as the
+      // turn's end. A null baseline means the window held no `idle` rows at
+      // all, so every `idle` row it now holds is the turn's own.
+      let finished: boolean | null = null;
+      for (const row of rows) {
+        const id = asNonEmptyString(row?.id);
+        if (!id) continue;
+        if (baselineIdleRecordID != null && id === baselineIdleRecordID) {
+          finished = false;
+          break;
+        }
+        if (row?.type === 'idle') {
+          finished = true;
+          break;
+        }
+      }
+      if (finished === true) return true;
+      if (now() >= deadline) return false;
+      await delay(backlogDrainBounds.pollIntervalMs);
+    }
+  };
+
+  // sessionID -> a drain is running. The map is the session's honest answer
+  // about its own drain, and it dies with the process: the queue itself is
+  // on disk, so a restarted server drains again.
+  const draining = new Map<string, boolean>();
+
+  const drain = async (sessionID: string, directory: string) => {
+    const endedQuietly = () => {
+      draining.delete(sessionID);
+      announce(sessionID, null, false);
+    };
+    const client = clientFor(directory);
+    // The caller's own turn first: a drain started from a tool call runs
+    // inside that turn, and the first item must not queue behind it.
+    const idle = await waitWhileBusy(sessionID, backlogDrainBounds.firstIdleWindowMs);
+    if (!idle) {
+      endedQuietly();
+      return;
+    }
+    for (;;) {
+      let items: BacklogItem[];
+      try {
+        items = await store.list(sessionID);
+      } catch {
+        endedQuietly();
+        return;
+      }
+      if (items.length === 0) break;
+      // SAFETY: проверка length выше гарантирует первый элемент очереди.
+      const item = items[0] as BacklogItem;
+      const baseline = await latestIdleRecordID(client, sessionID);
+      let sent;
+      try {
+        sent = await sessionService.send(sessionID, { prompt: item.text, directory });
+      } catch (error) {
+        console.warn('[backlog] drain stopped: the item could not be sent:', describeFailure(error));
+        endedQuietly();
+        return;
+      }
+      if (asNonEmptyString(sent?.promptError) || sent?.promptDispatched === false) {
+        console.warn('[backlog] drain stopped: the session would not take the item:', sent?.promptError ?? 'prompt not dispatched');
+        endedQuietly();
+        return;
+      }
+      const done = await waitTurnEnd(client, sessionID, baseline, backlogDrainBounds.itemRunWindowMs);
+      if (!done) {
+        console.warn('[backlog] drain stopped: the item\'s turn did not end inside the window');
+        endedQuietly();
+        return;
+      }
+      try {
+        await store.remove(sessionID, item.id);
+      } catch (error) {
+        console.warn('[backlog] drain cannot remove the finished item:', describeFailure(error));
+        endedQuietly();
+        return;
+      }
+      announce(sessionID, items.length - 1, true);
+    }
+    endedQuietly();
+  };
+
+  const requireSession = (sessionID: unknown) => {
+    const id = asNonEmptyString(sessionID);
+    if (!id) throw new BacklogError('sessionID is required', 400);
+    return id;
+  };
+
+  const listAction = async (input: BacklogActionInput) => {
+    const sessionID = requireSession(input?.sessionID ?? input?.callerSessionID);
+    return { sessionID, items: await readItems(sessionID), draining: draining.get(sessionID) === true };
+  };
+
+  const addAction = async (input: BacklogActionInput) => {
+    const sessionID = requireSession(input?.sessionID ?? input?.callerSessionID);
+    try {
+      const item = await store.add(sessionID, { text: input?.text, createdAt: now() });
+      announce(sessionID, null, draining.get(sessionID) === true);
+      return { sessionID, item };
+    } catch (error) {
+      throw new BacklogError(error instanceof Error ? error.message : String(error), 400);
+    }
+  };
+
+  const removeAction = async (input: BacklogActionInput) => {
+    const sessionID = requireSession(input?.sessionID ?? input?.callerSessionID);
+    const itemID = asNonEmptyString(input?.itemID);
+    if (!itemID) throw new BacklogError('itemID is required, as backlog.list shows it', 400);
+    const removed = await store.remove(sessionID, itemID);
+    announce(sessionID, null, draining.get(sessionID) === true);
+    return { sessionID, itemID, removed };
+  };
+
+  const moveAction = async (input: BacklogActionInput) => {
+    const sessionID = requireSession(input?.sessionID ?? input?.callerSessionID);
+    const itemID = asNonEmptyString(input?.itemID);
+    if (!itemID) throw new BacklogError('itemID is required, as backlog.list shows it', 400);
+    const position = input?.position;
+    if (typeof position !== 'number' || !Number.isSafeInteger(position) || position < 0) {
+      throw new BacklogError('position is required, the target index in the queue, 0 first', 400);
+    }
+    let items;
+    try {
+      items = await store.move(sessionID, itemID, position);
+    } catch (error) {
+      throw new BacklogError(error instanceof Error ? error.message : String(error), 400);
+    }
+    if (!items) {
+      throw new BacklogError(`No staged item ${itemID} is queued in this session`, 404);
+    }
+    announce(sessionID, null, draining.get(sessionID) === true);
+    return { sessionID, itemID, position, items };
+  };
+
+  const clearAction = async (input: BacklogActionInput) => {
+    const sessionID = requireSession(input?.sessionID ?? input?.callerSessionID);
+    const removed = await store.clear(sessionID);
+    announce(sessionID, 0, draining.get(sessionID) === true);
+    return { sessionID, removed };
+  };
+
+  const runAction = async (input: BacklogActionInput) => {
+    const sessionID = requireSession(input?.sessionID ?? input?.callerSessionID);
+    const items = await readItems(sessionID);
+    if (draining.get(sessionID) === true) {
+      throw new BacklogError('The backlog of this session is already draining', 409);
+    }
+    if (items.length === 0) {
+      throw new BacklogError('The backlog of this session is empty', 409);
+    }
+    let directory = null;
+    try {
+      directory = await resolveSessionDirectory(sessionID);
+    } catch (error) {
+      throw new BacklogError(`This session's directory could not be resolved: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+    if (!isString(directory) || !directory.trim()) {
+      throw new BacklogError('This session has no directory to drain the backlog into', 500);
+    }
+    draining.set(sessionID, true);
+    announce(sessionID, items.length, true);
+    void drain(sessionID, directory).catch((error) => {
+      console.warn('[backlog] drain failed:', describeFailure(error));
+    });
+    return {
+      sessionID,
+      started: true,
+      staged: items.length,
+      note: 'Each staged item runs as its own turn, in order; watch the backlog and this dialog',
+    };
+  };
+
+  const asActionInput = (value: unknown): BacklogActionInput => (isRecord(value) ? value : {});
+
+  return {
+    executeAction: async (action: string, input: unknown = {}) => {
+      const source = asActionInput(input);
+      switch (action) {
+        case 'backlog.list':
+          return listAction(source);
+        case 'backlog.add':
+          return addAction(source);
+        case 'backlog.remove':
+          return removeAction(source);
+        case 'backlog.move':
+          return moveAction(source);
+        case 'backlog.clear':
+          return clearAction(source);
+        case 'backlog.run':
+          return runAction(source);
+        default:
+          throw new BacklogError(`Unknown backlog action: ${action || 'missing'}`, 400);
+      }
+    },
+  };
+};
+
+/** Публичный тип сервиса — для зависимостей маршрутов и рантайма. */
+export type BacklogService = ReturnType<typeof createBacklogService>;

@@ -15,6 +15,13 @@ export type SelectedLineRange = {
 export interface FilesViewProps {
   visible?: boolean;
   mode?: 'full' | 'editor-only';
+  /**
+   * Закреплённый файл: вкладка файла в области контекстной панели закрепляет
+   * свою панель за собственным путём, чтобы две области показывали два файла.
+   * Без закреплённого пути открытый файл задаёт общее выделение корня.
+   * Только для editor-only.
+   */
+  pinnedPath?: string | null;
   onCloseFile?: (path: string) => void;
 }
 

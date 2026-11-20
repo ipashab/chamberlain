@@ -10,8 +10,30 @@ import {
   zoneOfMode,
   CLOSED_ZONE_VIEW,
   CONTEXT_ZONES,
+  zonePlacementSchema,
 } from '@/lib/workspace/zones';
 import type { ContextZone, ContextZonePlacement, ContextZoneView } from '@/lib/workspace/zones';
+import {
+  CHAT_NODE,
+  openSurfaceInTree,
+  renameTabsInTree,
+  sanitizeTree,
+  storedTreeSchema,
+  treeFromZonedPanel,
+  findLeaf,
+  moveTabToLeaf,
+  type WorkspaceTree,
+} from '@/lib/workspace/layoutTree';
+import {
+  BOARD_DETAIL_LEAF_ID,
+  BOARD_DETAIL_MODES,
+  DEBUG_EDITOR_LEAF_ID,
+  DEBUG_EDITOR_MODES,
+  DEFAULT_WORKSPACE_MODE,
+  isWorkspaceMode,
+  type WorkspaceMode,
+  type WorkspaceModeLayouts,
+} from '@/lib/workspace/modePresets';
 import type { ContextPanelTab, ContextPanelTabDescriptor, ContextPanelDirectoryState, LegacyZoneSizes } from './types';
 import {
   CONTEXT_PANEL_MAX_TABS,
@@ -42,10 +64,14 @@ export const touchContextPanelState = (
 ): ContextPanelDirectoryState => {
   if (prev) {
     const tabs = sanitizeContextPanelTabs(prev.tabs);
+    const presentTabIds = new Set(tabs.map((tab) => tab.id));
     return settleZones({
       ...prev,
       tabs,
-      zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(prev.zones), new Set(tabs.map((tab) => tab.id))),
+      workspaceMode: isWorkspaceMode(prev.workspaceMode) ? prev.workspaceMode : DEFAULT_WORKSPACE_MODE,
+      modeLayouts: sanitizeModeLayouts(prev.modeLayouts, presentTabIds),
+      layout: sanitizeTree(layoutOrChat(prev.layout), presentTabIds),
+      zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(prev.zones), presentTabIds),
       touchedAt: Date.now(),
     }, placement);
   }
@@ -56,8 +82,36 @@ export const touchContextPanelState = (
     tabs: [],
     activeTabId: null,
     zones: { left: CLOSED_ZONE_VIEW, bottom: CLOSED_ZONE_VIEW },
+    layout: CHAT_NODE,
+    modeLayouts: {},
+    workspaceMode: DEFAULT_WORKSPACE_MODE,
     touchedAt: Date.now(),
   };
+};
+
+// Состояние каталога, записанное до появления дерева раскладки, дерева не несёт:
+// оно читается как один чат и достраивается обычным открытием.
+const layoutOrChat = (layout: WorkspaceTree | undefined): WorkspaceTree => layout ?? CHAT_NODE;
+
+const sanitizeModeLayouts = (
+  modeLayouts: WorkspaceModeLayouts | null | undefined,
+  presentTabIds: ReadonlySet<string>,
+): WorkspaceModeLayouts => {
+  if (!modeLayouts) {
+    return {};
+  }
+  const next: WorkspaceModeLayouts = {};
+  for (const [mode, tree] of Object.entries(modeLayouts)) {
+    if (tree === undefined || !isWorkspaceMode(mode)) continue;
+    // Искажённые сохранённые деревья снимают слот: режим отстроит свой пресет
+    // заново при следующем входе, а живые вкладки остаются в ленте.
+    try {
+      next[mode] = sanitizeTree(storedTreeSchema.parse(tree), presentTabIds);
+    } catch {
+      // Отсутствующий слот лучше сломанного дерева; пресет вернётся при следующем входе.
+    }
+  }
+  return next;
 };
 
 export const upsertContextPanelTab = (
@@ -103,9 +157,45 @@ export const upsertContextPanelTab = (
     : resolveZoneActiveTabId(current.tabs, placement, zone, view.activeTabId) ?? nextTab.id;
   const clampedTabs = clampContextPanelTabs(tabs, CONTEXT_PANEL_MAX_TABS, activeTabId);
 
+  // Дерево зеркалит ленту: вкладки, которые открытие заменило или которые
+  // отставил клэмп, покидают свои листья, а открытая и показанная вкладка
+  // встаёт по единому правилу, которое кодирует openSurfaceInTree — туда,
+  // где её поверхность уже показана, иначе первый заполненный лист, иначе
+  // первый пустой, иначе новое разбиение. Фоновое открытие ничего не ставит:
+  // вкладка живёт в ленте, её панель жива в лимбе раскладки, пока открытие
+  // её не покажет.
+  const sanitizedLayout = sanitizeTree(layoutOrChat(current.layout), new Set(clampedTabs.map((tab) => tab.id)));
+  let layout = reveal
+    ? openSurfaceInTree(sanitizedLayout, clampedTabs, nextTab.id, nextTab.mode).tree
+    : sanitizedLayout;
+
+  // Режим доски держит именованный лист подробностей рядом с доской — для
+  // карточек, диффов и прохождений Трекера: они открываются в него, а не
+  // наслаиваются на собственную область доски и не дробят чат. Пользователь,
+  // закрывший лист подробностей, возвращается к общему правилу размещения выше.
+  const boardDetailLeaf = current.workspaceMode === 'board' && BOARD_DETAIL_MODES.has(nextTab.mode)
+    ? findLeaf(layout, BOARD_DETAIL_LEAF_ID)
+    : null;
+  if (boardDetailLeaf && !boardDetailLeaf.tabs.includes(nextTab.id)) {
+    layout = moveTabToLeaf(layout, nextTab.id, BOARD_DETAIL_LEAF_ID);
+  }
+
+  // Режим отладки держит свой лист редактора как область файлов: файл или
+  // дифф, открытые при включённом режиме, встают туда, поэтому общее правило
+  // не может уронить их в лист отладчика и опустошить редактор над ним —
+  // раскладка остаётся «файлы сверху, отладчик снизу» между открытиями.
+  // Пользователь, закрывший лист редактора, возвращается к общему правилу выше.
+  const debugEditorLeaf = current.workspaceMode === 'debug' && DEBUG_EDITOR_MODES.has(nextTab.mode)
+    ? findLeaf(layout, DEBUG_EDITOR_LEAF_ID)
+    : null;
+  if (debugEditorLeaf && !debugEditorLeaf.tabs.includes(nextTab.id)) {
+    layout = moveTabToLeaf(layout, nextTab.id, DEBUG_EDITOR_LEAF_ID);
+  }
+
   return settleZones(withZoneView({
     ...current,
     tabs: clampedTabs,
+    layout,
     touchedAt: Date.now(),
   }, zone, {
     isOpen: reveal ? true : view.isOpen,
@@ -126,6 +216,7 @@ export const closeContextPanelTabs = (
   }
 
   const views: Partial<Record<ContextZone, Partial<ContextZoneView>>> = {};
+  let placeholderTabId: string | null = null;
   for (const zone of CONTEXT_ZONES) {
     const view = getZoneView(current, zone);
     const activeClosed = view.activeTabId ? closed.has(view.activeTabId) : false;
@@ -139,6 +230,7 @@ export const closeContextPanelTabs = (
 
     if (activeMode === 'file' && !nextSameModeTab && closedTabs.some((tab) => tab.mode === 'file' && tab.targetPath)) {
       const placeholder = createContextPanelTab({ mode: 'file' });
+      placeholderTabId = placeholder.id;
       nextTabs = [...nextTabs, placeholder];
       views[zone] = { activeTabId: placeholder.id };
       continue;
@@ -149,7 +241,12 @@ export const closeContextPanelTabs = (
       : { activeTabId: null, isOpen: false, expanded: false };
   }
 
-  let next: ContextPanelDirectoryState = { ...current, tabs: nextTabs, touchedAt: Date.now() };
+  let layout = sanitizeTree(layoutOrChat(current.layout), new Set(nextTabs.map((tab) => tab.id)));
+  if (placeholderTabId) {
+    layout = openSurfaceInTree(layout, nextTabs, placeholderTabId, 'file').tree;
+  }
+
+  let next: ContextPanelDirectoryState = { ...current, tabs: nextTabs, layout, touchedAt: Date.now() };
   for (const zone of CONTEXT_ZONES) {
     const patch = views[zone];
     if (patch) next = withZoneView(next, zone, patch);
@@ -221,6 +318,7 @@ export const moveContextPanelFileTabs = (
   let next: ContextPanelDirectoryState = {
     ...current,
     tabs: tabs.filter((tab, index) => tab !== current.tabs[index] || !movedIds.has(tab.id)),
+    layout: renameTabsInTree(layoutOrChat(current.layout), renamed),
     touchedAt: Date.now(),
   };
   for (const zone of CONTEXT_ZONES) {
@@ -243,12 +341,14 @@ export const withoutForeignComparisons = (
 
 export const sanitizeContextPanelByDirectory = (
   value: unknown,
+  placement?: unknown,
   legacySizes?: LegacyZoneSizes[],
 ): Record<string, ContextPanelDirectoryState> => {
   if (!value || typeof value !== 'object') {
     return {};
   }
 
+  const parsedPlacement = zonePlacementSchema.parse(placement ?? {});
   const source = value as Record<string, unknown>;
   const next: Record<string, ContextPanelDirectoryState> = {};
 
@@ -270,6 +370,9 @@ export const sanitizeContextPanelByDirectory = (
       targetDirectory?: string | null;
       dedupeKey?: unknown;
       label?: unknown;
+      layout?: unknown;
+      workspaceMode?: WorkspaceMode | null;
+      modeLayouts?: Partial<Record<WorkspaceMode, WorkspaceTree>> | null;
     };
 
     let tabs = sanitizeContextPanelTabs(candidate.tabs);
@@ -291,6 +394,20 @@ export const sanitizeContextPanelByDirectory = (
 
     const resolvedTabId = resolveActiveContextPanelTabID(clampedTabs, resolvedActiveTabId);
     const zones = keepZoneViewsOnTabs(zoneViewsSchema.parse(candidate.zones), new Set(clampedTabs.map((tab) => tab.id)));
+    // Дерево раскладки читается из размещения поверхностей, когда сохранённое
+    // состояние его опережает: открытые зоны становятся листьями там, где они
+    // стояли, вкладки закрытых зон остаются в ленте и входят в лист в день
+    // своего открытия. Сохранённое дерево вместо этого чинится по уцелевшей
+    // ленте — вкладки, не пережившие очистки, покидают свои листья.
+    const presentTabIds = new Set(clampedTabs.map((tab) => tab.id));
+    const layout = candidate.layout !== undefined
+      ? sanitizeTree(storedTreeSchema.parse(candidate.layout), presentTabIds)
+      : treeFromZonedPanel({
+          isOpen: candidate.isOpen === true,
+          activeTabId: resolvedTabId,
+          tabs: clampedTabs,
+          zones,
+        }, parsedPlacement);
     const touchedAt = typeof candidate.touchedAt === 'number' && Number.isFinite(candidate.touchedAt)
       ? candidate.touchedAt
       : Date.now();
@@ -315,6 +432,11 @@ export const sanitizeContextPanelByDirectory = (
       tabs: clampedTabs,
       activeTabId: resolvedTabId,
       zones,
+      layout,
+      workspaceMode: candidate.workspaceMode ?? DEFAULT_WORKSPACE_MODE,
+      // Сломанные сохранённые дерева снимаются внутри; эти режимы отстроят
+      // свои пресеты при следующем входе.
+      modeLayouts: sanitizeModeLayouts(candidate.modeLayouts, presentTabIds),
       touchedAt,
     };
   }

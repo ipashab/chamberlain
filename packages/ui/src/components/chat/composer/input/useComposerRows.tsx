@@ -33,11 +33,12 @@ import { useWorktreeBootstrapPending } from '@/hooks/useWorktreeBootstrapPending
 import { useShownAfter } from '@/hooks/useShownAfter';
 import { SessionGoalRow } from '@/components/chat/SessionGoalRow';
 import { MemoMobileModelButton, MemoMobileEffortButton, MemoMobileAgentButton } from './memoComposerControls';
+import { useComposerTextValue } from '../../composer/state/composerText';
 
 const CREATING_SESSION_LINE_DELAY_MS = 300;
 
 type Dependencies = {
-    draftText: Pick<ReturnType<typeof useComposerDraftText>, 'setMessage'>;
+    draftText: Pick<ReturnType<typeof useComposerDraftText>, 'setMessage' | 'composerText'>;
     editorState: Pick<ReturnType<typeof useComposerEditorState>, 'composerRef'>;
     i18n: Pick<ReturnType<typeof useI18n>, 't'>;
     preferences: Pick<ReturnType<typeof useComposerPreferences>, 'isMobile'>;
@@ -49,7 +50,7 @@ type Dependencies = {
     queueState: Pick<ReturnType<typeof useComposerQueueState>, 'queuedMessages' | 'parentMessageQueueTarget'>;
     draftTarget: Pick<ReturnType<typeof useComposerDraftTarget>, 'showDraftTargetSelectors' | 'messageWaitsForSpace'>;
     selection: Pick<ReturnType<typeof useComposerSelection>, 'currentAgentName' | 'effectiveBtwSelection'>;
-    queueActions: Pick<ReturnType<typeof useComposerQueueActions>, 'handleQueuedMessageEdit' | 'handleQueuedMessageSend'>;
+    queueActions: Pick<ReturnType<typeof useComposerQueueActions>, 'handleQueuedMessageEdit' | 'handleQueuedMessageSend' | 'handleStageToBacklog'>;
     sessionLifecycle: Pick<ReturnType<typeof useComposerSessionLifecycle>, 'sessionPhase' | 'handleOpenMobilePanel'>;
     editorActions: Pick<ReturnType<typeof useComposerEditorActions>, 'handleCycleThinking' | 'handleOpenThinkingPanel' | 'handleCycleAgent'>;
     referencePicker: Pick<ReturnType<typeof useComposerReferencePicker>, 'handleOpenAgentPanel'>;
@@ -60,7 +61,10 @@ export function useComposerRows({
     sendAvailability, sessionScope, queueState, draftTarget, selection, queueActions, sessionLifecycle,
     editorActions, referencePicker,
 }: Dependencies) {
-    const { setMessage } = draftText;
+    const { setMessage, composerText } = draftText;
+    // The Jira hint watches the draft's words, so it needs the text itself;
+    // the composer re-renders on every keystroke either way.
+    const message = useComposerTextValue(composerText, (text) => text);
     const { composerRef } = editorState;
     const { t } = i18n;
     const { isMobile } = preferences;
@@ -76,7 +80,7 @@ export function useComposerRows({
     const { queuedMessages, parentMessageQueueTarget } = queueState;
     const { showDraftTargetSelectors, messageWaitsForSpace } = draftTarget;
     const { currentAgentName, effectiveBtwSelection } = selection;
-    const { handleQueuedMessageEdit, handleQueuedMessageSend } = queueActions;
+    const { handleQueuedMessageEdit, handleQueuedMessageSend, handleStageToBacklog } = queueActions;
     const { sessionPhase, handleOpenMobilePanel } = sessionLifecycle;
     const { handleCycleThinking, handleOpenThinkingPanel, handleCycleAgent } = editorActions;
     const { handleOpenAgentPanel } = referencePicker;
@@ -230,6 +234,6 @@ export function useComposerRows({
     ) : null;
 
     return {
-        composerTopRows, contextRows, mobileModelAgentRow,
+        composerTopRows, contextRows, mobileModelAgentRow, handleStageToBacklog, message,
     };
 }

@@ -20,6 +20,7 @@ export const createAgentActions: UIStoreSlice<
   | 'setAgentMemoryDreamingModel'
   | 'setAgentMemoryDreamingVariant'
   | 'setAgentRenderToolEnabled'
+  | 'setAgentDebuggerToolEnabled'
   | 'setAgentSecretToolEnabled'
   | 'setAgentWorkflowToolEnabled'
   | 'setAgentMemoryFeatureAvailable'
@@ -105,6 +106,9 @@ export const createAgentActions: UIStoreSlice<
 
   setAgentRenderToolEnabled: (value) => {
     set({ agentRenderToolEnabled: value });
+  },
+  setAgentDebuggerToolEnabled: (value) => {
+    set({ agentDebuggerToolEnabled: value });
   },
 
   setAgentSecretToolEnabled: (value) => {

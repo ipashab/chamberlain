@@ -5,6 +5,9 @@ export interface OpenCodeNetworkDependencies {
   state: Pick<OpenCodeLifecycleState, 'openCodePort' | 'openCodeBaseUrl' | 'openCodeApiPrefix' | 'openCodeApiPrefixDetected' | 'openCodeApiDetectionTimer'>;
   getOpenCodeAuthHeaders: () => Record<string, string>;
   configuredOpenCodeHostname?: string | undefined;
+  // Multi-engine routing seam: when the ACTIVE engine descriptor declares its
+  // own address, engine requests reroute there; null keeps legacy routing.
+  resolveActiveEngineUrl?: (() => string | null | undefined) | null;
 }
 
 export const createOpenCodeNetworkRuntime = (deps: OpenCodeNetworkDependencies) => {

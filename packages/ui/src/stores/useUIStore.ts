@@ -13,6 +13,8 @@ import { createNotificationActions } from './ui/notificationActions';
 import { createAgentActions } from './ui/agentActions';
 
 export type { PendingDiffScope } from './ui/types';
+export type { ContextPanelTab } from './ui/types';
+export type { WorkspaceModeOfferReason } from './ui/types';
 export { clampContextEditorTreeWidth } from './ui/preferences';
 export type { SessionRetentionAction } from './ui/types';
 export type { TimeFormatPreference } from './ui/types';

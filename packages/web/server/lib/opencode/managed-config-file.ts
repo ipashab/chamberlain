@@ -15,6 +15,7 @@ export interface ManagedConfigSettings extends LimitFailoverConfigurationInput {
   agentKnowledgeToolEnabled?: unknown;
   agentNotifyToolEnabled?: unknown;
   agentRenderToolEnabled?: unknown;
+  agentDebuggerToolEnabled?: unknown;
   agentImageToolEnabled?: unknown;
   agentSecretToolEnabled?: unknown;
   agentUsageToolEnabled?: unknown;
