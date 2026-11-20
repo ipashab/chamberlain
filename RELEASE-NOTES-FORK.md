@@ -58,7 +58,10 @@ applied the carried `@tanstack/virtual-core` patch at 3.19.10's line
 numbers, which left a guard above its own declarations and crashed every
 virtualized list at runtime, so the patch's offsets moved to match
 3.19.11; and one conflict marker survived in the OpenChamber tools
-settings and rendered as a stray line, gone. The anti-slop gate keeps the
+settings and rendered as a stray line, gone. The updater now reads the
+fork's marker as sitting above its base, so the base's own release no
+longer shows as an update to `2.7.3-fork1`, and the Dock menu's new
+2.7.3 keys speak Russian. The anti-slop gate keeps the
 fork's Russian comments in the server sources under an override in its
 config, the ratchet counts nothing new, and the file-size ratchet names
 eight files that were already over the limit in the base. The suite

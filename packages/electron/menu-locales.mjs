@@ -871,6 +871,9 @@ export const MENU_LOCALE_DICTIONARIES = {
     'quit': 'Вийти',
   },
   ru: {
+    'dock.markAllRead': 'Отметить всё прочитанным',
+    'dock.unread': 'Непрочитанные',
+    'dock.untitledSession': 'Сессия без названия',
     'app.name': 'OpenChamber',
     'splash.connectingTo': 'Подключение к {host}…',
     'about': 'О программе OpenChamber',

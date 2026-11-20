@@ -127,6 +127,37 @@ test('only the release before the one a Canary build leads to is a downgrade', (
   assert.equal(isDowngrade('2.5.4', '2.5.3'), false);
 });
 
+test('a fork release sits above its bare upstream base', () => {
+  assert.equal(isDowngrade('2.7.3', '2.7.3-fork1'), true);
+  assert.equal(isDowngrade('2.7.2', '2.7.3-fork1'), true);
+  assert.equal(isDowngrade('2.7.4', '2.7.3-fork1'), false);
+  assert.equal(isDowngrade('2.7.3-fork2', '2.7.3-fork1'), false);
+  assert.equal(isDowngrade('2.7.3-fork1', '2.7.3'), false);
+  assert.equal(isDowngrade('2.7.4-fork1', '2.7.3-fork1'), false);
+});
+
+test('a fork build is not offered the upstream release it already carries', async () => {
+  const result = await checkForDesktopUpdate({
+    autoUpdater: { checkForUpdates: async () => ({ isUpdateAvailable: true, updateInfo: { version: '2.7.3' } }) },
+    currentVersion: '2.7.3-fork1',
+    pendingUpdate: null,
+  });
+  assert.equal(result.available, false);
+  assert.equal(result.pendingUpdate, null);
+  assert.equal(result.nextVersion, '2.7.3-fork1');
+});
+
+test('a fork build takes the next upstream base as a plain update', async () => {
+  const result = await checkForDesktopUpdate({
+    autoUpdater: { checkForUpdates: async () => ({ isUpdateAvailable: true, updateInfo: { version: '2.7.4' } }) },
+    currentVersion: '2.7.3-fork1',
+    pendingUpdate: null,
+  });
+  assert.equal(result.available, true);
+  assert.equal(result.nextVersion, '2.7.4');
+  assert.equal(result.pendingUpdate.downgrade, false);
+});
+
 test('an ordinary update is not a downgrade', async () => {
   const result = await checkForDesktopUpdate({
     autoUpdater: { checkForUpdates: async () => ({ isUpdateAvailable: true, updateInfo: { version: '2.5.4' } }) },

@@ -20,13 +20,21 @@ export const describeCheckFailure = (error) => {
 const releaseNumbers = (version) => String(version ?? '').replace(/^v/, '').split('-')[0].split('.')
   .map((part) => Number.parseInt(part, 10) || 0);
 
+const forkMarker = (version) => {
+  const match = /^v?\d+(?:\.\d+){0,2}-fork(\d+)$/.exec(String(version ?? ''));
+  return match ? Number.parseInt(match[1], 10) : null;
+};
+
 export const isDowngrade = (nextVersion, currentVersion) => {
   const next = releaseNumbers(nextVersion);
   const current = releaseNumbers(currentVersion);
   for (let index = 0; index < 3; index += 1) {
     if ((next[index] || 0) !== (current[index] || 0)) return (next[index] || 0) < (current[index] || 0);
   }
-  return false;
+  // A fork release carries its whole upstream base plus the fork's work, so
+  // the marker ranks it above the bare base: 2.7.3-fork1 sits past 2.7.3,
+  // and only a higher base (or a higher fork marker) counts as newer.
+  return (forkMarker(nextVersion) ?? 0) < (forkMarker(currentVersion) ?? 0);
 };
 
 export const checkForDesktopUpdate = async ({ autoUpdater, currentVersion, pendingUpdate, missingFeedIsError = false }) => {
@@ -52,13 +60,17 @@ export const checkForDesktopUpdate = async ({ autoUpdater, currentVersion, pendi
     && updateInfo.version.length > 0;
   const nextVersion = available ? updateInfo.version : currentVersion;
   const downgrade = available && isDowngrade(nextVersion, currentVersion);
+  // A fork build never moves onto the bare upstream base it already
+  // carries, so that offer is not an update at all. A canary keeps the
+  // flagged downgrade it may choose to install.
+  const offers = available && !(downgrade && forkMarker(currentVersion) !== null);
   const sameVersion = pendingUpdate?.version === nextVersion;
   return {
-    available,
+    available: offers,
     updateInfo,
     updateResult,
-    nextVersion,
-    pendingUpdate: available
+    nextVersion: offers ? nextVersion : currentVersion,
+    pendingUpdate: offers
       ? {
           ...(sameVersion ? pendingUpdate : {}),
           version: nextVersion,
