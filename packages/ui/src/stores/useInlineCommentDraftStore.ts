@@ -36,6 +36,7 @@ export interface InlineCommentDraft {
   /** The debug variable this value came from; set only for `source: 'debug-variable'`. */
   debugVariable?: { name: string; type: string | null };
   origin?: DiffCommentOrigin;
+  composing?: boolean;
   screenshot?: string;
   createdAt: number;
 }
@@ -154,6 +155,7 @@ const persistedDraftSchema = z.object({
   provider: sourceControlProviderIdSchema.optional(),
   debugVariable: z.object({ name: z.string(), type: z.string().nullable() }).optional(),
   origin: diffCommentOriginSchema.optional(),
+  composing: z.boolean().optional(),
   createdAt: z.number(),
 });
 
