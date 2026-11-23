@@ -2,7 +2,7 @@
 
 **Base:** upstream `openchamber/openchamber` @ `cf18602` (v2.7.3), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.7.3-fork1` on `v2.7.3`, `2.7.1-fork1` on `v2.7.1`, `2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
+`2.8.0-fork1` on `v2.8.0`, `2.7.3-fork1` on `v2.7.3`, `2.7.1-fork1` on `v2.7.1`, `2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
 `2.5.2-fork1` on `v2.5.2`, and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
@@ -10,6 +10,51 @@ changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
 `changelog/` — `2.7.3.md`, `2.7.2.md`, `2.7.1.md`, `2.7.0.md`, `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.8.0-fork1` — upstream `v2.8.0` whole: leads, one OpenCode shared, documents agents can edit
+
+**The base moves to upstream `v2.8.0`.** **Leads** turn any session into
+a middle manager: start one with New lead in a project's menu, hand it an
+existing session, and it runs its own sub-sessions against a brief,
+asking you at most a digest card you answer in one reply. **OpenCode
+Server** shares one background `opencode serve --service` with the CLI
+and TUI, and the update notification moves the service to a new version
+after `opencode update`. **Office documents attach as the original
+file** for the agent to edit, with a setting to always save, always
+convert or ask. Activity grows a **Show notes** mode that keeps what the
+agent wrote between steps, a shell block in a finished reply runs straight
+in the project's terminal, files take **comments on a selected
+fragment**, extensions can be **limited to chosen folders**, and a secret
+an agent asks for can be **kept for the project** so you stop pasting the
+same token everywhere; the board lists where an item was mentioned and
+each reviewer's state; Zen's free models answer again after the usage
+error; and folder trust, relay and settings routes tighten up.
+
+**The merger kept the fork.** The 34 conflicted files resolved with the
+fork's layout and tools intact: the team board, missions, contacts,
+backlog and debug surfaces stayed the fork's, `pythonInterpreter` stayed
+a fork setting beside upstream's `useGlobalOpenCodeService`, and the
+fork's always-on tools — team, tracker, contacts, backlog, debugger —
+speak upstream's new `buildAgentToolEntries` schema, the debugger's
+long-running entry ported into it rather than lost. Upstream's zone
+return stack — closing a panel you opened from another one goes back to
+the previous panel — sits on zone semantics the fork dropped in 2.5.2:
+its writes stayed but its only reader was upstream's close action, so
+the feature came out whole, and the fork's region close keeps the fork's
+wording. The same held for upstream's `TerminalTabsBar` (the fork keeps
+`SortableTabsStrip`), `zoneFitWatch` and `ZonePane`; the Files view kept
+its region tabs and the pinned file behind them, so the `mode` the
+upstream hooks dropped went back in. Upstream adopted the fork's
+`targetFolderId` draft field, so the fork's reading of it stayed beside
+upstream's own folder routing. The merger returned nine i18n keys the
+automatic merge dropped from sixteen locales, gave Russian its tray
+menu again, and translated the release's new tested strings — the rest
+read in English under the locale's own documented fallback until their
+translations come. The local changes ride as `settle` commits above the
+merge, and the suite answers green except the timing and layout tests
+already red in the base.
 
 ---
 

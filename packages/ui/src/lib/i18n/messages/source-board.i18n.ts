@@ -1017,6 +1017,8 @@ export const sourceBoardI18n = {
     'sourceBoard.list.toggleAria': 'Список елементів, показано {item}',
   },
   ru: {
+    'sourceBoard.references.mentionedIn': 'упомянул об этом в',
+    'sourceBoard.references.open': 'Открыть {reference}',
     'sourceBoard.reply.startThread': 'Начать тред',
     'sourceBoard.reply.startThreadHint': 'Опубликовать тредом, который нужно решить',
     'sourceBoard.reply.toast.threadStarted': 'Тред начат на {reference}',

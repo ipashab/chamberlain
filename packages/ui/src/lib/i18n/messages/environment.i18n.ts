@@ -339,6 +339,8 @@ export const environmentI18n = {
     'settings.projects.environment.status.spawn': 'Не удалось запустить команду.',
     'settings.projects.environment.status.outputTooLarge': 'Прошлый запуск вывел слишком много и был остановлен. Из него ничего не применено.',
     'settings.projects.environment.status.failed': 'Прошлый запуск завершился ошибкой. Из него ничего не применено.',
+    'settings.environment.secrets.label': 'Сохранённые секреты',
+    'settings.environment.secrets.info': 'Сохранены с карты секретов агента. Их получают только команды, которые вы подтверждаете на этой карте.',
   },
   ko: {
     'settings.environment.user.title': '환경 변수',

@@ -19,7 +19,6 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'contextPanelByDirectory'
   | 'workspaceModeOffer'
   | 'workspaceModeOfferDismissed'
-  | 'contextZoneReturnStack'
   | 'contextRailOrder'
   | 'contextRailHiddenSurfaces'
   | 'mobileWorkspaceTabOrder'
@@ -257,7 +256,6 @@ export const createInitialUIState = (): Pick<UIStore,
   contextPanelByDirectory: {},
   workspaceModeOffer: null,
   workspaceModeOfferDismissed: [],
-  contextZoneReturnStack: {},
   contextRailOrder: [],
   contextRailHiddenSurfaces: [],
   mobileWorkspaceTabOrder: [],

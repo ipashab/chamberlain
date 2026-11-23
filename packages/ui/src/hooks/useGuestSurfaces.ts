@@ -10,15 +10,14 @@ import { guestCommandEntries, type GuestCommandEntry } from '@/lib/guests/comman
 import { guestPackageIconSrc, resolveGuestIconName } from '@/lib/guests/icon';
 import { enabledGuestSurfaces } from '@/lib/guests/surfaces';
 import { guestPanelOpensHere, mayGuestShowOnPhone, phoneGuestPanelModes } from '@/lib/guests/phone';
-import { guestsInScope, isGuestInFolders, isGuestTabHidden, toGuestScopePaths, useGuestScopeStore } from '@/lib/guests/folders';
+import { guestsInScope, isGuestInFolders, toGuestScopePaths, useGuestScopeStore } from '@/lib/guests/folders';
 import { loadGuestCatalog } from '@/lib/guests/load-catalog';
 import { useGuestsStore } from '@/lib/guests/store';
 import type { InstalledGuest } from '@/lib/guests/types';
 import { getRuntimeUrlResolver } from '@/lib/runtime-url';
 import { getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
 import type { ContextSurfaceDescriptor } from '@/lib/surfaces/registry';
-import { isPluginContextPanelMode, pluginIdFromMode, type PluginContextPanelMode } from '@/lib/surfaces/modes';
-import type { ContextPanelDirectoryState } from '@/stores/ui/types';
+import { isPluginContextPanelMode, type PluginContextPanelMode } from '@/lib/surfaces/modes';
 
 export type GuestAttachItem = {
   id: string;
@@ -137,16 +136,4 @@ export const useGuestAttachItems = (scope?: GuestScope): GuestAttachItem[] => {
     return items;
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [guests, runtimeKey]);
-};
-
-export const useGuestTabsInScope = (panel: ContextPanelDirectoryState | undefined): ContextPanelDirectoryState | undefined => {
-  const status = useGuestsStore((state) => state.status);
-  const guests = useGuestsStore((state) => state.guests);
-  const paths = useGuestScopeStore((state) => state.paths);
-  return React.useMemo(() => {
-    if (!panel) return panel;
-    const catalog = { loaded: status !== 'idle' && status !== 'loading', guests };
-    const tabs = panel.tabs.filter((tab) => !isPluginContextPanelMode(tab.mode) || !isGuestTabHidden(pluginIdFromMode(tab.mode), catalog, paths));
-    return tabs.length === panel.tabs.length ? panel : { ...panel, tabs };
-  }, [guests, panel, paths, status]);
 };

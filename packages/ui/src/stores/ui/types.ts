@@ -106,13 +106,6 @@ export type ContextPanelDirectoryState = {
   touchedAt: number;
 };
 
-export type ContextZoneReturnEntry = {
-  tabId: string;
-  mode: ContextPanelMode;
-};
-
-export type ContextZoneReturnStacks = Record<string, Partial<Record<ContextZone, ContextZoneReturnEntry[]>>>;
-
 type PendingFileNavigation = {
   path: string;
   line: number;
@@ -143,7 +136,6 @@ export interface UIStore {
   workspaceModeOffer: { directory: string; mode: WorkspaceMode; reason: WorkspaceModeOfferReason } | null;
   /** Причины предложений, отклонённые за этот запуск приложения; до перезапуска они остаются выключенными. Преходящее. */
   workspaceModeOfferDismissed: WorkspaceModeOfferReason[];
-  contextZoneReturnStack: ContextZoneReturnStacks;
   contextRailOrder: string[];
   contextRailHiddenSurfaces: string[];
   mobileWorkspaceTabOrder: string[];
@@ -403,7 +395,7 @@ export interface UIStore {
   toggleContextEditor: () => void;
   setContextEditorTreeWidth: (width: number) => void;
   openContextSurface: (directory: string, mode: ContextPanelMode) => void;
-  openContextPanelTab: (directory: string, tab: ContextPanelTabDescriptor, options?: { reveal?: boolean; recordReturn?: boolean }) => void;
+  openContextPanelTab: (directory: string, tab: ContextPanelTabDescriptor, options?: { reveal?: boolean }) => void;
   openTrackerItem: (directory: string, item: { url: string; key: string; label: string; targetDirectory: string | null }) => string | null;
   openContextDiff: (directory: string, filePath: string, staged?: boolean, scope?: PendingDiffScope | null) => void;
   openContextFile: (directory: string, filePath: string, options?: { preview?: boolean; expanded?: boolean }) => void;
@@ -425,7 +417,6 @@ export interface UIStore {
   closeContextZone: (
     directory: string,
     zone: ContextZone,
-    options?: { returnToPrevious?: boolean; eligibleTabIds?: ReadonlySet<string> },
   ) => void;
   toggleContextPanelExpanded: (directory: string, zone?: ContextZone) => void;
   setContextZoneSize: (zone: ContextZone, size: number) => void;
