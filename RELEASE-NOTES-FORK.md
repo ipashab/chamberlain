@@ -1,15 +1,57 @@
 # OpenChamber fork release notes
 
-**Base:** upstream `openchamber/openchamber` @ `cf18602` (v2.7.3), merged
+**Base:** upstream `openchamber/openchamber` @ `1c08802116` (v2.8.1), merged
 whole. The fork numbers its own patches on top with the `forkN` marker —
-`2.8.0-fork1` on `v2.8.0`, `2.7.3-fork1` on `v2.7.3`, `2.7.1-fork1` on `v2.7.1`, `2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
+`2.8.1-fork1` on `v2.8.1`, `2.8.0-fork1` on `v2.8.0`, `2.7.3-fork1` on `v2.7.3`, `2.7.1-fork1` on `v2.7.1`, `2.7.0-fork1` on `v2.7.0`, `2.6.0-fork3`, `2.6.0-fork2` and `2.6.0-fork1` on `v2.6.0`, `2.5.3-fork2` and `2.5.3-fork1` on `2.5.3`,
 `2.5.2-fork1` on `v2.5.2`, and before that
 `2.5.0-forkN` on `2.5.0` (`ad73d11a6`, merged whole in `594d0d09f`), then
 earlier tags below. Each release's notes below carry only that release's
 changes; `fork1` sections are that base's whole fork delta, so their
 base-move section names the upstream highlights and the release's own
 section the fork's work. The upstream releases' own notes live whole in
-`changelog/` — `2.7.3.md`, `2.7.2.md`, `2.7.1.md`, `2.7.0.md`, `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+`changelog/` — `2.8.1.md`, `2.7.3.md`, `2.7.2.md`, `2.7.1.md`, `2.7.0.md`, `2.6.0.md`, `2.5.3.md`, `2.5.2.md`, `2.5.1.md` and down.
+
+---
+
+## `2.8.1-fork1` — upstream `v2.8.1` whole: the Git panel redesigned, updates that wait, the panel in its own window
+
+**The base moves to upstream `v2.8.1`.** **Git and Diffs are one panel**:
+changed files with their diffs inline in a narrow host, a resizable file
+list when it is wide, history in the same place. **Chat groups activity
+by default** — tool calls fold into explore, edit, run phases, and a reply
+replaced by a newer one folds into a line. The context panel can **move
+into a window of its own**, with a rail that brings it back. Stop before
+the answer returns the prompt to the composer; a steered message says it
+is still waiting; agents can run the project's own actions and wait on
+checks they write themselves; a session warns when it and its subagents
+cross a cost you set; the sidebar gains date headings, hidden subagent
+sessions and pinned sessions that may show in In work; the board grows
+review threads, rebase and base-branch editing, assignee editing and
+newest-first previews; the desktop installs updates in the background
+when you quit or when nothing runs after a countdown you can cancel; and
+`@openchamber/web` bundles OpenCode's server, so npm, SSH instances and
+Docker run without a separate OpenCode install. Windows stops freezing
+for half a minute on offline network drives.
+
+**The merger ported the window onto the fork's regions.** Upstream's
+own-window panel rides the zone semantics the fork dropped in 2.5.2;
+instead of losing it, the fork ported it whole. Detaching now carries
+the entire per-directory panel state into the window — the layout tree,
+the tabs, the remembered mode layouts — and the owner window keeps the
+fork's rail with the open and return buttons; the window lays out through
+the fork's own WorkspaceLayout, region splits and drop overlays, and
+closing every region folds the tree back to the chat node while the tabs
+survive in the strip. Every panel-opening action rides the same routed
+allowlist, so nothing surfaces a tab the window's return would drop;
+upstream's zone return stack, zone close action and `useClosingZoneTab`
+stay out with the rest of the zone era. The Git panel merge folded the
+diff surface into Changes (`openContextSurface` maps diff to git); the
+fork's rail order, store and tests follow the unified tab. Four files the
+merge pushed past the 800-line limit split along the behavior they grew
+(SSH remote probes, message-queue persistence, the sidebar's date header),
+and Russian gains the release's new strings across the per-feature
+dictionaries, the idle-update window included. The suite answers green
+apart from the ui and server lint tests already red in the base.
 
 ---
 

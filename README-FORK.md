@@ -15,7 +15,7 @@ Fork base: upstream `733fa61` (2026-10-07, upstream version `2.2.0`) at
 the start; since `2.4.0-fork1` the app itself ships as **Chamberlain**,
 its own name, appId and icon beside stock OpenChamber. The fork keeps
 upstream's version and adds a prerelease marker, `forkN`, bumping on
-each fork patch: currently `2.8.0-fork1` on upstream `2.8.0`.
+each fork patch: currently `2.8.1-fork1` on upstream `2.8.1`.
 
 Owning docs that move with the code:
 
@@ -254,6 +254,14 @@ it lands beside what was already there. A session that can land nowhere
 never drags; a folder drop no longer reads row edit state. The desktop
 window shows the splash at once on `ready` and the main bundle adopts it;
 the mini-chat window fills its own width.
+
+### The panel in its own window rides the fork's regions — `bb741aef7a`
+
+Upstream v2.8.1's own-window context panel, ported onto the fork's
+region layout instead of the zone layout it was built on: detaching
+carries the whole per-directory panel state into the window, both
+windows carry the fork's rail with the open and return buttons, and the
+window lays out with the fork's region splits and drop overlays.
 
 ### The pull reading reports its own findings — `b9f9e9dd0`
 
