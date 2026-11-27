@@ -116,53 +116,24 @@ const stubFetchFailing = (json: () => Promise<unknown>, init: MockResponseInit):
   globalThis.fetch = (async () => ({ json, ...init }) as unknown as Response) as typeof fetch;
 };
 
-describe('Google plugin credentials', () => {
+describe('Google sign-ins', () => {
   afterEach(() => configureOpenCodeCredentials({ list: async () => baseCredentialList() }));
 
-  test('still discovers a direct Google OAuth login', async () => {
-    configureOpenCodeCredentials({ list: async () => [{
-      id: 'cred_google', integrationID: 'google', label: 'direct', active: true,
-      value: { type: 'oauth', methodID: 'oauth', access: 'test-token', refresh: 'test-refresh', expires: Date.now() + 3_600_000 },
-    }] });
-    assert.equal((await listConfiguredQuotaProviders()).includes('google'), true);
-  });
-
-  test('still discovers a Gemini CLI Google login', async () => {
+  test('never list or request quota from Google, whatever the sign-in', async () => {
     configureOpenCodeCredentials({ list: async () => [{
       id: 'cred_google', integrationID: 'google', label: 'gemini', active: true,
       value: { type: 'oauth', methodID: 'gemini-cli', access: 'test-token', refresh: 'test-refresh', expires: Date.now() + 3_600_000 },
     }] });
-    assert.equal((await listConfiguredQuotaProviders()).includes('google'), true);
+    let requests = 0;
+    stubFetchReturning(async () => { requests++; throw new Error('Unexpected request'); });
+    const configured = await listConfiguredQuotaProviders();
+    assert.equal(configured.includes('google'), false);
+    assert.equal(configured.includes('antigravity'), false);
+    for (const providerId of ['google', 'antigravity']) {
+      assert.equal((await fetchQuotaForProvider(providerId)).configured, false);
+    }
+    assert.equal(requests, 0);
   });
-
-  test('keeps a legacy Google login without a method ID', async () => {
-    // Credentials saved before OpenCode recorded login methods carry no method ID.
-    const legacy: CredentialEntry = {
-      id: 'cred_google', integrationID: 'google', label: 'legacy', active: true,
-      value: { type: 'oauth', methodID: 'oauth', access: 'test-token', refresh: 'test-refresh', expires: Date.now() + 3_600_000 },
-    };
-    Reflect.deleteProperty(legacy.value, 'methodID');
-    configureOpenCodeCredentials({ list: async () => [legacy] });
-    const requests: string[] = [];
-    stubFetchReturning(async (url) => { requests.push(url); return Response.json({ buckets: [] }); });
-    assert.equal((await listConfiguredQuotaProviders()).includes('google'), true);
-    assert.equal((await fetchQuotaForProvider('google')).configured, true);
-    assert.equal(requests.some((url) => url.includes('googleapis.com')), true);
-  });
-
-  for (const expires of [1, Date.now() + 3_600_000]) {
-    test(`does not discover or request plugin credentials with expiry ${expires}`, async () => {
-      configureOpenCodeCredentials({ list: async () => [{
-        id: 'cred_google', integrationID: 'google', label: 'plugin', active: true,
-        value: { type: 'oauth', methodID: 'antigravity', access: 'placeholder', refresh: 'placeholder', expires },
-      }] });
-      let requests = 0;
-      stubFetchReturning(async () => { requests++; throw new Error('Unexpected request'); });
-      assert.equal((await listConfiguredQuotaProviders()).includes('google'), false);
-      assert.equal((await fetchQuotaForProvider('google')).configured, false);
-      assert.equal(requests, 0);
-    });
-  }
 });
 
 test('dispatches Charm Hyper through the generic quota API', async () => {
@@ -1664,6 +1635,7 @@ describe('GitHub Copilot quota provider (VS Code parity)', () => {
     assert.equal(result.ok, true);
     assert.ok(Math.abs(result.usage!.windows.premium_interactions!.usedPercent! - 34.86916666666666) < 1e-9);
     assert.equal(result.usage!.windows.premium_interactions!.valueLabel, '20,921.5 / 60,000 used');
+    assert.deepEqual(result.usage!.windows.premium_interactions!.credits, { used: 20921.5, limit: 60000 });
   });
 
   test('keeps the fractional credit rather than rounding it away', async () => {
@@ -2103,6 +2075,7 @@ describe('Z.ai quota provider (VS Code parity)', () => {
     assert.equal(windows['5h']!.windowSeconds, 5 * 60 * 60);
     assert.equal(windows['5h']!.resetAt, 1787257978907);
     assert.equal(windows['5h']!.valueLabel, '65 / 12k credits');
+    assert.deepEqual(windows['5h']!.credits, { used: 65, limit: 12000, remaining: 11934 });
     assert.equal(windows.weekly!.usedPercent, 1);
     assert.equal(windows.weekly!.windowSeconds, 7 * 24 * 60 * 60);
     assert.equal(windows.weekly!.resetAt, 1787844668997);
@@ -2372,6 +2345,7 @@ describe('Zhipu AI Coding Plan quota provider (VS Code parity)', () => {
     assert.equal(windows.weekly!.windowSeconds, 7 * 24 * 60 * 60);
     assert.equal(windows.weekly!.resetAt, 1798425600000);
     assert.equal(windows.weekly!.valueLabel, '6k / 10k credits');
+    assert.deepEqual(windows.weekly!.credits, { used: 6000, limit: 10000, remaining: 4000 });
     assert.equal(windows['MCP Tools']!.usedPercent, 5);
     assert.equal(windows['MCP Tools']!.windowSeconds, 30 * 24 * 60 * 60);
   });

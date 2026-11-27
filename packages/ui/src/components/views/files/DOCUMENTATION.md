@@ -817,6 +817,17 @@ taken after the overlay has torn itself down; a browser cannot photograph a
 frame, so on web the annotation goes without one. A reload or another file
 ends a running session.
 
+### Why storage in memory and not `allow-same-origin`
+
+Without an origin, merely reading `localStorage`, `sessionStorage` or
+`document.cookie` throws, and a page whose first script does so stays blank.
+Every sandboxed page (this preview, VS Code's `srcDoc`, chat pages, shared
+pages) gets a script ahead of its own that puts in-memory storage and an empty
+cookie in place of what throws. The data lives until the page reloads. A UTF-16
+page the server serves goes out unchanged, so it gets neither. Real
+storage needs an origin, and on the app's origin the page could reach its API
+and credentials.
+
 ### Why a bridge in the page and not a webview
 
 The browser panel annotates through a `<webview>`, which the app can script
@@ -1031,8 +1042,14 @@ one instance is mounted.
 panel keeps one FilesView that follows the selected path, so during a file
 switch the draft and the file briefly belong to different files. React to real
 edits through CodeMirror transactions (`isUserEvent('input' | 'delete' | 'undo'
-| 'redo' | 'move')`). Autosave refuses to write an empty draft over a non-empty
-file (`shouldScheduleFileAutosave`); an explicit save still can.
+| 'redo' | 'move')`). Autosave (`shouldScheduleFileAutosave`) writes only a
+file whose read has finished and matches the selection: `fileLoading` is false
+and `loadedFilePath` equals the selected path. A failed read never sets
+`loadedFilePath`, so the empty draft it leaves is never autosaved over the file
+(#746). Once that holds, an emptied draft autosaves like any other edit. A
+refusal of every empty draft over a non-empty file was rejected: the load check
+already covers the empty draft a bad read leaves, so that refusal only blocked
+users who cleared a loaded file on purpose (#7414).
 
 Canvas edits never enter the text draft. A separate `canvasDirty` flag feeds
 the shared `isDirty`, so autosave, Cmd/Ctrl+S, the unsaved-changes prompt,

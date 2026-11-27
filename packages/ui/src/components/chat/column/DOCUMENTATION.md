@@ -33,9 +33,17 @@ A message per answer woke the lead once per click and each wake read as a new in
 
 ## Decisions
 
+### Why the compact draft label wraps with its trailing text
+
+The heading takes its width from the padded column so a long project name cannot widen it. The name wraps in its own box. Punctuation right after the name, such as the `?` in `{project}?` or the comma in `{project}, bevor das Jahr endet?`, shares that box and stays with the last character even when the name has no spaces; the words after it follow the box as ordinary text. The box keeps one line and clips during its width animation so the heading does not gain extra lines at intermediate widths, which is why words after the name stay outside it. A wrapped name can make the heading taller than a short draft area, so the column scrolls and centers only while its content fits.
+
 ### Why prompt ownership also reads the global record
 
 A cross-worktree worker can load its transcript through its parent's directory without joining that directory's session list. The global record already carries its ownership metadata, so a missing live record cannot expose an editable composer.
+
+### Why the digest popover's scroller is a block and not a flex column
+
+On touch screens `mobile.css` gives every `.flex.flex-col` `min-height: 0`. With the scroller as a flex column under the popover's height cap, each section is a flex item that can shrink, so on a phone a long section shrank below its text and the next one was drawn over it. As a block, the sections keep their full height and only the scroller scrolls; `space-y-3` spaces them 12 px apart, the same as `gap-3` in a column.
 
 ### Why hold the previous transcript and not immediately show a skeleton
 

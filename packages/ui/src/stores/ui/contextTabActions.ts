@@ -1,6 +1,7 @@
 import { directoryMayHaveActiveProjectAction, useTerminalStore } from '@/stores/useTerminalStore';
 import { useFilesViewTabsStore } from '../useFilesViewTabsStore';
 import { isVSCodeRuntime } from '@/lib/desktop';
+import { commentComparisonScope } from '@/lib/commentLocation';
 import { forgetBrowserTabOpenedWithAddress, noteBrowserTabOpenedWithAddress, requestBrowserTabLoad } from '@/lib/browser/devServerWait';
 import { getZoneView, withZoneView, zoneOfMode } from '@/lib/workspace/zones';
 import {
@@ -69,6 +70,7 @@ export const createContextTabActions: UIStoreSlice<
   | 'openContextPanelTab'
   | 'openTrackerItem'
   | 'openContextDiff'
+  | 'openCommentLocation'
   | 'openContextFile'
   | 'openContextFileAtLine'
   | 'openContextOverview'
@@ -91,7 +93,8 @@ export const createContextTabActions: UIStoreSlice<
   | 'offerWorkspaceMode'
   | 'dismissWorkspaceModeOffer'
 > = (set, get) => ({
-  openContextSurface: (directory, mode) => {
+  openContextSurface: (directory, rawMode) => {
+    const mode = rawMode === 'diff' ? 'git' : rawMode;
     const normalizedDirectory = normalizeDirectoryPath((directory || '').trim());
     if (!normalizedDirectory) {
       return;
@@ -141,7 +144,7 @@ export const createContextTabActions: UIStoreSlice<
     if (tabsOfMode.length > 0) {
       clearTerminalTarget();
       const mostRecent = tabsOfMode.reduce((best, tab) => (tab.touchedAt >= best.touchedAt ? tab : best));
-      if ((mode === 'diff' || mode === 'walkthrough') && mostRecent.targetDirectory) {
+      if (mode === 'walkthrough' && mostRecent.targetDirectory) {
         state.openContextPanelTab(normalizedDirectory, {
           mode,
           targetPath: mostRecent.targetPath,
@@ -340,14 +343,22 @@ export const createContextTabActions: UIStoreSlice<
       return;
     }
 
-    const nextTab = tab.mode !== 'chat' && contextPanelModeKeepsTargetDirectory(tab.mode)
+    const rawTargetDirectory = tab.mode !== 'chat' && contextPanelModeKeepsTargetDirectory(tab.mode)
+      ? normalizeContextTargetDirectory(tab.targetDirectory)
+      : null;
+    const resolvedTargetDirectory = rawTargetDirectory === normalizedDirectory ? null : rawTargetDirectory;
+    const nextTab = tab.mode === 'diff' && !resolvedTargetDirectory
       ? {
           ...tab,
-          targetDirectory: normalizeContextTargetDirectory(tab.targetDirectory) === normalizedDirectory
-            ? null
-            : normalizeContextTargetDirectory(tab.targetDirectory),
+          mode: 'git' as const,
+          targetDirectory: null,
         }
-      : tab;
+      : tab.mode !== 'chat' && contextPanelModeKeepsTargetDirectory(tab.mode)
+        ? {
+            ...tab,
+            targetDirectory: resolvedTargetDirectory,
+          }
+        : tab;
 
     const reveals = options?.reveal !== false;
     const showsFile = nextTab.mode === 'file' && Boolean(nextTab.targetPath) && reveals;
@@ -415,11 +426,16 @@ export const createContextTabActions: UIStoreSlice<
     const diffScope = normalizePendingDiffScope(scope) ?? (staged ? 'staged' : 'working');
 
     get().openContextPanelTab(normalizedDirectory, {
-      mode: 'diff',
+      mode: 'git',
       targetPath: normalizedFilePath,
       stagedDiff: diffScope === 'staged',
       diffScope,
     });
+  },
+
+  openCommentLocation: (request) => {
+    set({ pendingCommentLocation: request });
+    get().openContextDiff(request.directory, request.filePath, false, commentComparisonScope(request.origin));
   },
 
   openContextFile: (directory, filePath, options) => {

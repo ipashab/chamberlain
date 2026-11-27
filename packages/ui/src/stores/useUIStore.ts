@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { UIStore } from './ui/types';
-import { uiStorePersistOptions } from './ui/persistence';
+import { contextWindowPersistOptions } from './ui/persistence';
+import { withContextWindowRouting } from '@/lib/contextWindow/routing';
 import { createInitialUIState } from './ui/initialState';
 import { createAppearanceActions } from './ui/appearanceActions';
 import { createWorkspaceActions } from './ui/workspaceActions';
@@ -27,13 +28,13 @@ export { normalizeContextPanelDirectoryKey } from './ui/contextTabs';
 export { isTrackerBranchTab } from './ui/contextTabs';
 export { DEFAULT_SELECTION_APPROVAL_TEXT } from './ui/preferences';
 export { DEFAULT_EDITOR_FONT_SIZE } from './ui/preferences';
-export { DEFAULT_CONTEXT_EDITOR_TREE_WIDTH } from './ui/preferences';
+export { DEFAULT_CONTEXT_EDITOR_TREE_WIDTH, DEFAULT_GIT_SIDEBAR_WIDTH, clampGitSidebarWidth } from './ui/preferences';
 export type { ContextPanelMode } from '@/lib/surfaces/modes';
 
 export const useUIStore = create<UIStore>()(
   devtools(
     persist(
-      (set, get, store) => ({
+      (set, get, store) => withContextWindowRouting({
         ...createInitialUIState(),
         ...createAppearanceActions(set, get, store),
         ...createWorkspaceActions(set, get, store),
@@ -44,7 +45,7 @@ export const useUIStore = create<UIStore>()(
         ...createNotificationActions(set, get, store),
         ...createAgentActions(set, get, store),
       }),
-      uiStorePersistOptions,
+      contextWindowPersistOptions(),
     ),
     { name: 'ui-store' },
   ),

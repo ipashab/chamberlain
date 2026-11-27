@@ -1,16 +1,18 @@
 import * as React from 'react';
 
 import { trackerOfSource, trackerReferenceSource } from '@/components/references/referencePickerItems';
-import { defaultSourceControlIdentities } from '@/lib/source-control/identity';
+import { defaultSourceControlIdentities, gitRemoteOf, type AliasedGitRemote } from '@/lib/source-control/identity';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
-import type { GitRemote, SourceControlIdentity } from '@/lib/api/types';
+import type { SourceControlIdentity } from '@/lib/api/types';
 import { normalizePath } from '@/lib/pathNormalization';
+import { discoversNestedRepos } from '@/lib/nestedRepositories';
 import { useRepositoryBindings } from '@/lib/source-control/repository-binding';
 import { repositoryLinkFromRemotes } from '@/lib/source-control/repositoryUrl';
 import type { SourceControlProviderDescriptor } from '@/lib/source-control/providers/descriptor';
 import { useSourceControlProviders } from '@/lib/source-control/providers/registry';
 import { useRepositoryUrlMatcher } from '@/lib/source-control/repositoryUrlMatcher';
 import { useGitStore, useIsGitRepo, useNestedRepos, type NestedRepoDiscovery } from '@/stores/useGitStore';
+import { useDirectoryStore } from '@/stores/useDirectoryStore';
 // The fork's own board picks its tabs in useSourceBoardStore ('pulls' and
 // 'issues'); this is the upstream tab reference resolveBoardTab answers with,
 // kept apart so the shared repository helpers below stay board-independent.
@@ -20,7 +22,7 @@ import { normalizeContextPanelDirectoryKey } from '@/stores/useUIStore';
 
 import { repositoryUrlOfItemLink } from './openTrackerItem';
 
-const NO_FOLDERS: readonly string[] = [];
+const NO_FOLDERS: string[] = [];
 
 /**
  * The folder the board reads a project's repository from.
@@ -186,9 +188,15 @@ export function resolvePullLinkTarget(options: {
 }
 
 /** Probes a project's root and, when it is not a repository, finds the repositories under it, read only. */
-function useFolderRepositories(root: string | null) {
+type FolderSearch = {
+    underRepository?: boolean;
+};
+
+function useFolderRepositories(root: string | null, { underRepository = true }: FolderSearch = {}) {
     const { git } = useRuntimeAPIs();
+    const homeDirectory = useDirectoryStore((state) => state.homeDirectory);
     const rootIsGitRepo = useIsGitRepo(root);
+    const searchesNested = root !== null && discoversNestedRepos(root, homeDirectory) && (underRepository || rootIsGitRepo === false);
     const nestedRepos = useNestedRepos(root);
     const ensureStatus = useGitStore((state) => state.ensureStatus);
     const ensureNestedRepos = useGitStore((state) => state.ensureNestedRepos);
@@ -201,13 +209,28 @@ function useFolderRepositories(root: string | null) {
     }, [ensureNestedRepos, root, rootIsGitRepo]);
 
     const retry = React.useCallback(() => {
-        if (root) void ensureNestedRepos(root, { force: true });
-    }, [ensureNestedRepos, root]);
-    return { rootIsGitRepo, nestedRepos, retry };
+        if (root && searchesNested) void ensureNestedRepos(root, { force: true });
+    }, [ensureNestedRepos, root, searchesNested]);
+    return { rootIsGitRepo, nestedRepos: searchesNested ? nestedRepos : NO_FOLDERS, retry };
+}
+
+export function useBoardRepository(
+    root: string | null,
+    choice: RepositoryChoice,
+    search: FolderSearch = {},
+): BoardRepository & { retry: () => void; discoveryFailed: boolean; discoveryPending: boolean } {
+    const { sourceControl } = useRuntimeAPIs();
+    const acrossAvailable = Boolean(sourceControl.referencesAcross);
+    const { rootIsGitRepo, nestedRepos, retry } = useFolderRepositories(root, search);
+    const resolution = React.useMemo(
+        () => resolveBoardRepository(root, rootIsGitRepo, nestedRepos, { path: choice.path, all: choice.all }, acrossAvailable),
+        [acrossAvailable, choice.all, choice.path, nestedRepos, root, rootIsGitRepo],
+    );
+    return { ...resolution, retry, discoveryFailed: nestedRepos === null, discoveryPending: nestedRepos === undefined };
 }
 
 /** A folder's remotes once its binding is read; null while it is, empty when the read failed. */
-export type FolderRemotes = { directory: string; remotes: readonly GitRemote[] | null };
+export type FolderRemotes = { directory: string; remotes: readonly AliasedGitRemote[] | null };
 
 /**
  * Of the folders, the one whose remote is the repository `repositoryUrl` names
@@ -221,14 +244,34 @@ export function folderOfRepository(
     identities: readonly SourceControlIdentity[],
     descriptors: readonly SourceControlProviderDescriptor[],
 ): string | 'none' | null {
-    const names = (remote: GitRemote) => repositoryLinkFromRemotes([remote], identities, descriptors)?.url.replace(/\/+$/, '').toLowerCase() === repositoryUrl;
+    const names = (remote: AliasedGitRemote) => repositoryLinkFromRemotes([remote], identities, descriptors)?.url.replace(/\/+$/, '').toLowerCase() === repositoryUrl;
     const byOrigin = folders.find((folder) => folder.remotes?.some((remote) => remote.name === 'origin' && names(remote)));
     if (byOrigin) return byOrigin.directory;
     if (folders.some((folder) => folder.remotes === null)) return null;
     return folders.find((folder) => folder.remotes?.some(names))?.directory ?? 'none';
 }
 
-/** The folder a link to an issue or PR is read through: `pending` while that is not known yet, `failed` when the search for repositories failed. */
+export function useFolderOfRepository(candidates: readonly string[]): (repositoryUrl: string) => string | 'none' | null {
+    const { sourceControl } = useRuntimeAPIs();
+    const bindings = useRepositoryBindings(candidates, sourceControl);
+    const knownIdentities = useSourceControlAuthStore((state) => state.identities);
+    const descriptors = useSourceControlProviders();
+    return React.useMemo(() => {
+        const folders = candidates.map((directory, index): FolderRemotes => {
+            const binding = bindings[index];
+            if (binding?.read) {
+                return {
+                    directory,
+                    remotes: binding.read.repository.remotes.map(gitRemoteOf),
+                };
+            }
+            return { directory, remotes: binding?.status === 'error' ? [] : null };
+        });
+        const identities = [...knownIdentities, ...defaultSourceControlIdentities(descriptors)];
+        return (repositoryUrl) => (folders.length === 0 ? 'none' : folderOfRepository(repositoryUrl, folders, identities, descriptors));
+    }, [bindings, candidates, descriptors, knownIdentities]);
+}
+
 export type LinkRepository = {
     status: 'pending' | 'failed' | 'ready';
     directory: string;
@@ -248,28 +291,16 @@ export type LinkRepository = {
  */
 export function useLinkRepository(root: string, url: string, options: { enabled?: boolean } = {}): LinkRepository {
     const { enabled = true } = options;
-    const { sourceControl } = useRuntimeAPIs();
     const { rootIsGitRepo, nestedRepos, retry } = useFolderRepositories(root);
-    const candidates = rootIsGitRepo === false && Array.isArray(nestedRepos) ? nestedRepos : NO_FOLDERS;
-    const bindings = useRepositoryBindings(candidates, sourceControl);
-    const knownIdentities = useSourceControlAuthStore((state) => state.identities);
-    const descriptors = useSourceControlProviders();
+    const discovered = Array.isArray(nestedRepos) ? nestedRepos : NO_FOLDERS;
+    const candidates = React.useMemo(
+        () => (!enabled ? NO_FOLDERS : rootIsGitRepo === true ? [root, ...discovered] : discovered),
+        [discovered, enabled, root, rootIsGitRepo],
+    );
+    const folderOf = useFolderOfRepository(candidates);
     const urls = useRepositoryUrlMatcher();
     const repositoryUrl = repositoryUrlOfItemLink(url, urls);
-    const match = React.useMemo(() => {
-        if (!repositoryUrl || candidates.length === 0) return 'none';
-        const folders = candidates.map((directory, index): FolderRemotes => {
-            const binding = bindings[index];
-            if (binding?.read) {
-                return {
-                    directory,
-                    remotes: binding.read.repository.remotes.map((remote) => ({ name: remote.name, fetchUrl: remote.fetch.displayUrl, pushUrl: remote.push.displayUrl })),
-                };
-            }
-            return { directory, remotes: binding?.status === 'error' ? [] : null };
-        });
-        return folderOfRepository(repositoryUrl, folders, [...knownIdentities, ...defaultSourceControlIdentities(descriptors)], descriptors);
-    }, [bindings, candidates, descriptors, knownIdentities, repositoryUrl]);
+    const match = enabled && repositoryUrl ? folderOf(repositoryUrl) : 'none';
 
     if (!enabled) return { status: 'ready', directory: root, owned: false, retry };
     if (rootIsGitRepo === null) return { status: 'pending', directory: root, owned: false, retry };

@@ -12,7 +12,11 @@ import type { normalizeTunnelProvider, normalizeTunnelMode, normalizeOptionalPat
 import { idleStopSchema } from '../spaces/idle-stop.js';
 import { sshHostSchema } from '../spaces/places/ssh-host.js';
 import { PROVIDER_LOGO_MIMES } from '../appearance/provider-logo-routes.js';
+import { sanitizeChatActivitySettings } from './settings-chat-activity.js';
 import { sanitizeDictationSettings } from './settings-dictation.js';
+import { keepOmittedBuiltinSections, sanitizeSidebarSections, sanitizeSidebarSettings, type SidebarSection } from './settings-sidebar.js';
+import { sanitizeSessionWorkSettings, sessionWorkResponseFields } from './settings-session-work.js';
+import { keepOrderedSessionCostAmounts, sanitizeSessionLimitSettings } from './settings-session-limits.js';
 
 const settingsDocumentSchema = z.looseObject({});
 export type SettingsDocument = z.infer<typeof settingsDocumentSchema>;
@@ -61,91 +65,6 @@ export type SettingsHelpersDependencies = Pick<Normalization,
   normalizeOptionalPath: typeof normalizeOptionalPath;
 };
 
-const SIDEBAR_BUILTIN_SECTION_IDS = ['pages', 'chats', 'pinned', 'work', 'projects'];
-const SIDEBAR_SECTIONS_STORED_MAX = 24 + SIDEBAR_BUILTIN_SECTION_IDS.length;
-const sidebarSectionIdSchema = z.string().trim().min(1).max(64);
-const sidebarSectionNameSchema = z.string().trim().min(1).transform((value) => value.slice(0, 60));
-const sidebarChips = (values: string[]) => z.array(z.unknown()).transform((entries) => (
-  [...new Set(entries.flatMap((entry) => {
-    const parsed = z.enum(values).safeParse(entry);
-    return parsed.success ? [parsed.data] : [];
-  }))]
-));
-const sidebarIdList = (schema: z.ZodString) => z.array(z.unknown()).transform((entries) => (
-  [...new Set(entries.flatMap((entry) => {
-    const parsed = schema.safeParse(entry);
-    return parsed.success ? [parsed.data] : [];
-  }))]
-));
-const sidebarIds = sidebarIdList(sidebarSectionIdSchema);
-const sidebarProjectIds = sidebarIdList(z.string().trim().min(1).max(4096));
-const sidebarSectionSchema = z.union([
-  z.object({ kind: z.literal('builtin'), id: z.enum(SIDEBAR_BUILTIN_SECTION_IDS) }),
-  z.object({
-    kind: z.literal('custom'),
-    id: sidebarSectionIdSchema,
-    name: sidebarSectionNameSchema,
-    grouping: z.enum(['time', 'project']).catch('time'),
-    filter: z.object({
-      states: sidebarChips(['running', 'needs-answer', 'unread', 'failed', 'looks-done']).catch([]),
-      work: sidebarChips(['in-work', 'done']).catch([]),
-      pins: sidebarIds.catch([]),
-      kinds: sidebarChips(['session', 'worktree', 'space', 'run', 'scheduled']).catch([]),
-      links: sidebarChips(['pr', 'issue', 'tracker', 'plan', 'goal']).catch([]),
-      projectIds: sidebarProjectIds.catch([]),
-      folders: sidebarIds.catch([]),
-      activity: z.enum(['any', 'today', 'two-days', 'week', 'stalled']).catch('any'),
-      text: z.union([z.string().transform((value) => [value]), z.array(z.unknown())]).transform((entries) => (
-        [...new Set(entries.flatMap((entry) => {
-          const phrase = z.string().trim().transform((value) => value.slice(0, 100)).safeParse(entry);
-          return phrase.success && phrase.data ? [phrase.data] : [];
-        }))].slice(0, 12)
-      )).catch([]),
-    }).partial().catch({}),
-    claims: z.boolean().catch(false),
-    hideWhenEmpty: z.boolean().catch(true),
-  }),
-]);
-
-export type SidebarSection = z.infer<typeof sidebarSectionSchema>;
-
-const sanitizeSidebarSections = (entries: readonly JsonValue[] | readonly unknown[]) => {
-  const result: SidebarSection[] = [];
-  const seen = new Set();
-  for (const entry of entries) {
-    const parsed = sidebarSectionSchema.safeParse(entry);
-    if (!parsed.success || seen.has(parsed.data.id) || result.length >= SIDEBAR_SECTIONS_STORED_MAX) continue;
-    if (parsed.data.kind === 'custom' && SIDEBAR_BUILTIN_SECTION_IDS.includes(parsed.data.id)) continue;
-    seen.add(parsed.data.id);
-    result.push(parsed.data);
-  }
-  return result;
-};
-
-const keepOmittedBuiltinSections = (stored: SidebarSection[], incoming: SidebarSection[]) => {
-  const result = [...incoming];
-  const has = (id: string) => result.some((entry) => entry.id === id);
-  stored.forEach((entry, index) => {
-    if (entry?.kind !== 'builtin' || has(entry.id)) return;
-    const previous = stored.slice(0, index).reverse().find((candidate) => has(candidate?.id));
-    const at = previous ? result.findIndex((candidate) => candidate.id === previous.id) + 1 : 0;
-    result.splice(at, 0, entry);
-  });
-  return result;
-};
-
-const sanitizeSidebarPinLists = (entries: readonly unknown[]) => {
-  const result: { id: string; name: string }[] = [];
-  const seen = new Set(['pinned']);
-  for (const entry of entries) {
-    const parsed = z.object({ id: sidebarSectionIdSchema, name: sidebarSectionNameSchema }).safeParse(entry);
-    if (!parsed.success || seen.has(parsed.data.id) || result.length >= 24) continue;
-    seen.add(parsed.data.id);
-    result.push(parsed.data);
-  }
-  return result;
-};
-
 const isPersistableSettingsKey = (key: string) => {
   const field = settingsRegistry.fields[key];
   if (!field) return false;
@@ -176,6 +95,7 @@ const AGENT_TOOL_BOOLEAN_KEYS = [
   'agentKnowledgeToolEnabled', 'agentWorkflowToolEnabled', 'agentWorkflowAutoApprove', 'agentWorkflowAutoApproveLeads', 'agentNotifyToolEnabled',
   'agentRenderToolEnabled', 'agentImageToolEnabled', 'agentSecretToolEnabled', 'agentUsageToolEnabled', 'agentTerminalToolEnabled',
   'agentDebuggerToolEnabled',
+  'agentActionsToolEnabled',
 ] as const;
 
 const dreamingModelSchema = z.string().trim().refine((value) => value === '' || /^[^/\s]+\/\S+$/.test(value));
@@ -222,23 +142,24 @@ type BooleanSettingsKey =
   | 'desktopLanAccessEnabled' | 'desktopKeepAwakeEnabled' | 'desktopMinimizeToTrayEnabled' | 'desktopMacMenuBarEnabled'
   | 'desktopLinuxNativeFrame' | 'messageSearchEnabled' | 'messageSearchReasoningEnabled'
   | 'sidebarKeepWorkInPlace' | 'sidebarKeepPinnedInPlace' | 'sidebarShowChatsSection' | 'sidebarShowWorkSection'
-  | 'sidebarShowPinnedSection' | 'sidebarDetailedZoneRows' | 'sidebarWorktreeNameByBranch'
+  | 'sidebarShowPinnedSection' | 'sidebarDetailedZoneRows' | 'sidebarShowSubagentSessions' | 'sidebarWorktreeNameByBranch'
   | 'draftStartersVisible' | 'draftStartersCraftGoalAdded' | 'draftStartersScheduleTaskAdded'
   | 'showReasoningTraces' | 'streamingAutoFollowEnabled' | 'expandReasoningWhileStreaming'
   | 'codeBlockLineWrap' | 'tableCellWrap' | 'copyMessagesAsPlainText' | 'autoSaveEnabled' | 'fileEditorWrapLines'
   | 'confirmFileTreeMove' | 'layoutAnimations' | 'openLinksInBrowserPanel' | 'agentBrowserSharesLogins'
-  | 'openTrackerLinksOnBoard' | 'diffWrapLines' | 'diffHideWhitespace' | 'allowPromptingSubagentSessions'
+  | 'openTrackerLinksOnBoard' | 'diffWrapLines' | 'diffHideWhitespace' | 'allowPromptingSubagentSessions' | 'referencePreviewNewestFirst'
+  | 'referencePreviewCollapseDescription'
   | 'savePastedImagesAsFiles' | 'showOpenCodeRestartConfirm' | 'sessionTabsEnabled' | 'sessionTabsPerWorkspace'
   | 'terminalCloseOnExit' | 'terminalOpenOnProjectAction' | 'sessionRecapEnabled' | 'sessionSuggestionEnabled'
   | 'sessionAdvisorEnabled' | 'sessionCheckpointsEnabled'
-  | 'sessionWorkEnabled' | 'sessionReviewOfferEnabled' | 'sessionGoalEnabled' | 'sessionGoalDefaultBudgetEnabled'
+  | 'sessionWorkEnabled' | 'sessionWorkIncludesPinned' | 'sessionReviewOfferEnabled' | 'sessionGoalEnabled' | 'sessionGoalDefaultBudgetEnabled' | 'sessionCostAlertsEnabled'
   | 'collapsibleThinkingBlocks' | 'showTextJustificationActivity' | 'showDeletionDialog' | 'nativeNotificationsEnabled'
   | 'notifyOnSubtasks' | 'notifyOnCompletion' | 'notifyOnPullRequests' | 'notifyOnError' | 'notifyOnQuestion'
   | 'summarizeLastMessage' | 'autoDeleteEnabled' | 'sessionRetentionOnlyArchived' | 'sessionRetentionIncludeInWork'
   | 'mergedWorktreeCleanupEnabled' | 'worktreeArchiveOnDoneEnabled' | 'smallModelUseDefault' | 'autoCreateWorktree'
   | 'gitmojiEnabled' | 'defaultFileViewerPreview' | 'inputSpellcheckEnabled' | 'enterToSend' | 'enterToSendConfigured'
   | 'mobileReturnKeySends' | 'showOpenCodeUpdateNotifications' | 'useGlobalOpenCodeService' | 'agentWebToolEnabled' | 'isolatedSpacesEnabled'
-  | 'showToolFileIcons' | 'showTurnChangedFiles' | 'collapsibleUserMessages' | 'stickyUserHeader'
+  | 'showToolFileIcons' | 'showTurnChangedFiles' | 'keepEarlierReplies' | 'collapsibleUserMessages' | 'stickyUserHeader'
   | 'promptNavigatorEnabled' | 'wideChatLayoutEnabled' | 'showSplitAssistantMessageActions' | 'directoryShowHidden'
   | 'filesViewShowGitignored' | 'reportUsage' | 'responseStyleEnabled' | 'dictationEnabled' | 'dictationAutoSend'
   | 'sttCorrectTranscript' | (typeof AGENT_TOOL_BOOLEAN_KEYS)[number];
@@ -251,7 +172,7 @@ type StringSettingsKey =
   | 'pwaAppName' | 'pwaOrientation' | 'mobileKeyboardMode' | 'browserProvider' | 'agentMemoryDreamingModel'
   | 'agentMemoryDreamingVariant' | 'agentImageModel' | 'isolatedSpacesSshHost' | 'openCodeUpdateToastDismissedVersion'
   | 'terminalShell' | 'openInAppId' | 'globalBehaviorPrompt' | 'responseStylePreset' | 'responseStyleCustomInstructions'
-  | 'sttServerUrl' | 'sttModel' | 'sttEndpointPath' | 'sttLocalModel' | 'sttLanguage' | 'sttPrompt' | 'sidebarProjectDisplayMode'
+  | 'sttServerUrl' | 'sttModel' | 'sttEndpointPath' | 'sttKeyProvider' | 'sttLocalModel' | 'sttLanguage' | 'sttPrompt' | 'sidebarProjectDisplayMode'
   | 'sidebarViewMode' | 'sidebarListSessionGrouping' | 'sidebarGrouping' | 'sidebarProjectSortOrder'
   | 'selectionApprovalText' | 'pythonInterpreter';
 
@@ -262,12 +183,12 @@ type ClearableStringSettingsKey =
 
 type NumberSettingsKey =
   | 'inputHistoryLimit' | 'sidebarSessionBatchSize' | 'liveBrowserTabLimit' | 'sessionGoalMaxAutoTurns'
-  | 'sessionGoalDefaultBudget' | 'summaryThreshold' | 'summaryLength' | 'maxLastMessageLength' | 'autoDeleteAfterDays'
+  | 'sessionGoalDefaultBudget' | 'sessionCostWarnThreshold' | 'sessionCostCriticalThreshold' | 'summaryThreshold' | 'summaryLength' | 'maxLastMessageLength' | 'autoDeleteAfterDays'
   | 'tunnelSessionTtlMs' | 'tunnelHttpsPort' | 'fontSize' | 'chatFontSize' | 'terminalFontSize' | 'editorFontSize'
   | 'padding' | 'cornerRadius' | 'inputBarOffset';
 
 type StringArraySettingsKey =
-  | 'workStatusHiddenSections' | 'workStatusSectionOrder' | 'sidebarHiddenSections' | 'securityScopedBookmarks'
+  | 'workStatusHiddenSections' | 'workStatusSectionOrder' | 'sidebarHiddenSections' | 'sidebarPageOrder' | 'sidebarHiddenPages' | 'securityScopedBookmarks'
   | 'pinnedDirectories' | 'providerOrder' | 'usageDropdownProviders' | 'accountSwitchProviders'
   | 'terminalLoginShells' | 'collapsedModelProviders' | 'recentAgents' | 'favoriteAgents';
 
@@ -324,7 +245,7 @@ export type SanitizedSettings = Partial<Record<BooleanSettingsKey, boolean>>
     weekStartPreference?: 'auto' | 'sunday' | 'monday';
     chatRenderMode?: 'sorted' | 'live';
     messageStreamTransport?: 'auto' | 'ws' | 'sse';
-    activityRenderMode?: 'collapsed' | 'text' | 'summary';
+    activityRenderMode?: 'collapsed' | 'grouped' | 'summary';
     mermaidRenderingMode?: 'svg' | 'ascii';
     userMessageRenderingMode?: 'markdown' | 'plain';
     chatWidth?: 'default' | 'wider' | 'full';
@@ -687,27 +608,13 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
     if (isBoolean(candidate.sidebarShowWorkSection)) {
       result.sidebarShowWorkSection = candidate.sidebarShowWorkSection;
     }
-    if (candidate.sidebarShowPinnedSection === true || candidate.sidebarShowPinnedSection === false) {
-      result.sidebarShowPinnedSection = candidate.sidebarShowPinnedSection;
-    }
-    if (candidate.sidebarDetailedZoneRows === true || candidate.sidebarDetailedZoneRows === false) {
-      result.sidebarDetailedZoneRows = candidate.sidebarDetailedZoneRows;
-    }
+    if (isBoolean(candidate.sidebarShowPinnedSection)) result.sidebarShowPinnedSection = candidate.sidebarShowPinnedSection;
+    if (isBoolean(candidate.sidebarDetailedZoneRows)) result.sidebarDetailedZoneRows = candidate.sidebarDetailedZoneRows;
+    if (isBoolean(candidate.sidebarShowSubagentSessions)) result.sidebarShowSubagentSessions = candidate.sidebarShowSubagentSessions;
     if (candidate.sidebarWorktreeNameByBranch === true || candidate.sidebarWorktreeNameByBranch === false) {
       result.sidebarWorktreeNameByBranch = candidate.sidebarWorktreeNameByBranch;
     }
-    if (Array.isArray(candidate.sidebarSections)) {
-      result.sidebarSections = sanitizeSidebarSections(candidate.sidebarSections);
-    }
-    if (Array.isArray(candidate.sidebarPinLists)) {
-      result.sidebarPinLists = sanitizeSidebarPinLists(candidate.sidebarPinLists);
-    }
-    if (Array.isArray(candidate.sidebarHiddenSections)) {
-      result.sidebarHiddenSections = [...new Set(candidate.sidebarHiddenSections.flatMap((entry) => {
-        const parsed = sidebarSectionIdSchema.safeParse(entry);
-        return parsed.success ? [parsed.data] : [];
-      }))];
-    }
+    sanitizeSidebarSettings(candidate, result);
 
     if (Array.isArray(candidate.securityScopedBookmarks)) {
       result.securityScopedBookmarks = normalizeStringArray(candidate.securityScopedBookmarks);
@@ -827,12 +734,6 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
     if (candidate.fileTreeSide === 'left' || candidate.fileTreeSide === 'right') {
       result.fileTreeSide = candidate.fileTreeSide;
     }
-    if (isBoolean(candidate.diffWrapLines)) {
-      result.diffWrapLines = candidate.diffWrapLines;
-    }
-    if (isBoolean(candidate.diffHideWhitespace)) {
-      result.diffHideWhitespace = candidate.diffHideWhitespace;
-    }
     if (isBoolean(candidate.allowPromptingSubagentSessions)) {
       result.allowPromptingSubagentSessions = candidate.allowPromptingSubagentSessions;
     }
@@ -872,9 +773,7 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
     if (isBoolean(candidate.sessionSuggestionEnabled)) {
       result.sessionSuggestionEnabled = candidate.sessionSuggestionEnabled;
     }
-    if (isBoolean(candidate.sessionWorkEnabled)) {
-      result.sessionWorkEnabled = candidate.sessionWorkEnabled;
-    }
+    Object.assign(result, sanitizeSessionWorkSettings(candidate));
     if (isBoolean(candidate.sessionReviewOfferEnabled)) {
       result.sessionReviewOfferEnabled = candidate.sessionReviewOfferEnabled;
     }
@@ -899,6 +798,7 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
     if (isNumber(candidate.sessionGoalDefaultBudget) && Number.isFinite(candidate.sessionGoalDefaultBudget) && candidate.sessionGoalDefaultBudget > 0) {
       result.sessionGoalDefaultBudget = Math.floor(candidate.sessionGoalDefaultBudget);
     }
+    sanitizeSessionLimitSettings(candidate, result);
     if (isBoolean(candidate.collapsibleThinkingBlocks)) {
       result.collapsibleThinkingBlocks = candidate.collapsibleThinkingBlocks;
     }
@@ -1109,7 +1009,7 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
     if (candidate.mobileReturnKeySends === true || candidate.mobileReturnKeySends === false) {
       result.mobileReturnKeySends = candidate.mobileReturnKeySends;
     }
-    for (const key of ['showOpenCodeUpdateNotifications', 'useGlobalOpenCodeService', 'agentWebToolEnabled'] as const) {
+    for (const key of ['showOpenCodeUpdateNotifications', 'useGlobalOpenCodeService', 'agentWebToolEnabled', 'diffWrapLines', 'diffHideWhitespace', 'referencePreviewNewestFirst', 'referencePreviewCollapseDescription'] as const) {
       if (isBoolean(candidate[key])) result[key] = candidate[key];
     }
     if (isString(candidate.browserProvider) && candidate.browserProvider.trim()) {
@@ -1169,12 +1069,7 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
         result.messageStreamTransport = mode;
       }
     }
-    if (isString(candidate.activityRenderMode)) {
-      const mode = candidate.activityRenderMode.trim();
-      if (mode === 'collapsed' || mode === 'text' || mode === 'summary') {
-        result.activityRenderMode = mode;
-      }
-    }
+    sanitizeChatActivitySettings(candidate, result);
     if (isString(candidate.mermaidRenderingMode)) {
       const mode = candidate.mermaidRenderingMode.trim();
       if (mode === 'svg' || mode === 'ascii') {
@@ -1487,6 +1382,7 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
     if (Array.isArray(changes.sidebarSections) && Array.isArray(current.sidebarSections)) {
       next.sidebarSections = keepOmittedBuiltinSections(sanitizeSidebarSections(current.sidebarSections), changes.sidebarSections);
     }
+    keepOrderedSessionCostAmounts(current, next);
 
     return next;
   };
@@ -1531,6 +1427,7 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
       inputHistoryScope,
       inputHistoryLimit,
       messageSearchEnabled: isMessageSearchEnabled(sanitized),
+      ...sessionWorkResponseFields(sanitized),
       securityScopedBookmarks: bookmarks,
       pinnedDirectories: normalizeStringArray(settings.pinnedDirectories),
       ...desktopFields,

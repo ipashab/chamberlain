@@ -9,7 +9,6 @@ type BuiltInContextSurfaceId =
   | 'editor'
   | 'git'
   | 'pr'
-  | 'diff'
   | 'walkthrough'
   | 'terminal'
   | 'debug'
@@ -64,14 +63,6 @@ export const CONTEXT_SURFACES: readonly ContextSurfaceDescriptor[] = [
     mode: 'pr',
     icon: 'github',
     labelKey: 'contextPanel.mode.pr',
-    availability: 'always',
-  },
-  {
-    id: 'diff',
-    descriptionKey: 'contextRail.surface.diff.description',
-    mode: 'diff',
-    icon: 'layout-column',
-    labelKey: 'contextPanel.mode.diff',
     availability: 'always',
   },
   {
@@ -237,7 +228,6 @@ const BUILT_IN_SURFACE_GROUPS = {
   context: 'context',
   git: 'changes',
   pr: 'changes',
-  diff: 'changes',
   walkthrough: 'changes',
   editor: 'tools',
   terminal: 'tools',

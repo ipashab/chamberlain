@@ -21,7 +21,7 @@ import { checkpointsI18n } from './checkpoints.i18n';
 import { backlogI18n } from './backlog.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
-import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { updateDialogCanaryI18n } from './update-dialog-canary.i18n'; import { updateIdleI18n } from './update-idle.i18n';
 import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
 import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
@@ -31,6 +31,7 @@ import { settingsHintsI18n } from './settings-hints.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { sessionWarmingI18n } from './session-warming.i18n';
+import { sessionCostI18n } from './session-cost.i18n';
 import { connectionHeartbeatI18n } from './connection-heartbeat.i18n';
 import { compactionSettingsI18n } from './compaction-settings.i18n';
 import { heapSnapshotI18n } from './heap-snapshot.i18n';
@@ -68,9 +69,12 @@ import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
 import { diffFindI18n } from './diff-find.i18n';
+import { contextWindowI18n } from './context-window.i18n';
 import { markdownOutlineI18n } from './markdown-outline.i18n';
 import { markdownGithubI18n } from './markdown-github.i18n';
 import { autocompleteScopeI18n } from './autocomplete-scope.i18n';
+import { chatExchangeI18n } from './chat-exchange.i18n';
+import { integrateConflictI18n } from './integrate-conflict.i18n';
 import { workflowsI18n } from './workflows.i18n';
 import { subagentsI18n } from './subagents.i18n';
 import { sessionReferencesI18n } from './session-references.i18n';
@@ -120,10 +124,14 @@ export const dict = {
   'sessions.aiRename.noSmallModel': 'נדרש מודל קטן. יש להתחבר לספק מודלים או לבחור מודל בהגדרות → הפעלות.',
   'commitComparison.mode': 'קומיט',
   'pullRequestComparison.select': 'בחר בקשת משיכה',
+  'pullRequestComparison.searchShort': 'חיפוש בבקשות משיכה',
   'pullRequestComparison.pickAbove': 'יש לבחור בקשת משיכה למעלה',
   'pullRequestComparison.diffUnavailable': "{provider} לא מספק את ההבדלים של בקשות משיכה, ולכן אי אפשר להציג אותם או לעבור עליהם כאן",
   'pullRequestComparison.partial': 'לא ניתן היה לטעון חלק מבקשות המשיכה',
   'commitComparison.select': 'בחר קומיט',
+  'commitComparison.branchDividerSingle': 'למעלה: ה-commit שנמצא רק ב-{branch}. למטה: כבר ב-{base}.',
+  'commitComparison.branchDividerPlural': 'למעלה: {count} commits שנמצאים רק ב-{branch}. למטה: כבר ב-{base}.',
+  'commitComparison.backToList': 'חזרה ל-commits',
   'commitComparison.search': 'חיפוש קומיטים…',
   'commitComparison.loadError': 'טעינת הקומיטים נכשלה',
   'commitComparison.noCommits': 'לא נמצאו קומיטים',
@@ -350,10 +358,6 @@ export const dict = {
   'mobile.menu.update': 'עדכון',
   'mobile.menu.settings': 'הגדרות',
   'mobile.sessions.newChatCta': 'צ\'אט חדש ב-{project}',
-  'mobile.sessions.dateGroup.today': 'היום',
-  'mobile.sessions.dateGroup.yesterday': 'אתמול',
-  'mobile.sessions.dateGroup.thisWeek': 'מוקדם יותר השבוע',
-  'mobile.sessions.dateGroup.older': 'ישנים יותר',
   'mobile.sessions.section.worktrees': 'עצי עבודה',
   'mobile.sessions.section.otherProjects': 'החלף פרויקט',
   'mobile.sessions.section.projects': 'פרויקטים',
@@ -707,6 +711,7 @@ export const dict = {
   'sessions.sidebar.header.displayMode.minimal': 'מינימלי',
   'sessions.sidebar.header.displayMode.showWork': 'הצג את קטע בעבודה',
   'sessions.sidebar.header.displayMode.showPinned': 'הצג את קטע המוצמדות',
+  'sessions.sidebar.header.displayMode.showSubagents': 'הצג הפעלות של סוכני משנה',
   'sessions.sidebar.header.displayMode.detailedZoneRows': 'שורות מפורטות',
   'sessions.sidebar.header.displayMode.worktreeNameByBranch': 'שם worktree לפי הענף',
   'sessions.sidebar.activity.pinnedTitle': 'מוצמדות',
@@ -735,6 +740,7 @@ export const dict = {
   'sessions.sidebar.empty.noMatches.description': 'אפשר לנסות כותרת או ענף אחרים.',
   'sessions.sidebar.activity.chatsTitle': 'צ\'אטים',
   'sessions.sidebar.activity.chatsEmpty': 'אין עדיין צ\'אטים.',
+  'sessions.sidebar.timeline.noSessionsYet': 'אין עדיין הפעלות',
   'chat.chatInput.chooseProject': 'בחר פרויקט',
   'sessions.sidebar.header.projectDisplay.label': 'הצג פרויקטים',
   'sessions.sidebar.header.projectDisplay.all': 'כל הפרויקטים',
@@ -883,6 +889,8 @@ export const dict = {
   'sessions.sidebar.session.status.movingToWorktree': 'ההפעלה מועברת לעץ עבודה חדש',
   'sessions.sidebar.session.status.permissionRequired': 'נדרשת הרשאה',
   'sessions.sidebar.session.status.questionPending': 'שאלה ממתינה',
+  'sessions.sidebar.session.status.permissionRequiredOpen': 'נדרשת הרשאה. פותח את ההפעלה שמבקשת',
+  'sessions.sidebar.session.status.questionPendingOpen': 'שאלה ממתינה. פותח את ההפעלה שמבקשת',
   'sessions.sidebar.session.status.activeFor': 'פעילה כבר {duration}',
   'sessions.sidebar.session.status.lastTurnDuration': 'התור האחרון נמשך {duration}',
   'sessions.sidebar.session.subsessions.collapse': 'כווץ הפעלות משנה',
@@ -1357,6 +1365,8 @@ export const dict = {
   'worktree.bootstrap.toast.invalidConfiguration': 'יש לבדוק את תצורת מודולי המשנה ו-Git LFS של המאגר ולנסות שוב.',
   'worktree.bootstrap.toast.repositoryTooManyFiles': 'במאגר יש יותר מדי קבצים.',
   'worktree.bootstrap.toast.branchNameConflict': 'שם הענף מתנגש בענף קיים: אותו שם, או שאחד מקונן בתוך השני. שנו את שם הענף וצרו את עץ העבודה מחדש.',
+  'worktree.bootstrap.toast.submoduleSourceLocal': 'תת-המודולים לא נמשכו: OpenChamber מושך אותם רק דרך remote ברשת, ול-worktree הזה אין כזה. ה-remote של המאגר הוא תיקייה במחשב הזה, אין remote בכלל, או שהענף לא עוקב אחרי אף אחד. עבדו בתיקיית המאגר עצמה, או צרו את ה-worktree מענף שה-upstream שלו הוא remote ברשת.',
+  'worktree.bootstrap.toast.lfsSourceLocal': 'קובצי Git LFS לא נמשכו: OpenChamber מושך אותם רק דרך remote ברשת, ול-worktree הזה אין כזה. ה-remote של המאגר הוא תיקייה במחשב הזה, אין remote בכלל, או שהענף לא עוקב אחרי אף אחד. עבדו בתיקיית המאגר עצמה, או צרו את ה-worktree מענף שה-upstream שלו הוא remote ברשת.',
   'worktree.bootstrap.toast.cancelled': 'הגדרת עץ העבודה בוטלה. אפשר לנסות שוב כשמוכנים.',
   'worktree.bootstrap.toast.transportFailed': 'יש לבדוק את הגישה למאגר ואת החיבור לרשת, ולנסות שוב.',
   'worktree.bootstrap.toast.timeoutDescription': 'עץ העבודה נוצר, אבל זמן ההגדרה ברקע תם.',
@@ -1768,6 +1778,7 @@ export const dict = {
   'walkthrough.blocked.emptyDiff.description': 'עדיין אין שינויים בטווח הזה.',
   'walkthrough.blocked.contextTooSmall.title': 'ההבדלים גדולים מדי עבור המודל הנוכחי',
   'walkthrough.blocked.contextTooSmall.description': '{model} מכיל כ-{available}K תווים וההבדלים האלה דורשים כ-{required}K. שום דבר לא נחתך — במקום זאת יש לבחור מודל עם הקשר גדול יותר.',
+  'walkthrough.blocked.contextTooSmall.descriptionRefused': '{model} דחה את ההבדלים האלה כי הם ארוכים מדי. יש לבחור מודל עם הקשר גדול יותר או לסקור טווח מצומצם יותר.',
   'walkthrough.blocked.structuredOutput.title': 'המודל הזה לא יכול להפיק פלט מובנה',
   'walkthrough.blocked.structuredOutput.description': '{model} לא תומך בתגובות המובנות שסיור מודרך צריך.',
   'walkthrough.blocked.chooseModel': 'בחר את המודל הקטן',
@@ -1846,6 +1857,7 @@ export const dict = {
   'contextPanel.browser.annotate.intro': 'זוהי בחירה עם הערות מהדפדפן המובנה באפליקציה.',
   'contextPanel.browser.annotate.attached': 'ההערה צורפה לצ\'אט',
   'contextPanel.browser.annotate.noSession': 'יש לפתוח הפעלת צ\'אט לפני צירוף הערה',
+  'contextPanel.browser.annotate.readOnly': 'הצ\'אט הזה לקריאה בלבד, לכן אי אפשר לצרף אליו הערות',
   'contextPanel.browser.annotate.noPage': 'יש לטעון דף לפני הוספת הערות',
   'contextPanel.browser.annotate.failed': 'לא ניתן היה להוסיף הערות לדף הזה',
   'contextPanel.browser.annotate.tool.element': 'רכיב',
@@ -2088,7 +2100,8 @@ export const dict = {
   'contextSidebar.tokens.cacheRead': 'קריאה מהמטמון',
   'contextSidebar.tokens.cacheWrite': 'כתיבה למטמון',
   'contextSidebar.tokens.cacheHit': 'פגיעה במטמון',
-  'chat.workStatus.replyCacheHit': 'פגיעה במטמון (תשובה)',
+  'chat.workStatus.replyCacheHit': 'מטמון הנחיות',
+  'chat.workStatus.replyCacheHitDescription': 'החלק מההנחיה שנקרא מהמטמון בתשובה האחרונה.',
   'contextSidebar.actions.copyJson': 'העתק JSON',
   'contextSidebar.actions.copy': 'העתק',
   'contextSidebar.actions.copied': 'הועתק',
@@ -2157,6 +2170,8 @@ export const dict = {
   'diffView.state.loadingDiff': 'טוען הבדלים…',
   'diffView.state.loadingChanges': 'טוען שינויים…',
   'diffView.state.largeDiff': 'הבדלים גדולים ({count} שורות שהשתנו)',
+  'diffView.state.largeDiffLongLines': 'הבדלים גדולים (שורות ארוכות מאוד)',
+  'diffView.state.largeFile': 'קובץ גדול',
   'diffView.state.largeDiffDescription': 'התצוגה עלולה להיות איטית. אפשר עדיין לראות את ההבדלים בלחיצה למטה.',
   'diffView.summary.changedFilesSingle': '{count} קובץ השתנה',
   'diffView.summary.changedFilesPlural': '{count} קבצים השתנו',
@@ -2574,6 +2589,9 @@ export const dict = {
   'session.githubPrPicker.empty.noPullRequestsFound': 'לא נמצאו בקשות משיכה',
   'session.githubPrPicker.loading.pullRequests': 'טוען בקשות משיכה…',
   'session.githubPrPicker.actions.loadMore': 'טען עוד',
+  'session.githubPrPicker.filter.group.repository': 'מאגר',
+  'session.githubPrPicker.filter.group.author': 'מחבר',
+  'session.githubPrPicker.filter.clearAll': 'ניקוי מסננים',
   'session.newWorktree.title': 'עץ עבודה חדש',
   'session.newWorktree.mode.newBranch': 'ענף חדש',
   'session.newWorktree.mode.existingBranch': 'ענף קיים',
@@ -2717,6 +2735,7 @@ export const dict = {
   'chat.revert.toast.undo': 'הוחזר אל {preview}',
   'chat.revert.toast.redo': 'בוצע שוב',
   'chat.revert.toast.restored': 'כל ההודעות שוחזרו',
+  'chat.revert.toast.filesUnchanged': 'השיחה הוחזרה. הקבצים לא שונו.',
   'chat.toast.opencodeRestartInterrupted.title': 'הצ\'אט נקטע',
   'chat.toast.opencodeRestartInterrupted.description': 'OpenCode הופעל מחדש בזמן שתגובה עדיין רצה. אפשר לשלוח הודעה כדי להמשיך.',
   'chat.toast.opencodeRestartInterrupted.autoResumeDescription': 'OpenCode הופעל מחדש בזמן שתגובה עדיין רצה. השיחה תמשיך אוטומטית; שלחו הודעה אם לא.',
@@ -2854,6 +2873,7 @@ export const dict = {
   'chat.textSelection.title.saveInsightToNotes': 'שמור את הטקסט שנבחר בהערות',
   'chat.messageBody.actions.revertAria': 'חזור להודעה זו',
   'chat.messageBody.actions.revert': 'חזור לנקודה זו',
+  'chat.messageBody.status.waitingForAgent': 'ממתין לסוכן',
   'chat.messageBody.actions.forkAria': 'פצל מהודעה זו',
   'chat.messageBody.actions.fork': 'פצל מכאן',
   'chat.messageBody.actions.copyMessageAria': 'העתק את טקסט ההודעה',
@@ -2954,6 +2974,7 @@ export const dict = {
   'chat.chatInput.toast.sendAttachmentsFailed': 'לא ניתן היה לשלוח את הקבצים המצורפים. אפשר לנסות עם פחות קבצים או תמונות קטנות יותר.',
   'chat.chatInput.toast.messageSendFailed': 'שליחת ההודעה נכשלה. הקבצים המצורפים שוחזרו.',
   'chat.chatInput.toast.agentUnavailable': 'הסוכן "{agent}" אינו זמין בתיקייה של הפעלה זו. יש לבחור סוכן אחר ולשלוח שוב.',
+  'chat.chatInput.toast.skillLoadFailed': 'המיומנות "{skill}" לא נטענה משרת ה-MCP שלה. יש לוודא בהגדרות שהשרת מחובר ולשלוח שוב.',
   'chat.chatInput.toast.noModelSelected': 'יש לבחור ספק ומודל לפני השליחה.',
   'chat.chatInput.toast.clipboardAttachFailed': 'לא ניתן היה לצרף תמונה מהלוח',
   'chat.chatInput.toast.clipboardTextAttachFailed': 'לא ניתן היה לצרף את הטקסט שהודבק כקובץ',
@@ -3309,6 +3330,11 @@ export const dict = {
   'openInApp.actions.copyPath': 'העתק נתיב',
   'openInApp.actions.refreshApps': 'רענן יישומים',
   'openInApp.toast.pathCopied': 'הנתיב הועתק ללוח',
+  'openInApp.toast.sshOpenFailed': 'לא ניתן לפתוח את {app}. ודאו שהוא מותקן במחשב הזה.',
+  'openInApp.toast.sshInstanceChanged': 'החלון הזה עבר למופע אחר לפני ש-{app} נפתח. נסו שוב.',
+  'openInApp.toast.sshSettingsMismatch': '{app} לא יתחבר כמו המופע הזה: פקודת ה-SSH שלו מגדירה {settings}, ש-{app} לא קורא. העבירו אותן לרשומת המארח ב-~/.ssh/config.',
+  'openInApp.toast.sshUnresolved': 'לא ניתן לקרוא את הגדרות ה-SSH של המופע הזה, לכן {app} לא נפתח. בדקו את פקודת ה-SSH שלו.',
+  'openInApp.toast.sshUnsupported': '{app} לא יכול לפתוח את הפרויקט הזה דרך SSH.',
   'projectActions.actions.addActionAria': 'הוסף פעולה',
   'projectActions.actions.addAction': 'הוסף פעולה',
   'projectActions.actions.addNewAction': 'הוסף פעולה חדשה',
@@ -4442,7 +4468,7 @@ export const dict = {
   ...backlogI18n.he,
   ...documentToolbarI18n.he,
   ...uiBlocksI18n.he,
-  ...updateDialogCanaryI18n.he,
+  ...updateDialogCanaryI18n.he, ...updateIdleI18n.he,
   ...aboutReleaseNotesI18n.he,
   ...updateCheckErrorsI18n.he,
   ...secretRequestI18n.he,
@@ -4452,6 +4478,7 @@ export const dict = {
   ...usageStatsI18n.he,
   ...webSearchI18n.he,
   ...sessionWarmingI18n.he,
+  ...sessionCostI18n.he,
   ...connectionHeartbeatI18n.he,
   ...compactionSettingsI18n.he,
   ...heapSnapshotI18n.he,
@@ -4488,9 +4515,12 @@ export const dict = {
   ...pluginsGridI18n.he,
   ...integrationsCatalogI18n['he'],
   ...diffFindI18n['he'],
+  ...contextWindowI18n['he'],
   ...markdownOutlineI18n['he'],
   ...markdownGithubI18n['he'],
   ...autocompleteScopeI18n['he'],
+  ...chatExchangeI18n['he'],
+  ...integrateConflictI18n['he'],
   ...workflowsI18n['he'],
   ...subagentsI18n['he'],
   ...sessionReferencesI18n['he'],
@@ -4552,6 +4582,10 @@ export const dict = {
   'diffView.layout.sideBySide': 'תצוגה זה לצד זה',
   'diffView.actions.wrapLines': 'גלישת שורות',
   'diffView.actions.moreActions': 'פעולות נוספות',
+  'diffView.actions.viewOptions': 'אפשרויות תצוגת הבדלים',
+  'gitView.sidebar.resizeAria': 'שינוי גודל סרגל הצד של Git',
+  'gitView.commit.stagedCountSummary': '{count} מוכנים',
+  'gitView.commit.collapseAria': 'כווץ טופס commit',
   'session.newWorktree.trust.skip': 'דילוג',
   'chat.revertPopover.toast.restoreFailed': 'לא ניתן היה לשחזר את ההודעות שבוטלו',
   ...debugPanelI18n.he,

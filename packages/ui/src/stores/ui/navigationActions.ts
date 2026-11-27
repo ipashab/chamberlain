@@ -6,6 +6,7 @@ export const createNavigationActions: UIStoreSlice<
   | 'setSessionSwitcherOpen'
   | 'setSessionDropdownOpen'
   | 'setPendingDiffFile'
+  | 'setPendingCommentLocation'
   | 'setPendingTurnDiffFile'
   | 'setPendingFileNavigation'
   | 'setPendingFileFocusPath'
@@ -89,6 +90,10 @@ export const createNavigationActions: UIStoreSlice<
       pendingDiffStaged: filePath ? staged : false,
       pendingDiffScope: filePath ? scope : null,
     });
+  },
+
+  setPendingCommentLocation: (location) => {
+    set({ pendingCommentLocation: location });
   },
 
   setPendingTurnDiffFile: (request) => {

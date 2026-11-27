@@ -19,6 +19,7 @@ import { type QueuedContextPart, type QueuedMessageGoal } from '@/stores/message
 import { withOriginalAttachment } from '@/stores/messageQueueAttachments';
 import { useSessionGoalArmStore } from '@/stores/useSessionGoalArmStore';
 import { useSelectionStore } from '@/sync/selection-store';
+import { isSessionModelChosen } from '@/sync/session-selection';
 import { prepareUserMessageResume } from '@/sync/user-message-resume';
 import { attachedFilesForModel, AttachmentPathSaveError } from '@/sync/model-attachment-paths';
 import { useInputStore, type SyntheticContextPart } from '@/sync/input-store';
@@ -34,7 +35,6 @@ import { referencesLinkedIn, withoutSharedPageLinks, withReferencesFromText } fr
 import { type SessionReference } from '../../composer/sessionReferences';
 import { routeGuestSlashCommand } from '../../composer/submit/guestCommands';
 import { opencodeClient } from '@/lib/opencode/client';
-import { buildSkillMentionInstruction } from '@/lib/skillMentionInstruction';
 import { withMissingCitations } from '@/lib/attachmentIdentity';
 import { filterMissingInlineAttachments } from '../../composer/attachments/inlineMentionAttachments';
 import { buildComposerContext, expandCommentSnippets } from '../../composer/submit/buildOutgoingMessage';
@@ -124,6 +124,8 @@ export function useComposerQueueActions({
         const isQueueRuntime = captureRuntimeInstance();
         const queueTarget = messageQueueTarget;
         const queueSessionId = currentSessionId;
+        const keepSessionAgent = !(currentAgentName && useSelectionStore.getState().getSessionAgentPick(queueSessionId) === currentAgentName);
+        const keepSessionModel = keepSessionAgent && !(currentProviderId && currentModelId && isSessionModelChosen(queueSessionId, currentProviderId, currentModelId));
         const settleModelPick = useSelectionStore.getState().captureSessionModelPickSettlement(
             queueSessionId, currentProviderId, currentModelId, queueRuntimeKey,
         );
@@ -168,7 +170,7 @@ export function useComposerQueueActions({
         const availableSkillNames = new Set(
             availableSkills.map((skill) => skill.name),
         );
-        const skillInstruction = buildSkillMentionInstruction(collectInlineSkillMentions(sanitizedText, availableSkillNames));
+        const skillNames = collectInlineSkillMentions(sanitizedText, availableSkillNames);
         const textToQueue = await useSnippetsStore.getState().expandText(sanitizedText).catch((error) => {
             console.warn('[queue] Failed to expand snippets, queueing original text:', error);
             return sanitizedText;
@@ -192,7 +194,7 @@ export function useComposerQueueActions({
             inlineComments: expandedDrafts,
             syntheticTexts: [...syntheticParts.map((part) => part.text), ...(actionsNote?.text ? [actionsNote.text] : [])],
             references: [...linkedToQueue.map(toContextReference), ...sessionMentionsIn(messageToQueue)],
-        }, skillInstruction);
+        });
         const goalArm = textToQueue.trim()
             ? useSessionGoalArmStore.getState().consume()
             : { armed: false, objectiveOverride: null };
@@ -219,6 +221,7 @@ export function useComposerQueueActions({
                 content: messageToQueue,
                 text: textToQueue,
                 agentMention: mention?.name,
+                skills: skillNames.length > 0 ? skillNames : undefined,
                 attachments: attachmentsToQueue.length > 0 ? attachmentsToQueue : undefined,
                 context: context.length > 0 ? context : undefined,
                 sendConfig: currentProviderId && currentModelId ? {
@@ -226,6 +229,8 @@ export function useComposerQueueActions({
                     modelID: currentModelId,
                     agent: currentAgentName ?? undefined,
                     variant: currentVariant ?? undefined,
+                    ...(keepSessionModel && { keepSessionModel: true }),
+                    ...(keepSessionAgent && { keepSessionAgent: true }),
                 } : undefined,
                 goal,
             });

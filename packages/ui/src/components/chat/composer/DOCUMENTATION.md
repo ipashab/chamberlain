@@ -623,7 +623,8 @@ render.
 
 ### Why a share waits for the draft to be the one on screen
 
-A share (the Android share intent) always opens a new-session draft of its own
+A share (Android's share intent, or the iOS share extension's inbox) always
+opens a new-session draft of its own
 (`openSharedFilesSession` in `apps/deepLinkNavigation.ts`) in the last-used
 project: the projects store's active project, which opening a session keeps
 current, or the first project when none is active. A project draft is listed in
@@ -693,6 +694,21 @@ Shared text rides along as the attach call's `leadingText` rather than being set
 first: the citation is inserted into the editor's document, which still holds
 the text from before the commit, and that document overwrites `composerText` on
 the next edit, so text set first is lost.
+
+### Why the Dictate quick action waits for its draft and starts through the mic event
+
+The app icon's Dictate action (a native shortcut request, never a link) opens
+a new-session draft and leaves `input-store.pendingDraftDictation`, addressed
+by that draft's id. `usePendingDraftDictation` starts recording from the
+unpinned composer only once it renders that draft: the request is set in the
+same turn the draft opens, so the composer can still be showing the session
+the user left, and recording there would make that session the dictation's
+origin. A request is taken once, and only by the composer showing its draft; a
+draft the user leaves before it renders never records. It sends the mic
+button's `openchamber:dictation-toggle` event marked `startOnly`, so it goes
+through the same capture owner, permission prompt and settings checks as a tap
+on the mic instead of a second way into `useDictation`, and it never confirms
+or sends a recording that is already running.
 
 ### Why the draft text lives outside React state
 
@@ -1115,7 +1131,12 @@ copy.
   authority**, not the pattern. An unknown `/token` or `$token` stays plain
   prose, so `$5` is just money. The skill sigil also matches the yen and
   full-width dollar signs a CJK IME types for the Shift+4 key, so `¥5` is
-  money for the same reason.
+  money for the same reason. A skill name, and only a skill name, may carry
+  one `:` and dot-joined parts after it, because a skill an MCP server serves
+  is named `<server>:<skill>` (`docs:team.pdf`). A `:` or `.` with no letter
+  or digit after it ends the name, and a scanned `<a>:<b>` that is not a known
+  skill falls back to a known `<a>` (`resolveKnownName`), so `$deploy:prod`,
+  `$deploy.sh` and `/plan:details` keep meaning what they meant before.
 - `triggers.ts` — which picker a caret position asks for. Exactly one can be
   active, with precedence `command > skill > snippet > mention > emoji`. Commands open
   only on a `/` in the first column; skills open on `$` or its IME spellings at
@@ -1483,7 +1504,7 @@ command can leave the queue untouched and delivery can take only part of it.
   (as `QueuedContextPart`s on the queue item), the server or the VS Code
   auto-send delivers them through `queuedContextToParts`, and editing the
   queued message puts them back. A queued message is placed as captured — its
-  mention, file mentions, and skill instruction were resolved when it was
+  mention, file mentions, and skill names were resolved when it was
   queued, never at delivery — and its context follows it before the next
   queued message.
 - **Skills named with `$name` are attached to the prompt, not hinted at.**
@@ -1492,7 +1513,12 @@ command can leave the queue untouched and delivery can take only part of it.
   `SkillMentions`, and `opencodeClient.sendMessage` maps each name to its
   OpenCode skill id (`GET /api/skill`; the id is the skill's folder and can
   differ from its frontmatter name) and sends them in the prompt's `skills`
-  field. OpenCode then loads each skill's content into that user message. It
+  field. It reads `GET /api/model/default` first: OpenCode's skill list does
+  not wait for a location's plugins and answers `[]` while a fresh location
+  (a new worktree, the first send after a restart) is still booting, which
+  silently turned the skill into the instruction, while the default-model read
+  waits for activation (up to OpenCode's 5 s; past that the send goes on as
+  before). OpenCode then loads each skill's content into that user message. It
   rides the prompt's delivery, so a new-session draft (after the session is
   created), a steer while the agent works and a `/btw` fork all activate the
   skill with their own message, never mid-turn. The separate
@@ -1504,9 +1530,15 @@ command can leave the queue untouched and delivery can take only part of it.
   these skills…") is per skill and never blocks the send: a name OpenCode
   does not list, a failed skill list, or a prompt rejected with
   `Skill not found` (resent once with the same message id, since preparation
-  fails before admission). Queued messages keep the instruction captured at
-  queue time, because the server and the VS Code auto-send deliver them
-  without the composer's registry. A `$skill` in a message that routes to
+  fails before admission). A queued message carries the skill names captured
+  at queue time (`QueuedMessage.skills`), and every delivery attaches them the
+  same way: a manual send through `buildOutgoingMessage`, the VS Code
+  auto-send through `sendMessage`, and the server queue by its own lookup
+  (`packages/web/server/lib/message-queue/DOCUMENTATION.md`). An instruction
+  alone is not enough: OpenCode keeps a skill with `disable-model-invocation`
+  out of the model's skill list, so the model answers that the skill does not
+  exist. A message queued by an older build still delivers its captured
+  instruction. A `$skill` in a message that routes to
   `session.command` (a leading `/command`) keeps the instruction too: that
   route takes no skill attachments. A hand-typed leading `/name` that matches
   a skill and no command still attaches the skill (`session-ui-store`), so the
@@ -1596,6 +1628,28 @@ command can leave the queue untouched and delivery can take only part of it.
   just opened must render in the same commit
   (`useShownSessionSelection`, see `sync/DOCUMENTATION.md`, "Session switch
   commit"): a deferred draft recorded the session still on screen (#6927).
+  The transcript stays in the visible composer when its draft identity matches
+  the origin, or when the composer still shows the new-session draft (same
+  draft id, same runtime) where recording started. A new-session draft's
+  identity includes its directory, so its identity alone makes a project or
+  Chat/Project switch of the same draft look like another composer (#7529).
+  Existing sessions and BTW match by identity only. Identity also counts for
+  drafts on its own because two Chat drafts share one slot. While the dictation
+  is pending, `useComposerDraft` reports the move that carries the draft's text
+  and the origin follows it, so opening another session after a move keeps the
+  transcript with the moved draft.
+  **Insert** adds the text to that composer. **Insert and send** captures the
+  identity on screen at confirmation: a draft moved before confirming sends to
+  the new project, and a draft moved between confirmation and the transcript
+  keeps the text unsent, because the user never confirmed sending it there. A
+  draft moved away and back in that time counts as moved. Opening another
+  session and returning does not, since the draft itself stayed put. The check
+  compares the origin record: each carried move replaces it, so it is read
+  before the transcript clears the origin.
+  The hook closes over the rendered identity: `useDictation` and
+  `ComposerDictation` keep their handlers in refs written after commit, so a
+  render that suspends or is deferred cannot change the target. VS Code has no
+  dictation (see `components/dictation/DOCUMENTATION.md`).
   The dictation shortcut starts in the focused composer's form, falling back
   to the main chat when no form has focus. Mobile mic triggers explicitly
   address their own form. One mounted dictation engine owns capture and
@@ -1785,6 +1839,18 @@ A pasted link to an issue, change request or tracker item (`referenceLinks.ts`)
 is read the way the picker reads a chosen item (`resolveReferenceLink` in
 `components/references/resolveComposerReferences.ts`), through the project the
 picker uses, and then draws as a chip where it stands: its number and title.
+
+What the picker lists and a link is read through is the board's default for
+the session's folder (`useReferenceScope` in
+`components/references/useAttachReferences.ts`, over `useBoardRepository`):
+the folder itself when it is a repository, or every repository under it when it
+is not. In such a folder the picker lists them all together, as the board's
+**All repositories** does, and attaches each item through the repository it was
+listed from; a pasted link is read through the repository whose remote names it
+(`useFolderOfRepository`, the rule the board's links use), else through one on
+the link's host, the way a single repository reads an item of another one
+(`linkReadContext`). A folder that is a repository is never scanned for others:
+its submodules' links already read through it.
 
 - The text decides what is sent, as with session links: each linked item once,
   as the same context part the picker sends, and the session records it as a
@@ -2296,6 +2362,23 @@ comment uses the trimmed `selectionApprovalText` setting, falling back to
 `Sounds good`. Existing drafts, attachments and linked references stay in place;
 the user sends them together through the normal Send action. The shortcut
 focuses the composer on desktop and does not request keyboard focus on mobile.
+
+## What a context row opens
+
+A review comment row's head opens what the comment was written on, through
+`components/comments/useOpenCommentSource.ts`; on the phone, where a tap on
+the row edits the comment, the collapsed row's label is that opener. A comment
+on uncommitted changes opens the file at its line (the Files drawer on the
+phone). A comment on a commit, a branch comparison or a change request opens
+that diff at the line, because the file on disk is another version. A comment on
+an earlier agent turn opens that turn's diff the way a turn's changed-file chip
+does; one on "Last turn" names no turn and gets no opener. The quoted code keeps
+its own behaviour: only a chat quote's reveals its source.
+
+The opener is withheld where the place cannot be shown: a branch comment while
+another branch is checked out, a comparison comment in VS Code, and any comment
+in the mini chat window, which has no file or diff viewer. A plan comment keeps
+no opener: its label is the plan document, which may not be a file yet.
 
 ## Mobile comment mode
 

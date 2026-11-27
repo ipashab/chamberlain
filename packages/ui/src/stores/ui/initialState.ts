@@ -4,7 +4,7 @@ import { DEFAULT_MONO_FONT, DEFAULT_UI_FONT, DEFAULT_UI_FONT_WEIGHT } from '@/li
 import { getStoredMobileKeyboardMode } from '@/lib/mobileKeyboardMode';
 import { LIVE_BROWSER_TABS_DEFAULT } from '@/lib/browser/liveTabs';
 import { sanitizeWorkStatusSectionOrder } from '@/components/chat/work-status/sections';
-import { DEFAULT_DOCUMENT_ATTACH_BEHAVIOR, DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR, DEFAULT_EDITOR_FONT_SIZE, DEFAULT_CONTEXT_EDITOR_TREE_WIDTH } from './preferences';
+import { DEFAULT_DOCUMENT_ATTACH_BEHAVIOR, DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR, DEFAULT_EDITOR_FONT_SIZE, DEFAULT_CONTEXT_EDITOR_TREE_WIDTH, DEFAULT_GIT_SIDEBAR_WIDTH } from './preferences';
 import type { UIStore } from './types';
 
 const LEFT_SIDEBAR_DEFAULT_WIDTH = 280;
@@ -29,6 +29,7 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'fileTreeSide'
   | 'contextEditorVisible'
   | 'contextEditorTreeWidth'
+  | 'gitSidebarWidth'
   | 'contextZoneSizes'
   | 'contextZoneExpandedChatSizes'
   | 'workStatusExpandedSections'
@@ -47,6 +48,7 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'pendingDiffFile'
   | 'pendingDiffStaged'
   | 'pendingDiffScope'
+  | 'pendingCommentLocation'
   | 'pendingTurnDiffFile'
   | 'pendingFileNavigation'
   | 'pendingFileFocusPath'
@@ -195,6 +197,7 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'agentNotifyToolEnabled'
   | 'agentUsageToolEnabled'
   | 'agentTerminalToolEnabled'
+  | 'agentActionsToolEnabled'
   | 'agentImageToolEnabled'
   | 'agentImageModel'
   | 'agentMemoryDreamingEnabled'
@@ -228,6 +231,7 @@ export const createInitialUIState = (): Pick<UIStore,
   | 'selectionApprovalText'
   | 'showToolFileIcons'
   | 'showTurnChangedFiles'
+  | 'keepEarlierReplies'
   | 'timeFormatPreference'
   | 'weekStartPreference'
   | 'desktopWindowControlsPosition'
@@ -266,6 +270,7 @@ export const createInitialUIState = (): Pick<UIStore,
   fileTreeSide: 'left',
   contextEditorVisible: true,
   contextEditorTreeWidth: DEFAULT_CONTEXT_EDITOR_TREE_WIDTH,
+  gitSidebarWidth: DEFAULT_GIT_SIDEBAR_WIDTH,
   contextZoneSizes: {},
   contextZoneExpandedChatSizes: {},
   workStatusExpandedSections: {},
@@ -284,6 +289,7 @@ export const createInitialUIState = (): Pick<UIStore,
   pendingDiffFile: null,
   pendingDiffStaged: false,
   pendingDiffScope: null,
+  pendingCommentLocation: null,
   pendingTurnDiffFile: null,
   pendingFileNavigation: null,
   pendingFileFocusPath: null,
@@ -340,7 +346,7 @@ export const createInitialUIState = (): Pick<UIStore,
   sessionGoalDefaultBudget: 200_000,
   collapsibleThinkingBlocks: true,
   expandReasoningWhileStreaming: false,
-  activityRenderMode: 'summary',
+  activityRenderMode: 'grouped',
   showDeletionDialog: true,
   autoDeleteEnabled: false,
   autoSaveEnabled: true,
@@ -437,6 +443,7 @@ export const createInitialUIState = (): Pick<UIStore,
   agentNotifyToolEnabled: false,
   agentUsageToolEnabled: false,
   agentTerminalToolEnabled: false,
+  agentActionsToolEnabled: false,
   agentImageToolEnabled: false,
   agentImageModel: '',
   agentMemoryDreamingEnabled: false,
@@ -470,6 +477,7 @@ export const createInitialUIState = (): Pick<UIStore,
   selectionApprovalText: '',
   showToolFileIcons: true,
   showTurnChangedFiles: false,
+  keepEarlierReplies: false,
   timeFormatPreference: 'auto',
   weekStartPreference: 'auto',
   desktopWindowControlsPosition: 'right',

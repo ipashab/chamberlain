@@ -49,6 +49,7 @@ import {
   clampContextPanelTabs,
   sanitizeContextPanelTabs,
   resolveActiveContextPanelTabID,
+  migrateLegacyContextTabId,
 } from './contextTabs';
 
 const persistedPixelsSchema = z.number().finite().optional().catch(undefined);
@@ -63,6 +64,15 @@ const persistedZoneSizesSchema = z.object({
   heightByMode: z.record(z.string(), persistedPixelsSchema).catch({}),
 });
 
+const migrateZoneViews = (zones: unknown, tabs: readonly ContextPanelTab[]) => {
+  const parsed = zoneViewsSchema.parse(zones);
+  const migrated = {
+    left: { ...parsed.left, activeTabId: migrateLegacyContextTabId(parsed.left.activeTabId, tabs) },
+    bottom: { ...parsed.bottom, activeTabId: migrateLegacyContextTabId(parsed.bottom.activeTabId, tabs) },
+  };
+  return keepZoneViewsOnTabs(migrated, new Set(tabs.map((tab) => tab.id)));
+};
+
 export const touchContextPanelState = (
   prev: ContextPanelDirectoryState | undefined,
   placement: ContextZonePlacement,
@@ -76,7 +86,8 @@ export const touchContextPanelState = (
       workspaceMode: isWorkspaceMode(prev.workspaceMode) ? prev.workspaceMode : DEFAULT_WORKSPACE_MODE,
       modeLayouts: sanitizeModeLayouts(prev.modeLayouts, presentTabIds),
       layout: sanitizeTree(layoutOrChat(prev.layout), presentTabIds),
-      zones: keepZoneViewsOnTabs(zoneViewsSchema.parse(prev.zones), presentTabIds),
+      activeTabId: migrateLegacyContextTabId(prev.activeTabId, tabs),
+      zones: migrateZoneViews(prev.zones, tabs),
       touchedAt: Date.now(),
     }, placement);
   }
@@ -381,11 +392,11 @@ export const sanitizeContextPanelByDirectory = (
     };
 
     let tabs = sanitizeContextPanelTabs(candidate.tabs);
-    let activeTabId = typeof candidate.activeTabId === 'string' ? candidate.activeTabId : null;
+    let activeTabId = migrateLegacyContextTabId(typeof candidate.activeTabId === 'string' ? candidate.activeTabId : null, tabs);
 
     if (tabs.length === 0 && (candidate.mode === 'diff' || candidate.mode === 'file' || candidate.mode === 'context' || candidate.mode === 'chat' || candidate.mode === 'terminal')) {
       tabs = [createContextPanelTab({
-        mode: candidate.mode,
+        mode: candidate.mode === 'diff' && !candidate.targetDirectory ? 'git' : candidate.mode,
         targetPath: typeof candidate.targetPath === 'string' ? candidate.targetPath : null,
         targetDirectory: candidate.targetDirectory,
         dedupeKey: typeof candidate.dedupeKey === 'string' ? candidate.dedupeKey : null,
@@ -398,7 +409,7 @@ export const sanitizeContextPanelByDirectory = (
     const clampedTabs = clampContextPanelTabs(tabs, CONTEXT_PANEL_MAX_TABS, resolvedActiveTabId);
 
     const resolvedTabId = resolveActiveContextPanelTabID(clampedTabs, resolvedActiveTabId);
-    const zones = keepZoneViewsOnTabs(zoneViewsSchema.parse(candidate.zones), new Set(clampedTabs.map((tab) => tab.id)));
+    const zones = migrateZoneViews(candidate.zones, clampedTabs);
     // Дерево раскладки читается из размещения поверхностей, когда сохранённое
     // состояние его опережает: открытые зоны становятся листьями там, где они
     // стояли, вкладки закрытых зон остаются в ленте и входят в лист в день

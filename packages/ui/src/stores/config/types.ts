@@ -7,7 +7,6 @@ import { type UseBoundStore, type StoreApi } from 'zustand';
 export type ProviderModel = Model;
 export type ProviderWithModelList = Provider & { models: Model[] };
 
-export type GitModelSelection = { providerId: string; modelId: string };
 export type ProviderModelSelection = { providerId: string; modelId: string; variant?: string | null } | null;
 
 export type DefaultAgentModelSelection = {
@@ -109,12 +108,14 @@ export interface ConfigStore {
     openaiCompatibleVoice: string;
     openaiCompatibleTtsModel: string;
     openaiCompatibleTtsEndpointPath: string;
+    openaiCompatibleKeyProvider: string | undefined;
     dictationEnabled: boolean;
     dictationAutoSend: boolean;
     sttProvider: 'local' | 'openai-compatible';
     sttServerUrl: string;
     sttModel: string;
     sttEndpointPath: string;
+    sttKeyProvider: string | undefined;
     sttLocalModel: string;
     sttLanguage: string;
     sttCorrectTranscript: boolean;
@@ -135,18 +136,20 @@ export interface ConfigStore {
     setLocalTtsModelId: (modelId: string) => void;
     setTtsFollowTextLanguage: (enabled: boolean) => void;
     setOpenaiVoice: (voice: string) => void;
-    setVoiceApiKey: (kind: VoiceApiKeyKind, apiKey: string | null) => Promise<boolean>;
+    setVoiceApiKey: (kind: VoiceApiKeyKind, apiKey: string | null, speechServer?: string | null) => Promise<boolean>;
     refreshVoiceApiKeys: (options?: { force?: boolean }) => Promise<void>;
     setOpenaiCompatibleUrl: (url: string) => void;
     setOpenaiCompatibleVoice: (voice: string) => void;
     setOpenaiCompatibleTtsModel: (model: string) => void;
     setOpenaiCompatibleTtsEndpointPath: (path: string) => void;
+    setOpenaiCompatibleKeyProvider: (providerId: string) => void;
     setDictationEnabled: (enabled: boolean) => void;
     setDictationAutoSend: (enabled: boolean) => void;
     setSttProvider: (provider: 'local' | 'openai-compatible') => void;
     setSttServerUrl: (url: string) => void;
     setSttModel: (model: string) => void;
     setSttEndpointPath: (path: string) => void;
+    setSttKeyProvider: (providerId: string) => void;
     setSttLocalModel: (model: string) => void;
     setSttLanguage: (lang: string) => void;
     setSttCorrectTranscript: (enabled: boolean) => void;
@@ -168,6 +171,7 @@ export interface ConfigStore {
     invalidateProviderCache: (directory?: string | null) => void;
     setProvider: (providerId: string) => void;
     setModel: (modelId: string) => void;
+    followModel: (providerId: string, modelId: string) => void;
     setCurrentVariant: (variant: string | undefined) => void;
     setCurrentVariantOverride: (override: string | null | undefined, inherited: string | null | undefined) => void;
     cycleCurrentVariant: () => string | undefined;
@@ -190,7 +194,6 @@ export interface ConfigStore {
     setSettingsDefaultFileViewerPreview: (enabled: boolean) => void;
     setSettingsZenModel: (model: string | undefined) => void;
     setSettingsMessageStreamTransport: (transport: 'auto' | 'ws' | 'sse') => void;
-    getResolvedGitGenerationModel: () => { providerId: string; modelId: string } | null;
     saveAgentModelSelection: (agentName: string, providerId: string, modelId: string) => void;
     getAgentModelSelection: (agentName: string) => { providerId: string; modelId: string } | null;
     probeConnection: (options?: { timeoutMs?: number }) => Promise<boolean>;

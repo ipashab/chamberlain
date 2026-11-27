@@ -1,7 +1,13 @@
 import * as React from 'react';
+import { resolveAttachMode } from '@openchamber/sdk';
 
 import { useMobileAppActions } from '@/apps/mobileAppContext';
+import { isBuiltInLink, runGuestLink } from '@/components/chat/markdown/guestLinkClick';
 import { RuntimeAPIContext } from '@/contexts/runtimeAPIContext';
+import { guestsInScope, useGuestScopeStore } from '@/lib/guests/folders';
+import { claimGuestUrl, guestLinkRulesOf } from '@/lib/guests/links';
+import { useGuestsStore } from '@/lib/guests/store';
+import { formatMessage, useI18nStore } from '@/lib/i18n/store';
 import { resolveEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import type { RepositoryReferenceKind } from '@/lib/api/types';
 import { isVSCodeRuntime } from '@/lib/desktop';
@@ -157,12 +163,31 @@ export function useOpenProjectOnBoard(): (() => void) | null {
 /**
  * Opens an issue, PR or tracker item a session is linked to
  * (`useShowTrackerItem`). Cmd or Ctrl opens the link itself, as links do; so
- * does anything the app cannot show here.
+ * does anything the app cannot show here. Returns where it opened: the app's
+ * own panel, a guest panel, or the browser.
  */
+const t = (key: Parameters<typeof formatMessage>[1], params?: Parameters<typeof formatMessage>[2]) =>
+    formatMessage(useI18nStore.getState().dictionary, key, params);
+
+export type TrackerItemOpened = 'guest-panel' | 'app' | 'browser';
+
+export type TrackerItemEvent = { metaKey: boolean; ctrlKey: boolean; shiftKey?: boolean; altKey?: boolean };
+
 export function useOpenTrackerItem() {
     const showTrackerItem = useShowTrackerItem();
 
-    return React.useCallback((url: string, directory: string | null | undefined, event?: { metaKey: boolean; ctrlKey: boolean }) => {
-        if (event?.metaKey || event?.ctrlKey || !showTrackerItem(url, directory)) void openExternalUrl(url);
+    return React.useCallback((url: string, directory: string | null | undefined, event?: TrackerItemEvent): TrackerItemOpened => {
+        if (!event?.metaKey && !event?.ctrlKey) {
+            if (showTrackerItem(url, directory)) return 'app';
+            const plain = !event?.shiftKey && !event?.altKey;
+            const guests = guestsInScope(useGuestsStore.getState().guests, useGuestScopeStore.getState().paths);
+            const claim = plain && !isBuiltInLink(url) ? claimGuestUrl(guestLinkRulesOf(guests), url) : null;
+            if (claim?.action === 'open' && runGuestLink(claim, 'link', resolveEffectiveDirectory() ?? '', t)) {
+                const guest = guests.find((entry) => entry.id === claim.guestId);
+                return guest && resolveAttachMode(guest.attach) !== 'dialog' ? 'guest-panel' : 'app';
+            }
+        }
+        void openExternalUrl(url);
+        return 'browser';
     }, [showTrackerItem]);
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { stopCurrentOperation } from '@/sync/prompt-take-back';
 import { hasReceivedPages, useReceivedPagesStore } from '@/components/chat/sharePages/received/receivedPagesStore';
 import { isVimEditorEventTarget } from '@/lib/editorFocus';
 import { getTerminalFocusOwner, isTerminalEventTarget } from '@/lib/terminalFocus';
@@ -7,13 +8,13 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { activateAdjacentSessionTab, activateSessionTabByIndex, closeSessionTabAndActivateNeighbour } from '@/lib/sessionTabs';
 import { navigateSessionHistory } from '@/lib/sessionNavigationHistory';
 import { useSelectionStore } from '@/sync/selection-store';
-import * as sessionActions from '@/sync/session-actions';
 import { normalizeContextPanelDirectoryKey, useUIStore } from '@/stores/useUIStore';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useCurrentSessionActivity } from '@/hooks/useSessionActivity';
 import { useKeybinds } from '@/hooks/useKeybind';
 import { handleSettingsShortcut } from './useSettingsKeyboardShortcuts';
 import { createWorktreeSession } from '@/lib/worktreeSessionCreator';
+import { activeSpaceTarget, providersOfSpaceOffer, spaceModelOffer } from '@/lib/spaces/space-model-offer';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { cycleThinkingVariant } from '@/lib/cycleThinkingVariant';
 import { canUseElectronDesktopIPC, getMiniChatRuntimeArgs, invokeDesktop, isDesktopShell, isVSCodeRuntime } from '@/lib/desktop';
@@ -55,7 +56,7 @@ import { getNextFavoriteModel } from '@/lib/modelRefs';
 import { dispatchPromptHistorySearch } from '@/components/chat/composer/state/promptHistorySearchRoute';
 import { isLinuxPlatform } from '@/lib/platform';
 import { openOrToggleLeadDraft } from '@/sync/session-lead';
-import { canUseDigitShortcut, hasActiveBtwComposer, hasOpenDropdown, isEditableEventTarget, shouldStopDropdownImeEscape } from './keyboard-shortcut-dom';
+import { canUseDigitShortcut, hasActiveBtwComposer, hasOpenDropdown, isEditableEventTarget, typesOutsidePrefixField, shouldStopDropdownImeEscape } from './keyboard-shortcut-dom';
 
 const dropdownTargetSelector = [
   '[data-slot="dropdown-menu-content"]', '[data-slot="select-content"]', '[role="combobox"]',
@@ -91,7 +92,7 @@ export const useKeyboardShortcuts = () => {
         ? { sessionId: pinnedColumn.dataset.chatSessionId ?? null, working: pinnedColumn.dataset.chatWorking === 'true' }
         : { sessionId: currentSessionId, working: sessionPhase !== 'idle' };
     },
-    abort: (sessionId) => { void sessionActions.abortCurrentOperation(sessionId); },
+    abort: (sessionId) => { void stopCurrentOperation(sessionId); },
   });
   const themeModeRef = React.useRef(themeMode);
   const dispatcherRef = React.useRef<ShortcutDispatcher | null>(null);
@@ -332,7 +333,7 @@ export const useKeyboardShortcuts = () => {
     },
     abort_run: () => {
       if (sessionPhase === 'idle' || !currentSessionId) return false;
-      void sessionActions.abortCurrentOperation(currentSessionId);
+      void stopCurrentOperation(currentSessionId);
     },
   });
 
@@ -352,7 +353,7 @@ export const useKeyboardShortcuts = () => {
     const config = useConfigStore.getState();
     const next = getNextFavoriteModel(
       state.favoriteModels,
-      config.providers,
+      providersOfSpaceOffer(spaceModelOffer(activeSpaceTarget()), config.providers),
       state.hiddenModels,
       { providerID: config.currentProviderId, modelID: config.currentModelId },
       delta,
@@ -448,6 +449,7 @@ export const useKeyboardShortcuts = () => {
         || isTerminalEventTarget(target)
         || isVimEditorEventTarget(target)
         || dropdownOpen
+        || state.isImagePreviewOpen
       ) {
         return;
       }
@@ -461,14 +463,13 @@ export const useKeyboardShortcuts = () => {
         state.setSettingsDialogOpen(false);
       }
     };
+    const handlePrefixPress = (event: PointerEvent) => {
+      if (isEditableEventTarget(event.target)) dispatcher.clear();
+    };
     const handleActivePrefixKeyDownCapture = (event: KeyboardEvent) => {
       if (isTerminalEventTarget(event.target)) return;
       if (!dispatcher.hasActivePrefix()) return;
-      if (
-        !event.ctrlKey && !event.metaKey && !event.altKey
-        && isEditableEventTarget(event.target)
-        && dispatcher.getActivePrefixTarget() !== event.target
-      ) {
+      if (typesOutsidePrefixField(event, dispatcher.getActivePrefixTarget())) {
         dispatcher.clear();
         return;
       }
@@ -589,6 +590,7 @@ export const useKeyboardShortcuts = () => {
     window.addEventListener('keydown', handleTerminalShortcutCapture, true);
     window.addEventListener('keydown', handleEscapeKeyDownCapture, true);
     window.addEventListener('keydown', handleActivePrefixKeyDownCapture, true);
+    window.addEventListener('pointerdown', handlePrefixPress, true);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keydown', handleAbortEscapeKeyDown);
     window.addEventListener('blur', handleBlur);
@@ -622,6 +624,7 @@ export const useKeyboardShortcuts = () => {
       window.removeEventListener('keydown', handleTerminalShortcutCapture, true);
       window.removeEventListener('keydown', handleEscapeKeyDownCapture, true);
       window.removeEventListener('keydown', handleActivePrefixKeyDownCapture, true);
+      window.removeEventListener('pointerdown', handlePrefixPress, true);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keydown', handleAbortEscapeKeyDown);
       window.removeEventListener('blur', handleBlur);

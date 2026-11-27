@@ -22,7 +22,7 @@ import { checkpointsI18n } from './checkpoints.i18n';
 import { backlogI18n } from './backlog.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
-import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { updateDialogCanaryI18n } from './update-dialog-canary.i18n'; import { updateIdleI18n } from './update-idle.i18n';
 import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
 import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
@@ -32,6 +32,7 @@ import { settingsHintsI18n } from './settings-hints.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { sessionWarmingI18n } from './session-warming.i18n';
+import { sessionCostI18n } from './session-cost.i18n';
 import { connectionHeartbeatI18n } from './connection-heartbeat.i18n';
 import { compactionSettingsI18n } from './compaction-settings.i18n';
 import { heapSnapshotI18n } from './heap-snapshot.i18n';
@@ -69,9 +70,12 @@ import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
 import { diffFindI18n } from './diff-find.i18n';
+import { contextWindowI18n } from './context-window.i18n';
 import { markdownOutlineI18n } from './markdown-outline.i18n';
 import { markdownGithubI18n } from './markdown-github.i18n';
 import { autocompleteScopeI18n } from './autocomplete-scope.i18n';
+import { chatExchangeI18n } from './chat-exchange.i18n';
+import { integrateConflictI18n } from './integrate-conflict.i18n';
 import { workflowsI18n } from './workflows.i18n';
 import { subagentsI18n } from './subagents.i18n';
 import { sessionReferencesI18n } from './session-references.i18n';
@@ -122,10 +126,14 @@ export const dict: Record<I18nKey, string> = {
   'sessions.aiRename.noSmallModel': 'Wymaga Small Model. Zaloguj się do dostawcy modeli lub wybierz go w Ustawienia → Sesje.',
   'commitComparison.mode': 'Commit',
   'pullRequestComparison.select': 'Wybierz pull request',
+  'pullRequestComparison.searchShort': 'Szukaj pull requestów',
   'pullRequestComparison.pickAbove': 'Wybierz pull request powyżej',
   'pullRequestComparison.diffUnavailable': "{provider} nie udostępnia diffów pull requestów, więc nie można ich tu pokazać ani omówić",
   'pullRequestComparison.partial': 'Nie udało się wczytać niektórych pull requestów',
   'commitComparison.select': 'Wybierz commit',
+  'commitComparison.branchDividerSingle': 'Powyżej: commit tylko w {branch}. Poniżej: już w {base}.',
+  'commitComparison.branchDividerPlural': 'Powyżej: commity tylko w {branch} ({count}). Poniżej: już w {base}.',
+  'commitComparison.backToList': 'Wróć do commitów',
   'commitComparison.search': 'Szukaj commitów...',
   'commitComparison.loadError': 'Nie udało się wczytać commitów',
   'commitComparison.noCommits': 'Nie znaleziono commitów',
@@ -223,7 +231,7 @@ export const dict: Record<I18nKey, string> = {
   ...backlogI18n.pl,
   ...documentToolbarI18n.pl,
   ...uiBlocksI18n.pl,
-  ...updateDialogCanaryI18n.pl,
+  ...updateDialogCanaryI18n.pl, ...updateIdleI18n.pl,
   ...aboutReleaseNotesI18n.pl,
   ...updateCheckErrorsI18n.pl,
   ...secretRequestI18n.pl,
@@ -233,6 +241,7 @@ export const dict: Record<I18nKey, string> = {
   ...usageStatsI18n.pl,
   ...webSearchI18n.pl,
   ...sessionWarmingI18n.pl,
+  ...sessionCostI18n.pl,
   ...connectionHeartbeatI18n.pl,
   ...compactionSettingsI18n.pl,
   ...heapSnapshotI18n.pl,
@@ -269,9 +278,12 @@ export const dict: Record<I18nKey, string> = {
   ...pluginsGridI18n.pl,
   ...integrationsCatalogI18n['pl'],
   ...diffFindI18n['pl'],
+  ...contextWindowI18n['pl'],
   ...markdownOutlineI18n['pl'],
   ...markdownGithubI18n['pl'],
   ...autocompleteScopeI18n['pl'],
+  ...chatExchangeI18n['pl'],
+  ...integrateConflictI18n['pl'],
   ...workflowsI18n['pl'],
   ...subagentsI18n['pl'],
   ...sessionReferencesI18n['pl'],
@@ -439,10 +451,6 @@ export const dict: Record<I18nKey, string> = {
   'mobile.menu.update': 'Aktualizuj',
   'mobile.menu.settings': 'Ustawienia',
   'mobile.sessions.newChatCta': 'Nowy czat w {project}',
-  'mobile.sessions.dateGroup.today': 'Dzisiaj',
-  'mobile.sessions.dateGroup.yesterday': 'Wczoraj',
-  'mobile.sessions.dateGroup.thisWeek': 'Wcześniej w tym tygodniu',
-  'mobile.sessions.dateGroup.older': 'Starsze',
   'mobile.sessions.section.worktrees': 'Worktrees',
   'mobile.sessions.section.otherProjects': 'Zmień projekt',
   'mobile.sessions.section.projects': 'Projekty',
@@ -551,6 +559,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.header.displayMode.minimal': 'Minimalny',
   'sessions.sidebar.header.displayMode.showWork': 'Pokaż sekcję W toku',
   'sessions.sidebar.header.displayMode.showPinned': 'Pokaż sekcję Przypięte',
+  'sessions.sidebar.header.displayMode.showSubagents': 'Pokaż sesje podagentów',
   'sessions.sidebar.header.displayMode.detailedZoneRows': 'Szczegółowe wiersze',
   'sessions.sidebar.header.displayMode.worktreeNameByBranch': 'Nazywaj worktree według gałęzi',
   'sessions.sidebar.activity.pinnedTitle': 'Przypięte',
@@ -579,6 +588,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.empty.noMatches.description': 'Spróbuj innego tytułu lub gałęzi.',
   'sessions.sidebar.activity.chatsTitle': 'Czaty',
   'sessions.sidebar.activity.chatsEmpty': 'Nie ma jeszcze czatów.',
+  'sessions.sidebar.timeline.noSessionsYet': 'Brak sesji',
   'chat.chatInput.chooseProject': 'Wybierz projekt',
   'sessions.sidebar.header.projectDisplay.label': 'Wyświetlanie projektów',
   'sessions.sidebar.header.projectDisplay.all': 'Wszystkie projekty',
@@ -972,6 +982,8 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.session.status.movingToWorktree': 'Przenoszenie sesji do nowego worktree',
   'sessions.sidebar.session.status.permissionRequired': 'Wymagane uprawnienie',
   'sessions.sidebar.session.status.questionPending': 'Oczekujące pytanie',
+  'sessions.sidebar.session.status.permissionRequiredOpen': 'Wymagane uprawnienie. Otwiera sesję, która o to prosi',
+  'sessions.sidebar.session.status.questionPendingOpen': 'Oczekujące pytanie. Otwiera sesję, która o to prosi',
   'sessions.sidebar.session.status.activeFor': 'Aktywna od {duration}',
   'sessions.sidebar.session.status.lastTurnDuration': 'Ostatnia tura trwała {duration}',
   'sessions.sidebar.session.subsessions.collapse': 'Zwiń pod-sesje',
@@ -1215,6 +1227,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.revert.toast.undo': 'Cofnięte do {preview}',
   'chat.revert.toast.redo': 'Ponowione',
   'chat.revert.toast.restored': 'Przywrócono wszystkie wiadomości',
+  'chat.revert.toast.filesUnchanged': 'Czat cofnięty. Pliki nie zostały zmienione.',
   'chat.toast.opencodeRestartInterrupted.title': 'Czat został przerwany',
   'chat.toast.opencodeRestartInterrupted.description': 'OpenCode uruchomił się ponownie podczas generowania odpowiedzi. Wyślij wiadomość, aby kontynuować.',
   'chat.toast.opencodeRestartInterrupted.autoResumeDescription': 'OpenCode uruchomił się ponownie podczas generowania odpowiedzi. Czat zostanie wznowiony automatycznie; wyślij wiadomość, jeśli się nie wznowi.',
@@ -1351,6 +1364,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.textSelection.title.saveInsightToNotes': 'Zapisz zaznaczony tekst do notatek',
   'chat.messageBody.actions.revertAria': 'Cofnij do tej wiadomości',
   'chat.messageBody.actions.revert': 'Cofnij od tego miejsca',
+  'chat.messageBody.status.waitingForAgent': 'Oczekiwanie na agenta',
   'chat.messageBody.actions.forkAria': 'Rozwidl z tej wiadomości',
   'chat.messageBody.actions.fork': 'Rozwidl od tego miejsca',
   'chat.messageBody.actions.copyMessageAria': 'Kopiuj tekst wiadomości',
@@ -1700,6 +1714,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.chatInput.toast.forkSendFailed': 'Rozgałęziono, ale wiadomość nie została wysłana. Wróciła do pola wpisywania.',
   'chat.chatInput.toast.messageSendFailed': 'Nie udało się wysłać wiadomości. Załączniki zostały przywrócone.',
   'chat.chatInput.toast.agentUnavailable': 'Agent "{agent}" nie jest dostępny w folderze tej sesji. Wybierz innego agenta i wyślij ponownie.',
+  'chat.chatInput.toast.skillLoadFailed': 'Nie udało się wczytać umiejętności "{skill}" z jej serwera MCP. Sprawdź w Ustawieniach, czy serwer jest połączony, i wyślij ponownie.',
   'chat.chatInput.toast.noModelSelected': 'Wybierz dostawcę i model przed wysłaniem.',
   'chat.chatInput.toast.openSessionFirst': 'Najpierw otwórz sesję',
   'chat.chatInput.toast.dictationKeptForOriginalSession': 'Dyktowanie zapisano jako szkic w sesji, w której je rozpoczęto',
@@ -2234,6 +2249,7 @@ export const dict: Record<I18nKey, string> = {
   'walkthrough.blocked.emptyDiff.description': 'W tym zakresie nie ma jeszcze zmian.',
   'walkthrough.blocked.contextTooSmall.title': 'Te różnice są za duże dla bieżącego modelu',
   'walkthrough.blocked.contextTooSmall.description': '{model} mieści około {available} tys. znaków, a te różnice potrzebują około {required} tys. Nic nie jest obcinane — wybierz model z większym kontekstem.',
+  'walkthrough.blocked.contextTooSmall.descriptionRefused': '{model} odrzucił te różnice, bo są za długie. Wybierz model z większym kontekstem albo węższy zakres przeglądu.',
   'walkthrough.blocked.structuredOutput.title': 'Ten model nie tworzy ustrukturyzowanych odpowiedzi',
   'walkthrough.blocked.structuredOutput.description': '{model} nie obsługuje ustrukturyzowanych odpowiedzi wymaganych przez przewodnik.',
   'walkthrough.blocked.chooseModel': 'Wybierz mały model',
@@ -2312,6 +2328,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.browser.annotate.intro': 'To jest opatrzony adnotacją fragment z wbudowanej przeglądarki.',
   'contextPanel.browser.annotate.attached': 'Adnotacja dołączona do czatu',
   'contextPanel.browser.annotate.noSession': 'Otwórz sesję czatu przed dołączeniem adnotacji',
+  'contextPanel.browser.annotate.readOnly': 'Ten czat jest tylko do odczytu, więc nie można do niego dołączać adnotacji',
   'contextPanel.browser.annotate.noPage': 'Wczytaj stronę przed dodaniem adnotacji',
   'contextPanel.browser.annotate.failed': 'Nie udało się dodać adnotacji do tej strony',
   'contextPanel.browser.annotate.tool.element': 'Element',
@@ -2398,7 +2415,8 @@ export const dict: Record<I18nKey, string> = {
   'contextSidebar.tokens.cacheRead': 'Odczyt cache',
   'contextSidebar.tokens.cacheWrite': 'Zapis cache',
   'contextSidebar.tokens.cacheHit': 'Trafienie cache',
-  'chat.workStatus.replyCacheHit': 'Trafienie cache (odpowiedź)',
+  'chat.workStatus.replyCacheHit': 'Cache promptu',
+  'chat.workStatus.replyCacheHitDescription': 'Udział promptu odczytany z pamięci podręcznej w ostatniej odpowiedzi.',
   'contextSidebar.tokens.input': 'Wejście',
   'contextSidebar.tokens.output': 'Wyjście',
   'contextSidebar.tokens.reasoning': 'Rozumowanie',
@@ -2502,6 +2520,10 @@ export const dict: Record<I18nKey, string> = {
   'diffView.layout.sideBySide': 'Widok obok siebie',
   'diffView.actions.wrapLines': 'Zawijanie linii',
   'diffView.actions.moreActions': 'Więcej akcji',
+  'diffView.actions.viewOptions': 'Opcje widoku diffa',
+  'gitView.sidebar.resizeAria': 'Zmień rozmiar paska bocznego Git',
+  'gitView.commit.stagedCountSummary': 'Przygotowane: {count}',
+  'gitView.commit.collapseAria': 'Zwiń formularz commita',
   'diffView.actions.expandAll': 'Rozwiń wszystko',
   'diffView.actions.collapseAll': 'Zwiń wszystko',
   'diffView.actions.openFileAtFirstChangedLine': 'Otwórz plik na pierwszej zmienionej linii',
@@ -2614,6 +2636,8 @@ export const dict: Record<I18nKey, string> = {
   'diffView.submodule.untrackedFiles': 'Ma nieśledzone pliki',
   'diffView.submodule.conflict': 'Konflikt scalania dotyczący zapisanego commita',
   'diffView.state.largeDiff': 'Duży diff ({count} zmienionych linii)',
+  'diffView.state.largeDiffLongLines': 'Duży diff (bardzo długie linie)',
+  'diffView.state.largeFile': 'Duży plik',
   'diffView.state.largeDiffDescription': 'Renderowanie może być wolne. Nadal możesz wyświetlić diff przyciskiem poniżej.',
   'diffView.state.loadingChanges': 'Ładowanie zmian...',
   'diffView.state.loadingDiff': 'Ładowanie diffu...',
@@ -2924,6 +2948,8 @@ export const dict: Record<I18nKey, string> = {
   'worktree.bootstrap.toast.invalidConfiguration': 'Sprawdź konfigurację podmodułów i Git LFS w repozytorium, a następnie spróbuj ponownie.',
   'worktree.bootstrap.toast.repositoryTooManyFiles': 'Repozytorium zawiera zbyt wiele plików.',
   'worktree.bootstrap.toast.branchNameConflict': 'Nazwa gałęzi koliduje z istniejącą gałęzią: ta sama nazwa albo jedna zagnieżdżona w drugiej. Zmień nazwę gałęzi i utwórz drzewo pracy ponownie.',
+  'worktree.bootstrap.toast.submoduleSourceLocal': 'Nie pobrano submodułów: OpenChamber pobiera je tylko przez zdalne repozytorium w sieci, a ten worktree takiego nie ma. Remote repozytorium to folder na tym komputerze, nie ma żadnego remote albo gałąź żadnego nie śledzi. Pracuj w samym folderze repozytorium albo utwórz worktree z gałęzi, której upstream to sieciowy remote.',
+  'worktree.bootstrap.toast.lfsSourceLocal': 'Nie pobrano plików Git LFS: OpenChamber pobiera je tylko przez zdalne repozytorium w sieci, a ten worktree takiego nie ma. Remote repozytorium to folder na tym komputerze, nie ma żadnego remote albo gałąź żadnego nie śledzi. Pracuj w samym folderze repozytorium albo utwórz worktree z gałęzi, której upstream to sieciowy remote.',
   'worktree.bootstrap.toast.cancelled': 'Konfiguracja drzewa pracy została anulowana. Spróbuj ponownie, gdy będziesz gotowy.',
   'worktree.bootstrap.toast.transportFailed': 'Sprawdź dostęp do repozytorium i połączenie sieciowe, a następnie spróbuj ponownie.',
   'worktree.bootstrap.toast.timeoutDescription': 'Drzewo pracy zostało utworzone, ale konfiguracja w tle przekroczyła limit czasu.',
@@ -3416,6 +3442,11 @@ export const dict: Record<I18nKey, string> = {
   'openInApp.actions.openInAria': 'Otwórz w {app}',
   'openInApp.actions.refreshApps': 'Odśwież aplikacje',
   'openInApp.toast.pathCopied': 'Ścieżka skopiowana do schowka',
+  'openInApp.toast.sshOpenFailed': 'Nie udało się otworzyć {app}. Sprawdź, czy jest zainstalowany na tym komputerze.',
+  'openInApp.toast.sshInstanceChanged': 'To okno przełączyło się na inną instancję, zanim otworzył się {app}. Spróbuj ponownie.',
+  'openInApp.toast.sshSettingsMismatch': '{app} nie połączyłby się tak jak ta instancja: jej polecenie SSH ustawia {settings}, a {app} tego nie odczytuje. Przenieś te ustawienia do wpisu hosta w ~/.ssh/config.',
+  'openInApp.toast.sshUnresolved': 'Nie udało się odczytać ustawień SSH tej instancji, więc {app} nie został otwarty. Sprawdź jej polecenie SSH.',
+  'openInApp.toast.sshUnsupported': '{app} nie może otworzyć tego projektu przez SSH.',
   'planView.actions.copyPlanContents': 'Kopiuj treść planu',
   'planView.actions.implement': 'Wdróż',
   'planView.actions.improve': 'Ulepsz',
@@ -3587,6 +3618,9 @@ export const dict: Record<I18nKey, string> = {
   'saveProjectPlanDialog.title': 'Zapisz plan projektu',
   'session.githubIssuePicker.actions.refresh': 'Odśwież',
   'session.githubPrPicker.actions.loadMore': 'Załaduj więcej',
+  'session.githubPrPicker.filter.group.repository': 'Repozytorium',
+  'session.githubPrPicker.filter.group.author': 'Autor',
+  'session.githubPrPicker.filter.clearAll': 'Wyczyść filtry',
   'session.githubPrPicker.empty.noPullRequestsFound': 'Nie znaleziono pull requestów',
   'session.githubPrPicker.empty.notConnected': 'GitHub nie jest połączony. Połącz konto GitHub w ustawieniach.',
   'session.githubPrPicker.error.repoNotResolvable': 'Nie udało się rozpoznać repozytorium',

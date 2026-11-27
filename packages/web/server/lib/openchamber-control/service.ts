@@ -4,6 +4,7 @@ import path from 'node:path';
 import nodeFsPromises from 'node:fs/promises';
 import { OpenCode } from '@opencode/client';
 import { OpenChamberControlError, asControlError, controlErrorFields } from './error.js';
+import { assertSessionActionExistingBranch } from './existing-branch.js';
 import { OPENCHAMBER_ALL_ACTIONS, OPENCHAMBER_KNOWLEDGE_ACTIONS, OPENCHAMBER_DEBUGGER_ACTIONS } from './actions.js';
 import { writeScreenshot } from './screenshots.js';
 import { createProjectKnowledgeActions } from './project-knowledge.js';
@@ -16,8 +17,10 @@ import { createSecretRequests } from './secret-request.js';
 import { createUsageReadAction } from './usage-read.js';
 import { createTerminalReadAction } from './terminal-read.js';
 import { runWaitAction } from './waits.js';
+import { readLocationCatalog } from '../opencode/location-plugins.js';
 import { createWorkNamer } from '../openchamber-sessions/work-naming.js';
 import { CHATS_SCOPE_PUBLIC_ID } from '../scheduled-tasks/chats-scope.js';
+import { readWorkSettings } from '../session-work/settings.js';
 import { createWorkMembership } from '../session-work/membership.js';
 import { createSessionListing, positiveInteger } from './session-listing.js';
 import { isPinnedMetadata, userStatePatch } from '../session-work/state.js';
@@ -57,6 +60,7 @@ interface ControlSettings {
   recentModels?: unknown;
   hiddenModels?: unknown;
   sessionWorkEnabled?: unknown;
+  sessionWorkIncludesPinned?: unknown;
   agentImageToolEnabled?: unknown;
   agentImageModel?: unknown;
   agentUsageToolEnabled?: unknown;
@@ -168,7 +172,7 @@ interface SessionPayload {
   variant?: string;
   goal?: boolean;
   goalTokenBudget?: unknown;
-  worktree?: { name?: string; branchName?: string; startRef?: string };
+  worktree?: { name?: string; branchName?: string; startRef?: string; existingBranch?: string };
   setUpstream?: boolean;
   messageId?: string;
   pullRequest?: unknown;
@@ -594,10 +598,9 @@ export const createOpenChamberControlService = (dependencies: ControlDependencie
 
   const searchModels = async (input: ControlInput, contextDirectory: ControlInput['directory']) => {
     const client = await getClient(asNonEmptyString(input.directory) || asNonEmptyString(contextDirectory) || '');
-    const [settings, catalog, providerList] = await Promise.all([
+    const [settings, [catalog, providerList]] = await Promise.all([
       readSettingsFromDiskMigrated(),
-      client.model.list(),
-      client.provider.list(),
+      readLocationCatalog(client),
     ]);
     const providerNames = new Map(providerList.data.map((provider) => [provider.id, provider.name]));
     const refKey = (ref: ControlSettings['recentModels']) => {
@@ -692,15 +695,12 @@ export const createOpenChamberControlService = (dependencies: ControlDependencie
   };
 
   const workMembership = createWorkMembership({ chatRoots });
-  const isSessionWorkEnabled = async () => {
-    const settings = await readSettingsFromDiskMigrated().catch(() => null);
-    return settings?.sessionWorkEnabled !== false;
-  };
+  const readSessionWorkSettings = async () => readWorkSettings(await readSettingsFromDiskMigrated().catch(() => null));
 
   const { listSessions, archiveOwnSession } = createSessionListing({
     assertSingleScope,
     resolveReadDirectory,
-    isSessionWorkEnabled,
+    readSessionWorkSettings,
     getClient,
     activeSessions,
     asPublicStatus,
@@ -713,7 +713,8 @@ export const createOpenChamberControlService = (dependencies: ControlDependencie
 
   const setWorkState = async (input: ControlInput, contextSessionId: string | undefined, state: 'open' | 'done') => {
     if (!updateSessionMetadata) throw new OpenChamberControlError('Changing In work is not available on this server', 503);
-    if (!(await isSessionWorkEnabled())) throw new OpenChamberControlError('In work is turned off in Settings', 409);
+    const { enabled, pinnedInWork } = await readSessionWorkSettings();
+    if (!enabled) throw new OpenChamberControlError('In work is turned off in Settings', 409);
     const sessionID = asNonEmptyString(input.sessionId) || asNonEmptyString(contextSessionId);
     if (!sessionID) throw new OpenChamberControlError('sessionId is required', 400);
     const session = await withArchiveEntry(await assertSessionExists(await getClient(), sessionID));
@@ -724,10 +725,10 @@ export const createOpenChamberControlService = (dependencies: ControlDependencie
       throw new OpenChamberControlError(`${sessionID} is archived; In work shows no archived sessions`, 409);
     }
     const directory = asNonEmptyString(session?.location?.directory) || '';
-    if (state === 'open' && (isPinnedMetadata(session?.metadata) || (directory && await isWorktreePinned(directory)))) {
-      throw new OpenChamberControlError(`${sessionID} is pinned, or its worktree is; a pinned session is never in work`, 409);
+    if (state === 'open' && !pinnedInWork && (isPinnedMetadata(session?.metadata) || (directory && await isWorktreePinned(directory)))) {
+      throw new OpenChamberControlError(`${sessionID} is pinned, or its worktree is; pinned sessions are kept out of In work by the user's sidebar setting`, 409);
     }
-    const { changed } = await updateSessionMetadata(sessionID, (metadata) => userStatePatch(metadata, { state, now: now() }), { directory });
+    const { changed } = await updateSessionMetadata(sessionID, (metadata) => userStatePatch(metadata, { state, now: now(), pinnedInWork }), { directory });
     return { sessionId: sessionID, directory, title: asNonEmptyString(session?.title), inWork: state === 'open', changed };
   };
 
@@ -928,6 +929,7 @@ export const createOpenChamberControlService = (dependencies: ControlDependencie
     if (input.pullRequest !== undefined && action !== 'session.create') {
       throw new OpenChamberControlError('pullRequest applies only to session.create', 400);
     }
+    assertSessionActionExistingBranch(action, input);
     const sessionID = asNonEmptyString(input.sessionId);
     const parentSessionID = asNonEmptyString(contextSessionId);
     const ownWork = input.ownWork === true;
@@ -951,21 +953,17 @@ export const createOpenChamberControlService = (dependencies: ControlDependencie
     if (hasText(input.variant)) payload.variant = input.variant.trim();
     if (input.goal === true) payload.goal = true;
     if (input.goalTokenBudget !== undefined) payload.goalTokenBudget = input.goalTokenBudget;
-    if (hasText(input.worktree)) {
-      payload.worktree = { name: input.worktree.trim() };
-      if (hasText(input.branch)) payload.worktree.branchName = input.branch.trim();
-      if (hasText(input.startRef)) payload.worktree.startRef = input.startRef.trim();
+    if (hasText(input.worktree) || input.pullRequest !== undefined || hasText(input.existingBranch)) {
+      const worktree: NonNullable<SessionPayload['worktree']> = {};
+      if (hasText(input.worktree)) worktree.name = input.worktree.trim();
+      if (hasText(input.branch)) worktree.branchName = input.branch.trim();
+      if (hasText(input.startRef)) worktree.startRef = input.startRef.trim();
+      if (hasText(input.existingBranch)) worktree.existingBranch = input.existingBranch.trim();
+      payload.worktree = worktree;
     }
     if (isBoolean(input.setUpstream)) payload.setUpstream = input.setUpstream;
     if (hasText(input.messageId)) payload.messageId = input.messageId.trim();
-    if (input.pullRequest !== undefined) {
-      payload.pullRequest = input.pullRequest;
-      if (!payload.worktree) {
-        payload.worktree = {};
-        if (hasText(input.branch)) payload.worktree.branchName = input.branch.trim();
-        if (hasText(input.startRef)) payload.worktree.startRef = input.startRef.trim();
-      }
-    }
+    if (input.pullRequest !== undefined) payload.pullRequest = input.pullRequest;
     if (parentSessionID && !(action === 'session.send' && sessionID === parentSessionID)) {
       payload.promptedBySessionId = parentSessionID;
     }

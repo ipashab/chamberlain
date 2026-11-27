@@ -22,7 +22,7 @@ import { checkpointsI18n } from './checkpoints.i18n';
 import { backlogI18n } from './backlog.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
-import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { updateDialogCanaryI18n } from './update-dialog-canary.i18n'; import { updateIdleI18n } from './update-idle.i18n';
 import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
 import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
@@ -32,6 +32,7 @@ import { settingsHintsI18n } from './settings-hints.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
 import { webSearchI18n } from './websearch.i18n';
 import { sessionWarmingI18n } from './session-warming.i18n';
+import { sessionCostI18n } from './session-cost.i18n';
 import { connectionHeartbeatI18n } from './connection-heartbeat.i18n';
 import { compactionSettingsI18n } from './compaction-settings.i18n';
 import { heapSnapshotI18n } from './heap-snapshot.i18n';
@@ -69,9 +70,12 @@ import { mcpGridI18n } from './mcp-grid.i18n';
 import { pluginsGridI18n } from './plugins-grid.i18n';
 import { integrationsCatalogI18n } from './integrations-catalog.i18n';
 import { diffFindI18n } from './diff-find.i18n';
+import { contextWindowI18n } from './context-window.i18n';
 import { markdownOutlineI18n } from './markdown-outline.i18n';
 import { markdownGithubI18n } from './markdown-github.i18n';
 import { autocompleteScopeI18n } from './autocomplete-scope.i18n';
+import { chatExchangeI18n } from './chat-exchange.i18n';
+import { integrateConflictI18n } from './integrate-conflict.i18n';
 import { workflowsI18n } from './workflows.i18n';
 import { subagentsI18n } from './subagents.i18n';
 import { sessionReferencesI18n } from './session-references.i18n';
@@ -122,10 +126,14 @@ export const dict: Record<I18nKey, string> = {
   'sessions.aiRename.noSmallModel': 'Small Model이 필요합니다. 모델 제공자에 로그인하거나 설정 → 세션에서 선택하세요.',
   'commitComparison.mode': '커밋',
   'pullRequestComparison.select': '풀 리퀘스트 선택',
+  'pullRequestComparison.searchShort': '풀 리퀘스트 검색',
   'pullRequestComparison.pickAbove': '위에서 풀 리퀘스트를 선택하세요',
   'pullRequestComparison.diffUnavailable': "{provider}에서 풀 리퀘스트 diff를 제공하지 않아 여기서 표시하거나 둘러볼 수 없습니다",
   'pullRequestComparison.partial': '일부 풀 리퀘스트를 불러오지 못했습니다',
   'commitComparison.select': '커밋 선택',
+  'commitComparison.branchDividerSingle': '위: {branch}에만 있는 커밋. 아래: 이미 {base}에 있음.',
+  'commitComparison.branchDividerPlural': '위: {branch}에만 있는 커밋 {count}개. 아래: 이미 {base}에 있음.',
+  'commitComparison.backToList': '커밋 목록으로 돌아가기',
   'commitComparison.search': '커밋 검색...',
   'commitComparison.loadError': '커밋을 불러오지 못했습니다',
   'commitComparison.noCommits': '커밋을 찾을 수 없습니다',
@@ -223,7 +231,7 @@ export const dict: Record<I18nKey, string> = {
   ...backlogI18n.ko,
   ...documentToolbarI18n.ko,
   ...uiBlocksI18n.ko,
-  ...updateDialogCanaryI18n.ko,
+  ...updateDialogCanaryI18n.ko, ...updateIdleI18n.ko,
   ...aboutReleaseNotesI18n.ko,
   ...updateCheckErrorsI18n.ko,
   ...secretRequestI18n.ko,
@@ -233,6 +241,7 @@ export const dict: Record<I18nKey, string> = {
   ...usageStatsI18n.ko,
   ...webSearchI18n.ko,
   ...sessionWarmingI18n.ko,
+  ...sessionCostI18n.ko,
   ...connectionHeartbeatI18n.ko,
   ...compactionSettingsI18n.ko,
   ...heapSnapshotI18n.ko,
@@ -269,9 +278,12 @@ export const dict: Record<I18nKey, string> = {
   ...pluginsGridI18n.ko,
   ...integrationsCatalogI18n['ko'],
   ...diffFindI18n['ko'],
+  ...contextWindowI18n['ko'],
   ...markdownOutlineI18n['ko'],
   ...markdownGithubI18n['ko'],
   ...autocompleteScopeI18n['ko'],
+  ...chatExchangeI18n['ko'],
+  ...integrateConflictI18n['ko'],
   ...workflowsI18n['ko'],
   ...subagentsI18n['ko'],
   ...sessionReferencesI18n['ko'],
@@ -438,10 +450,6 @@ export const dict: Record<I18nKey, string> = {
   'mobile.menu.update': '업데이트',
   'mobile.menu.settings': '설정',
   'mobile.sessions.newChatCta': '{project}에서 새 채팅',
-  'mobile.sessions.dateGroup.today': '오늘',
-  'mobile.sessions.dateGroup.yesterday': '어제',
-  'mobile.sessions.dateGroup.thisWeek': '이번 주 초',
-  'mobile.sessions.dateGroup.older': '이전',
   'mobile.sessions.section.worktrees': '워크트리',
   'mobile.sessions.section.otherProjects': '프로젝트 전환',
   'mobile.sessions.section.projects': '프로젝트',
@@ -796,6 +804,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.header.displayMode.minimal': '최소',
   'sessions.sidebar.header.displayMode.showWork': '작업 중 섹션 표시',
   'sessions.sidebar.header.displayMode.showPinned': '고정됨 섹션 표시',
+  'sessions.sidebar.header.displayMode.showSubagents': '하위 에이전트 세션 표시',
   'sessions.sidebar.header.displayMode.detailedZoneRows': '자세한 행',
   'sessions.sidebar.header.displayMode.worktreeNameByBranch': 'worktree를 브랜치 이름으로 표시',
   'sessions.sidebar.activity.pinnedTitle': '고정됨',
@@ -824,6 +833,7 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.empty.noMatches.description': '다른 제목이나 브랜치로 검색해 보세요.',
   'sessions.sidebar.activity.chatsTitle': '채팅',
   'sessions.sidebar.activity.chatsEmpty': '아직 채팅이 없습니다.',
+  'sessions.sidebar.timeline.noSessionsYet': '아직 세션 없음',
   'chat.chatInput.chooseProject': '프로젝트 선택',
   'sessions.sidebar.header.projectDisplay.label': '프로젝트 표시',
   'sessions.sidebar.header.projectDisplay.all': '모든 프로젝트',
@@ -972,6 +982,8 @@ export const dict: Record<I18nKey, string> = {
   'sessions.sidebar.session.status.movingToWorktree': '세션을 새 worktree로 이동하는 중',
   'sessions.sidebar.session.status.permissionRequired': '권한 필요',
   'sessions.sidebar.session.status.questionPending': '대기 중인 질문',
+  'sessions.sidebar.session.status.permissionRequiredOpen': '권한 필요. 요청한 세션을 엽니다',
+  'sessions.sidebar.session.status.questionPendingOpen': '대기 중인 질문. 요청한 세션을 엽니다',
   'sessions.sidebar.session.status.activeFor': '{duration} 동안 활성 상태',
   'sessions.sidebar.session.status.lastTurnDuration': '마지막 턴 소요 시간 {duration}',
   'sessions.sidebar.session.subsessions.collapse': '하위 세션 접기',
@@ -1447,6 +1459,8 @@ export const dict: Record<I18nKey, string> = {
   'worktree.bootstrap.toast.invalidConfiguration': '저장소의 하위 모듈 및 Git LFS 설정을 검토한 후 다시 시도하세요.',
   'worktree.bootstrap.toast.repositoryTooManyFiles': '저장소에 파일이 너무 많습니다.',
   'worktree.bootstrap.toast.branchNameConflict': '브랜치 이름이 기존 브랜치와 충돌합니다. 이름이 같거나 한쪽이 다른 쪽 안에 중첩되어 있습니다. 브랜치 이름을 바꾸고 워크트리를 다시 만드세요.',
+  'worktree.bootstrap.toast.submoduleSourceLocal': '서브모듈을 가져오지 않았습니다. OpenChamber는 네트워크 원격을 통해서만 가져오는데, 이 worktree에는 사용할 원격이 없습니다. 저장소의 원격이 이 컴퓨터의 폴더이거나, 원격이 없거나, 브랜치가 아무것도 추적하지 않습니다. 저장소 폴더에서 직접 작업하거나, upstream이 네트워크 원격인 브랜치에서 worktree를 만드세요.',
+  'worktree.bootstrap.toast.lfsSourceLocal': 'Git LFS 파일을 가져오지 않았습니다. OpenChamber는 네트워크 원격을 통해서만 가져오는데, 이 worktree에는 사용할 원격이 없습니다. 저장소의 원격이 이 컴퓨터의 폴더이거나, 원격이 없거나, 브랜치가 아무것도 추적하지 않습니다. 저장소 폴더에서 직접 작업하거나, upstream이 네트워크 원격인 브랜치에서 worktree를 만드세요.',
   'worktree.bootstrap.toast.cancelled': '워크트리 설정이 취소되었습니다. 준비되면 다시 시도하세요.',
   'worktree.bootstrap.toast.transportFailed': '저장소 접근 권한과 네트워크 연결을 확인한 후 다시 시도하세요.',
   'worktree.bootstrap.toast.timeoutDescription': '워크트리는 생성되었지만 백그라운드 설정 시간이 초과되었습니다.',
@@ -1858,6 +1872,7 @@ export const dict: Record<I18nKey, string> = {
   'walkthrough.blocked.emptyDiff.description': '이 범위에는 아직 변경 사항이 없습니다.',
   'walkthrough.blocked.contextTooSmall.title': '이 diff는 현재 모델에 너무 큽니다',
   'walkthrough.blocked.contextTooSmall.description': '{model}은 약 {available}천 자를 담을 수 있는데 이 diff에는 약 {required}천 자가 필요합니다. 잘라내지 않으니 컨텍스트가 더 큰 모델을 선택하세요.',
+  'walkthrough.blocked.contextTooSmall.descriptionRefused': '이 diff가 너무 길어 {model}이(가) 거부했습니다. 컨텍스트가 더 큰 모델을 선택하거나 범위를 좁혀 보세요.',
   'walkthrough.blocked.structuredOutput.title': '이 모델은 구조화된 출력을 지원하지 않습니다',
   'walkthrough.blocked.structuredOutput.description': '{model}은 워크스루에 필요한 구조화된 응답을 지원하지 않습니다.',
   'walkthrough.blocked.chooseModel': '스몰 모델 선택',
@@ -1936,6 +1951,7 @@ export const dict: Record<I18nKey, string> = {
   'contextPanel.browser.annotate.intro': '앱 내 브라우저에서 주석을 단 선택 영역입니다.',
   'contextPanel.browser.annotate.attached': '주석을 채팅에 첨부했습니다',
   'contextPanel.browser.annotate.noSession': '주석을 첨부하기 전에 채팅 세션을 여세요',
+  'contextPanel.browser.annotate.readOnly': '이 채팅은 읽기 전용이라 주석을 첨부할 수 없습니다',
   'contextPanel.browser.annotate.noPage': '주석을 달기 전에 페이지를 불러오세요',
   'contextPanel.browser.annotate.failed': '이 페이지에 주석을 달 수 없습니다',
   'contextPanel.browser.annotate.tool.element': '요소',
@@ -2192,7 +2208,8 @@ export const dict: Record<I18nKey, string> = {
   'contextSidebar.tokens.cacheRead': '캐시 읽기',
   'contextSidebar.tokens.cacheWrite': '캐시 쓰기',
   'contextSidebar.tokens.cacheHit': '캐시 적중',
-  'chat.workStatus.replyCacheHit': '캐시 적중 (응답)',
+  'chat.workStatus.replyCacheHit': '프롬프트 캐시',
+  'chat.workStatus.replyCacheHitDescription': '마지막 응답에서 캐시로부터 읽은 프롬프트 비율입니다.',
   'contextSidebar.actions.copyJson': 'JSON 복사',
   'contextSidebar.actions.copy': '복사',
   'contextSidebar.actions.copied': '복사됨',
@@ -2261,6 +2278,8 @@ export const dict: Record<I18nKey, string> = {
   'diffView.state.loadingDiff': '변경사항 불러오는 중…',
   'diffView.state.loadingChanges': '변경 사항 로드 중…',
   'diffView.state.largeDiff': '큰 diff({count}개 변경 줄)',
+  'diffView.state.largeDiffLongLines': '큰 diff(매우 긴 줄)',
+  'diffView.state.largeFile': '큰 파일',
   'diffView.state.largeDiffDescription': '렌더링이 느릴 수 있습니다. 아래 버튼으로 diff를 계속 볼 수 있습니다.',
   'diffView.summary.changedFilesSingle': '파일 {count}개 변경됨',
   'diffView.summary.changedFilesPlural': '파일 {count}개 변경됨',
@@ -2285,6 +2304,10 @@ export const dict: Record<I18nKey, string> = {
   'diffView.layout.sideBySide': '나란히 보기',
   'diffView.actions.wrapLines': '줄 바꿈',
   'diffView.actions.moreActions': '추가 작업',
+  'diffView.actions.viewOptions': 'Diff 보기 옵션',
+  'gitView.sidebar.resizeAria': 'Git 사이드바 크기 조절',
+  'gitView.commit.stagedCountSummary': '{count}개 스테이징됨',
+  'gitView.commit.collapseAria': '커밋 양식 접기',
   'diffView.actions.openFileInEditorAtChange': '변경 위치에서 이 파일을 에디터로 열기',
   'diffView.actions.openFileAtFirstChangedLine': '첫 변경 줄에서 이 파일 열기',
   'diffView.actions.reviewAria': '변경 사항 리뷰',
@@ -2681,6 +2704,9 @@ export const dict: Record<I18nKey, string> = {
   'session.githubPrPicker.empty.noPullRequestsFound': 'PR이 없습니다',
   'session.githubPrPicker.loading.pullRequests': 'PR 불러오는 중…',
   'session.githubPrPicker.actions.loadMore': '더 불러오기',
+  'session.githubPrPicker.filter.group.repository': '리포지토리',
+  'session.githubPrPicker.filter.group.author': '작성자',
+  'session.githubPrPicker.filter.clearAll': '필터 지우기',
   'session.newWorktree.title': '새 워크트리',
   'session.newWorktree.mode.newBranch': '새 브랜치',
   'session.newWorktree.mode.existingBranch': '기존 브랜치',
@@ -2824,6 +2850,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.revert.toast.undo': '{preview}(으)로 되돌림',
   'chat.revert.toast.redo': '다시 실행',
   'chat.revert.toast.restored': '모든 메시지 복원됨',
+  'chat.revert.toast.filesUnchanged': '채팅을 되돌렸습니다. 파일은 변경되지 않았습니다.',
   'chat.toast.opencodeRestartInterrupted.title': '채팅이 중단되었습니다',
   'chat.toast.opencodeRestartInterrupted.description': '응답이 진행 중인 동안 OpenCode가 다시 시작되었습니다. 계속하려면 메시지를 보내세요.',
   'chat.toast.opencodeRestartInterrupted.autoResumeDescription': '응답이 진행 중인 동안 OpenCode가 다시 시작되었습니다. 채팅은 자동으로 이어집니다. 이어지지 않으면 메시지를 보내세요.',
@@ -2961,6 +2988,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.textSelection.title.saveInsightToNotes': '선택한 텍스트를 메모에 저장',
   'chat.messageBody.actions.revertAria': '이 메시지로 되돌리기',
   'chat.messageBody.actions.revert': '여기부터 되돌리기',
+  'chat.messageBody.status.waitingForAgent': '에이전트 대기 중',
   'chat.messageBody.actions.forkAria': '이 메시지에서 분기',
   'chat.messageBody.actions.fork': '여기서 분기 시작',
   'chat.messageBody.actions.copyMessageAria': '메시지 텍스트 복사',
@@ -3061,6 +3089,7 @@ export const dict: Record<I18nKey, string> = {
   'chat.chatInput.toast.sendAttachmentsFailed': '첨부 파일 전송 실패. 파일 수나 이미지 크기를 줄여 보세요.',
   'chat.chatInput.toast.messageSendFailed': '메시지 전송에 실패했습니다. 첨부 파일을 복원했습니다.',
   'chat.chatInput.toast.agentUnavailable': '에이전트 "{agent}"은(는) 이 세션의 폴더에서 사용할 수 없습니다. 다른 에이전트를 선택한 뒤 다시 보내세요.',
+  'chat.chatInput.toast.skillLoadFailed': '스킬 "{skill}"을(를) MCP 서버에서 불러오지 못했습니다. 설정에서 서버가 연결되어 있는지 확인한 뒤 다시 보내세요.',
   'chat.chatInput.toast.noModelSelected': '전송하기 전에 제공업체와 모델을 선택하세요.',
   'chat.chatInput.toast.clipboardAttachFailed': '클립보드 이미지 첨부 실패',
   'chat.chatInput.toast.clipboardTextAttachFailed': '붙여넣은 텍스트를 파일로 첨부하지 못했습니다',
@@ -3416,6 +3445,11 @@ export const dict: Record<I18nKey, string> = {
   'openInApp.actions.copyPath': '경로 복사',
   'openInApp.actions.refreshApps': '앱 새로고침',
   'openInApp.toast.pathCopied': '경로를 클립보드에 복사했습니다',
+  'openInApp.toast.sshOpenFailed': '{app}을(를) 열 수 없습니다. 이 컴퓨터에 설치되어 있는지 확인하세요.',
+  'openInApp.toast.sshInstanceChanged': '{app}이(가) 열리기 전에 이 창이 다른 인스턴스로 전환되었습니다. 다시 시도하세요.',
+  'openInApp.toast.sshSettingsMismatch': '{app}은(는) 이 인스턴스와 같은 방식으로 연결하지 않습니다. SSH 명령이 {settings}을(를) 설정하지만 {app}은(는) 이를 읽지 않습니다. ~/.ssh/config의 호스트 항목으로 옮기세요.',
+  'openInApp.toast.sshUnresolved': '이 인스턴스의 SSH 설정을 읽을 수 없어 {app}을(를) 열지 않았습니다. SSH 명령을 확인하세요.',
+  'openInApp.toast.sshUnsupported': '{app}은(는) 이 프로젝트를 SSH로 열 수 없습니다.',
   'projectActions.actions.addActionAria': '작업 추가',
   'projectActions.actions.addAction': '작업 추가',
   'projectActions.actions.addNewAction': '새 작업 추가',

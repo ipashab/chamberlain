@@ -9,7 +9,11 @@ import { ContextSurfacePanes } from './ContextSurfacePanes';
 import { WorkspaceLayout } from './WorkspaceLayout';
 import { WorkspaceModeOffer } from './WorkspaceModeOffer';
 import { RegionDropOverlay } from './RegionDropOverlay';
+import { followZonePlacementOfOtherWindows } from './zoneSync';
+import { useContextWindowOwner } from '@/hooks/useContextWindowOwner';
+import { useContextWindowStore } from '@/lib/contextWindow/store';
 import { ContextPanelRail } from './ContextPanelRail';
+import { DetachedPanelRail } from './DetachedPanelRail';
 import { GuestHosts } from './GuestHosts';
 import { PluginPane } from './PluginPane';
 import { useGuestPages } from '@/hooks/useGuestSurfaces';
@@ -125,6 +129,9 @@ export const MainLayout: React.FC = () => {
         if (openGuestPageId && !guestPage) useUIStore.getState().setOpenGuestPage(null);
     }, [openGuestPageId, guestPage]);
     React.useEffect(() => subscribeRuntimeEndpointChanged(() => useUIStore.getState().setOpenGuestPage(null)), []);
+    React.useEffect(() => followZonePlacementOfOtherWindows(), []);
+    useContextWindowOwner();
+    const contextPanelDetached = useContextWindowStore((state) => state.detached);
     // Any full-page surface replacing the chat area. While open, the chat is
     // fully hidden (not just covered) so none of its floating chrome bleeds
     // through, and selecting a session or draft anywhere closes the surface.
@@ -237,12 +244,13 @@ export const MainLayout: React.FC = () => {
                                         </div>
                                     </WorkspaceLayout>
                                     {/* After every region: the panes attach to the bodies the
-                                        regions register. */}
-                                    <ContextSurfacePanes />
+                                        regions register — none of them exist while the panel
+                                        lives in its own window. */}
+                                    {contextPanelDetached ? null : <ContextSurfacePanes />}
                                 </div>
                             </div>
                             <div data-page-scroll-lock="true">
-                                <ErrorBoundary><ContextPanelRail /></ErrorBoundary>
+                                <ErrorBoundary>{contextPanelDetached ? <DetachedPanelRail /> : <ContextPanelRail />}</ErrorBoundary>
                             </div>
                             <ErrorBoundary><GuestHosts /></ErrorBoundary>
                         </div>

@@ -54,6 +54,7 @@ export interface KnowledgeInput {
   rendering?: boolean;
   secrets?: boolean;
   workflows?: boolean;
+  projectActions?: boolean;
   checkout?: Checkout | null;
   responseStyleInstruction?: string | null | undefined;
   extensions?: string | undefined;
@@ -83,6 +84,8 @@ export interface GuidanceOptions {
   rendering: boolean;
   secrets: boolean;
   workflows: boolean;
+  projectActions: boolean;
+  lead?: boolean;
 }
 
 export interface SessionKnowledgeDependencies {
@@ -103,6 +106,7 @@ export interface SessionKnowledgeDependencies {
   };
   resolveProjectId: (directory: string) => Promise<string | null>;
   isAgentMemoryEnabled?: () => Promise<boolean>;
+  isToolHost?: (directory: string) => Promise<boolean | null>;
   isMemoryToolAvailable?: () => Promise<boolean>;
   isSessionLinkingAvailable?: (() => boolean | Promise<boolean>) | null;
   isWorkNamingAvailable?: (directory: string) => boolean | Promise<boolean>;
@@ -111,6 +115,7 @@ export interface SessionKnowledgeDependencies {
   isPageRenderingAvailable?: () => boolean | Promise<boolean>;
   isSecretRequestAvailable?: () => boolean | Promise<boolean>;
   isWorkflowAvailable?: () => boolean | Promise<boolean>;
+  hasProjectActions?: (directory: string) => boolean | Promise<boolean>;
   readExtensionInstructions?: (directory: string) => Promise<string | null>;
   readLeadBrief?: ((sessionId: string) => Promise<string | null>) | null;
   readSessionMetadata?: ((sessionId: string) => Promise<SessionMetadata | undefined>) | null;

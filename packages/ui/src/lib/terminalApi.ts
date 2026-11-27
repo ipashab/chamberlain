@@ -1,3 +1,4 @@
+import { isServerOffline } from '@/lib/server-offline';
 import type { CreateTerminalOptions, TerminalError, TerminalHandlers, TerminalServerSession, TerminalSession, TerminalSessionPurpose, TerminalShellOption, TerminalStreamEvent } from './api/types';
 import type { TerminalChunkSize } from '@/stores/useTerminalStore';
 import { openRuntimeWebSocket } from './relay/runtime-socket';
@@ -64,7 +65,7 @@ type TerminalSessionInput = {
 } | null | undefined;
 const terminalSessionPurposeSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('terminal') }),
-  z.object({ type: z.literal('project-action'), actionId: z.string(), executionId: z.string() }),
+  z.object({ type: z.literal('project-action'), actionId: z.string(), executionId: z.string(), agentSessionId: z.string().optional() }),
 ]);
 const terminalSessionSchema = z.object({
   sessionId: z.string(),
@@ -515,12 +516,12 @@ export class TerminalTransport {
   private scheduleReconnect(): void {
     if (this.reconnectTimer || this.disposed || this.subscribers.size === 0) return;
     this.failures += 1;
-    const slow = (typeof document !== 'undefined' && document.visibilityState === 'hidden') || (typeof navigator !== 'undefined' && !navigator.onLine);
+    const slow = (typeof document !== 'undefined' && document.visibilityState === 'hidden') || isServerOffline();
     const delay = slow ? 60_000 : Math.min(500 * 2 ** Math.min(this.failures - 1, 10), 8_000);
     for (const set of this.subscribers.values()) for (const sub of set) sub.handlers.onEvent({ type: 'reconnecting', attempt: this.failures, maxAttempts: Number.POSITIVE_INFINITY });
     const wake = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      if (isServerOffline()) return;
       if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
       this.wakeCleanup?.(); this.wakeCleanup = null;
