@@ -10,24 +10,8 @@ import { readJsonObjectForUpdate, replaceFileWithRetry } from './windows-file-re
 const LOCAL_HOST_ID = 'local';
 const DEFAULT_CONNECTION_TIMEOUT_SEC = 60;
 const DEFAULT_LOCAL_BIND_HOST = '127.0.0.1';
-const REMOTE_USER_PREFIX = '$HOME/.openchamber/npm-global';
-const REMOTE_BUN_CANDIDATE = '"${BUN_INSTALL:-$HOME/.bun}/bin/bun"';
-const REMOTE_NVM_BIN = '${NVM_DIR:-$HOME/.nvm}/versions/node/v$(ls -1 "${NVM_DIR:-$HOME/.nvm}/versions/node" 2>/dev/null | sed "s/^v//" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)/bin';
-const REMOTE_OPENCODE_CANDIDATES = [
-  '"${OPENCODE_BINARY:-}"',
-  '"$HOME/.opencode/bin/opencode"',
-  '"${BUN_INSTALL:-$HOME/.bun}/bin/opencode"',
-  '"${XDG_CACHE_HOME:-$HOME/.cache}/.bun/bin/opencode"',
-  '"$HOME/.local/bin/opencode"',
-  '"$HOME/.openchamber/npm-global/bin/opencode"',
-  `"${REMOTE_NVM_BIN}/opencode"`,
-];
-const REMOTE_PATH_PREFIX = `$HOME/.opencode/bin:\${BUN_INSTALL:-$HOME/.bun}/bin:\${XDG_CACHE_HOME:-$HOME/.cache}/.bun/bin:$HOME/.local/bin:$HOME/.openchamber/npm-global/bin:${REMOTE_NVM_BIN}`;
-const REMOTE_BIN_CANDIDATES = [
-  '"$HOME/.openchamber/npm-global/bin/openchamber"',
-  '"${BUN_INSTALL:-$HOME/.bun}/bin/openchamber"',
-  '"${XDG_CACHE_HOME:-$HOME/.cache}/.bun/bin/openchamber"',
-];
+import { findRemoteTool, probeBundledOpenCode, REMOTE_BUN_CANDIDATE, REMOTE_BIN_CANDIDATES, REMOTE_NVM_BIN, REMOTE_OPENCODE_CANDIDATES, REMOTE_PATH_PREFIX, REMOTE_USER_PREFIX } from './ssh-remote-probe.mjs';
+
 const DEFAULT_CONTROL_PERSIST_SEC = 300;
 const DEFAULT_READY_TIMEOUT_SEC = 30;
 const DEFAULT_RECONNECT_MAX_ATTEMPTS = 5;
@@ -1083,21 +1067,7 @@ export class ElectronSshManager {
   }
 
   async resolveRemoteTool(parsed, controlPath, commandName, extraCandidates = []) {
-    const candidateList = [...extraCandidates, `"$(command -v ${commandName} 2>/dev/null)"`].join(' ');
-    const script = [
-      `for candidate in ${candidateList}; do`,
-      '  [ -f "$candidate" ] && [ -x "$candidate" ] || continue;',
-      `  printf '%s' "$candidate";`,
-      '  exit 0;',
-      'done',
-    ].join(' ');
-
-    try {
-      const output = await this.runRemoteCommand(parsed, controlPath, script);
-      return output.trim() || null;
-    } catch {
-      return null;
-    }
+    return findRemoteTool((script) => this.runRemoteCommand(parsed, controlPath, script), commandName, extraCandidates);
   }
 
   async remoteOpenChamberCandidates(parsed, controlPath) {
@@ -1218,27 +1188,7 @@ export class ElectronSshManager {
   }
 
   async remoteHasBundledOpenCode(parsed, controlPath, binPath) {
-    if (!binPath) return false;
-    const probeScript = [
-      `PATH="${REMOTE_PATH_PREFIX}:$PATH"`,
-      `node -e 'const fs=require("node:fs"),path=require("node:path");`,
-      `if(process.versions.bun)process.exit(1);`,
-      `const[maj,min]=(process.versions.node||"").split(".").map(Number);`,
-      `if(!(maj>=24||(maj===22&&min>=16)))process.exit(1);`,
-      `if(process.platform==="linux"&&!process.report?.getReport?.()?.header?.glibcVersionRuntime)process.exit(1);`,
-      `const real=fs.realpathSync(process.argv[1]);`,
-      `const dir=path.resolve(path.dirname(real),"..","opencode-server");`,
-      `if(!fs.existsSync(path.join(dir,"serve.mjs"))||!fs.existsSync(path.join(dir,"assets","manifest.json")))process.exit(1);`,
-      `process.stdout.write("bundled\\n");'`,
-      shellQuote(binPath),
-      '2>/dev/null || true',
-    ].join(' ');
-    try {
-      const output = await this.runRemoteCommand(parsed, controlPath, probeScript);
-      return output.trim() === 'bundled';
-    } catch {
-      return false;
-    }
+    return probeBundledOpenCode((script) => this.runRemoteCommand(parsed, controlPath, script), shellQuote, binPath);
   }
 
   async startRemoteServerManaged(parsed, controlPath, instance, desiredPort, binPath) {

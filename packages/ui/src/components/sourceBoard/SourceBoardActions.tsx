@@ -11,7 +11,7 @@ import type { IconName } from '@/components/icon/icons';
 import { toast } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { rememberReviewWriteAccess, reviewDraftCount, useChangeRequestReview } from '@/components/review/useChangeRequestReview';
+import { rememberReviewWriteAccess } from '@/components/review/useChangeRequestReview';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePendingComposerReferences, type ComposerReferenceHandoff } from '@/components/chat/composer/pendingComposerReferences';
@@ -535,31 +535,6 @@ export const SourceBoardPullLinks: React.FC<PullLinkProps> = (props) => {
     );
 };
 
-
-export const SourceBoardReviewDraft: React.FC<PullLinkProps> = (props) => {
-    const { pull, context, project } = props;
-    const { t } = useI18n();
-    const open = useOpenPull(props);
-    const target = React.useMemo(() => (pull.state === 'open' ? {
-        context,
-        provider: context.provider,
-        project: { owner: pull.sourceRepo.owner, name: pull.sourceRepo.repo },
-        number: pull.number,
-        headSha: pull.headSha,
-        directory: context.directory ?? project.path,
-        writeAccess: props.writeAccess,
-    } : null), [context, project.path, pull.headSha, pull.number, pull.sourceRepo.owner, pull.sourceRepo.repo, pull.state, props.writeAccess]);
-    const review = useChangeRequestReview(target);
-    const count = reviewDraftCount(review);
-    if (count === 0) return null;
-    const login = review?.state?.draft?.comments[0]?.author?.login;
-    const label = t(count === 1 ? 'review.board.draft.one' : 'review.board.draft.other', { count });
-    return (
-        <button type="button" className={LINK_CLASS} onClick={() => open('diff')}>
-            {login ? `${login} · ${label}` : label}
-        </button>
-    );
-};
 
 const DISCUSSION_CLOSE_REASONS = ['resolved', 'outdated', 'duplicate'] as const satisfies readonly DiscussionCloseReason[];
 const DISCUSSION_CLOSE_KEYS = {

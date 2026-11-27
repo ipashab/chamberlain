@@ -418,6 +418,8 @@ describe('managed agent tool runtime', () => {
     const miss = await runtime.execute({ tool: 'openchamber_debugger', input: { action: 'delete' } });
     expect(miss.ok).toBe(false);
     expect(miss.error.message).toContain('debug.start');
+  });
+
   it('tells an agent where to save a plan before it picks a tool, only while the knowledge tool is on', async () => {
     const { runtime, dataDir } = await createRuntime();
     await prepareManagedEnv(runtime, { includeKnowledge: true });
@@ -1061,10 +1063,12 @@ describe('managed agent tool runtime', () => {
     const namespaces = [];
     const tool = await loadTools(dataDir, 'actions', {}, [], namespaces);
 
-    expect(Object.keys(tool)).toEqual(['openchamber_actions']);
+    // The fork's first-party tools ship always-on; the switched-on actions
+    // tool joins them, and the whole set is what the plugin serves.
+    expect(Object.keys(tool)).toEqual(['openchamber_team', 'openchamber_tracker', 'openchamber_contacts', 'openchamber_backlog', 'openchamber_actions']);
     expect(Object.keys(tool.openchamber_actions.input.properties.parameters.properties).sort()).toEqual(['maxBytes', 'name']);
     expect(tool.openchamber_actions.options).toEqual({ codemode: true });
-    expect(namespaces).toEqual([expect.objectContaining({ name: 'openchamber_actions' })]);
+    expect(namespaces.map(({ name }) => name)).toEqual(['openchamber_team', 'openchamber_tracker', 'openchamber_contacts', 'openchamber_backlog', 'openchamber_actions']);
     expect(tool.openchamber_actions.description.length).toBeLessThanOrEqual(2048);
 
     // A run belongs to the session OpenCode named, never to one the payload claims.

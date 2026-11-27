@@ -1,4 +1,4 @@
-export const BUILT_IN_CONTEXT_PANEL_MODES = [
+const BUILT_IN_CONTEXT_PANEL_MODES = [
   'diff',
   'walkthrough',
   'file',

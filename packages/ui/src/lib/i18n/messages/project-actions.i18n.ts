@@ -268,6 +268,8 @@ export const projectActionsI18n = {
     'commandPalette.item.openProjectActions': 'Действия проекта',
     'commandPalette.item.runProjectAction': 'Запустить: {name}',
     'commandPalette.item.stopProjectAction': 'Остановить: {name}',
+    'projectActions.menu.agentBadge': 'от агента',
+    'projectActions.run.startedByAgent': 'Запущено агентом',
     'projectActions.header.allActions': 'Все действия',
   },
 } as const;

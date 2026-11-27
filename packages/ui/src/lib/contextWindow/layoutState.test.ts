@@ -19,7 +19,7 @@ const tab = (id: string, mode: ContextPanelTab['mode']): ContextPanelTab => ({
   touchedAt: 1,
 });
 
-const splitTree = {
+const splitTree: ContextPanelDirectoryState['layout'] = {
   kind: 'split',
   id: 'split-1',
   axis: 'row',
@@ -28,7 +28,7 @@ const splitTree = {
     { kind: 'chat' },
     { kind: 'leaf', id: 'leaf-1', tabs: ['git'], activeTabId: 'git' },
   ],
-} as const;
+};
 
 const panel = (overrides: Partial<ContextPanelDirectoryState>): ContextPanelDirectoryState => ({
   isOpen: true,
@@ -36,7 +36,7 @@ const panel = (overrides: Partial<ContextPanelDirectoryState>): ContextPanelDire
   tabs: [tab('git', 'git')],
   activeTabId: 'git',
   zones: { left: { isOpen: true, expanded: false, activeTabId: 'git' }, bottom: { isOpen: false, expanded: false, activeTabId: null } },
-  layout: splitTree as unknown as ContextPanelDirectoryState['layout'],
+  layout: splitTree,
   workspaceMode: 'chat',
   modeLayouts: {},
   touchedAt: 1,

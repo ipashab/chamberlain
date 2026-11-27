@@ -279,6 +279,8 @@ export const sessionMenuHintsI18n = {
     'sessions.sidebar.session.menuHint.pin': 'Держит сессию наверху её списка. Закрепления сохраняются только на этом устройстве.',
     'sessions.sidebar.session.menuHint.unpin': 'Сессия снова сортируется по последней активности.',
     'sessions.sidebar.session.menuHint.track': 'Переносит сессию в список «В работе» — короткий список над всеми остальными для того, за чем вы следите прямо сейчас.',
+    'sessions.sidebar.session.menuHint.trackPinned': 'Закреплённые сессии не попадают в «В работе». Чтобы изменить это, включите «Также в работе» у закреплённых в настройке разделов.',
+    'sessions.sidebar.session.menuHint.trackPinnedTouch': 'Включите «Закреплённые могут быть в работе» в меню отображения.',
     'sessions.sidebar.session.menuHint.markDone': 'Убирает из «В работе» и возвращает на обычное место. Ничего не архивируется и не удаляется.',
     'sessions.sidebar.session.menuHint.exportMarkdown': 'Сохраняет весь диалог в файл Markdown.',
     'sessions.sidebar.session.menuHint.moveToFolder': 'Помещает сессию в одну из папок проекта.',

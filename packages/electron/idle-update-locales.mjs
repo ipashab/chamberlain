@@ -10,6 +10,7 @@ const titles = {
   "ja": "アップデートをインストール",
   "pt-BR": "Instalar atualização",
   "uk": "Встановити оновлення",
+  "ru": "Установить обновление",
   "ko": "업데이트 설치",
   "pl": "Zainstaluj aktualizację",
   "zh-CN": "安装更新",

@@ -45,6 +45,10 @@ mock.module('@/sync/session-ui-store', () => ({
     getState: () => ({ currentSessionId: 'session_1', getDirectoryForSession: (id: string) => `/work/${id}` }),
   },
   resolveSendSelection: () => ({}),
+  // Static markup renders the pulls surface only; the worktree flow the
+  // module graph now reaches around it never runs, so a never-resolving
+  // draft materialization answers it.
+  materializeOpenDraftSession: async () => null,
   // The admission flow compares it against session-admission's parked reads;
   // a constant answers "never overtaken" for static markup.
   getAdmissionNavigationRevision: () => 0,

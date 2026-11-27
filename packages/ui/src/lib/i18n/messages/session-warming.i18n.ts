@@ -206,6 +206,7 @@ export const sessionWarmingI18n = {
     'settings.openchamber.defaults.sessionWarming.all': 'Все сессии',
     'settings.openchamber.defaults.sessionWarming.session': 'Выбранные сессии',
     'settings.openchamber.defaults.sessionWarming.info': 'Некоторые провайдеры забывают закешированный контекст разговора после нескольких минут тишины, и следующее сообщение отвечает медленнее и стоит дороже. «Тёплая» сессия получает крошечный запрос «OK» каждые 4 минуты, пока простаивает; каждый такой запрос тарифицируется как небольшой. Все сессии: OpenCode держит тёплой каждую сессию. Выбранные сессии: включается по одной сессии в её меню или рядом с «Контекстом». Ниже выберите, сколько времени сессия остаётся тёплой после каждого ответа.',
+    'settings.openchamber.defaults.sessionWarming.searchDescription': 'Держит кешированный контекст сессии живым, пока она простаивает, чтобы следующее сообщение было быстрее и дешевле. Каждый запрос отправляет модели весь контекст сессии и может стоить денег или тратить квоту подписки.',
     'settings.openchamber.defaults.sessionWarming.duration': 'Держать тёплой',
     'settings.openchamber.defaults.sessionWarming.durationAria': 'Сколько времени сессия остаётся тёплой после ответа',
     'settings.openchamber.defaults.sessionWarming.duration.30': '30 минут',

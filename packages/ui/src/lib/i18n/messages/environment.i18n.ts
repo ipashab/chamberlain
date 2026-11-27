@@ -316,6 +316,7 @@ export const environmentI18n = {
     'settings.environment.user.title': 'Переменные окружения',
     'settings.environment.user.info': 'Добавляются в окружение OpenCode, Git, терминала и действий проекта. Значения остаются на этом сервере и больше не показываются. Проект может добавить свои в разделе «Проекты».',
     'settings.environment.user.enterpriseNote': 'Корпоративный режим: они попадают в Git, терминал и действия проекта, но не в OpenCode.',
+    'settings.environment.user.sharedServiceNote': 'Общий сервис: эти значения доступны Git, терминалу и действиям проекта, но не OpenCode.',
     'settings.environment.user.restartNote': 'OpenCode применит изменение после перезапуска.',
     'settings.environment.editor.empty': 'Переменных пока нет.',
     'settings.environment.editor.nameAria': 'Имя переменной',

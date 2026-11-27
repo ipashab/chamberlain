@@ -3,7 +3,8 @@ import { Icon } from '@/components/icon/Icon';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { getIntlLocale, useI18n } from '@/lib/i18n';
-import type { SessionSidebarActivityKey } from './sessionSidebarRowModel';
+import type { SessionSidebarActivityKey, SessionSidebarRow } from './sessionSidebarRowModel';
+import { sessionDetailedRowPaddingLeft, sessionTreeTextInset } from './sessions/sessionTreeGeometry';
 import { ACTIVITY_TITLE_KEY, isBuiltinActivityKey } from './sessionSidebarActivityLabels';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TooltipLabelWithShortcut } from '@/components/ui/action-toolbar';
@@ -129,6 +130,14 @@ export const SessionSidebarCaption: React.FC<{
     {addsProjects ? <AddProjectButton /> : null}
   </div>;
 };
+
+export const SessionSidebarDateHeaderRow: React.FC<{ row: Extract<SessionSidebarRow, { kind: 'date-header' }> }> = ({ row }) => (
+  <SessionSidebarDateHeading
+    day={row.day}
+    inset={row.detailed ? sessionDetailedRowPaddingLeft(0) : sessionTreeTextInset(0)}
+    className="pt-1.5 pb-0.5"
+  />
+);
 
 export const SessionSidebarDateHeading: React.FC<{
   day: TimelineDay | null;

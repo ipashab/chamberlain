@@ -9,7 +9,7 @@ const persistedPlacementSchema = z.object({
   state: z.object({ contextSurfaceZones: z.record(z.string(), z.unknown()) }),
 });
 
-export const readPersistedZonePlacement = (raw: string | null): ContextZonePlacement | null => {
+const readPersistedZonePlacement = (raw: string | null): ContextZonePlacement | null => {
   if (!raw) return null;
   let json: unknown;
   try {

@@ -28,6 +28,7 @@ import { webSearchI18n } from './websearch.i18n';
 import { isolatedSpacesI18n } from './isolated-spaces.i18n';
 import { sourceBoardI18n } from './source-board.i18n';
 import { projectActionsI18n } from './project-actions.i18n';
+import { updateIdleI18n } from './update-idle.i18n';
 import { environmentI18n } from './environment.i18n';
 import { providersI18n } from './providers.i18n';
 import { mcpGridI18n } from './mcp-grid.i18n';
@@ -174,6 +175,7 @@ export const dict = {
   ...isolatedSpacesI18n.ru,
   ...sourceBoardI18n.ru,
   ...projectActionsI18n.ru,
+  ...updateIdleI18n.ru,
   ...environmentI18n.ru,
   ...providersI18n.ru,
   ...mcpGridI18n.ru,
@@ -2684,6 +2686,7 @@ export const dict = {
   'chat.textSelection.title.saveInsightToNotes': 'Сохранить выделенный текст в заметки',
   'chat.messageBody.actions.revertAria': 'Отменить до этого сообщения',
   'chat.messageBody.actions.revert': 'Отменить начиная отсюда',
+  'chat.messageBody.status.waitingForAgent': 'Ожидание агента',
   'chat.messageBody.actions.forkAria': 'Создать вилку от этого сообщения',
   'chat.messageBody.actions.fork': 'Создать вилку отсюда',
   'chat.messageBody.actions.copyMessageAria': 'Скопировать текст сообщения',

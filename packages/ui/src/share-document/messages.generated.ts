@@ -282,6 +282,7 @@ export const SHARE_DOCUMENT_MESSAGES = {
     "chat.uiBlock.sendFailed": "Not sent. Try again.",
     "chat.uiBlock.sent": "Sent",
     "chat.uiBlock.source": "Source",
+    "chat.uiBlock.strayQuote": "A quote may end a string early or be missing: put a backslash before a quote inside a string, as in \\\"",
     "chat.uiBlocks.extensionBlock.unavailable": "This block needs an extension that is off or missing.",
     "contextPanel.tab.closeTabAria": "Закрыть вкладку {label}",
     "documentToolbar.moreActions": "More actions",

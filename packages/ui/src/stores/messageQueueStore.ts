@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools, persist, type StorageValue } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
 import { z } from 'zod';
 import type { SyncEvent } from '@/lib/opencode/events';
 import { createInputHistoryIdentity, createInputHistorySubmission, useInputHistoryStore } from './useInputHistoryStore';
@@ -10,44 +10,15 @@ import { copyQueuedMentions, serverMentionFields, type QueuedMentions } from './
 import { contextPartMetadataSchema, type ContextPartMetadata } from '@/lib/messages/contextParts';
 import { updateDesktopSettings } from '@/lib/persistence';
 import { getRuntimeKey } from '@/lib/runtime-switch';
-import { isVSCodeRuntime } from '@/lib/desktop';
 import { runtimeFetch, type RuntimeFetchOptions } from '@/lib/runtime-fetch';
 import { spaceIdOfDirectory } from '@/lib/spaces/space-route';
 import { normalizePath } from '@/lib/pathNormalization';
 import { getQueuedMessagePreview } from '@/lib/messages/queuedMessagePreview';
+import { clearedQueueKeys, DEFAULT_FOLLOW_UP_BEHAVIOR, isServerOwnedMessageQueue, mergeQueuesWithStored, migrateMessageQueueState, seedFlushedQueues, type FollowUpBehavior, type PersistedQueueStore } from './messageQueuePersistence';
 
-export type FollowUpBehavior = 'steer' | 'queue';
-
-const DEFAULT_FOLLOW_UP_BEHAVIOR: FollowUpBehavior = 'queue';
-
-const isFollowUpBehavior = (value: unknown): value is FollowUpBehavior => (
-    value === 'steer' || value === 'queue'
-);
-
-const normalizeFollowUpBehavior = (
-    value: unknown,
-    legacyQueueModeEnabled?: boolean | null,
-): FollowUpBehavior => {
-    if (value === 'immediate') {
-        return 'steer';
-    }
-
-    if (isFollowUpBehavior(value)) {
-        return value;
-    }
-
-    if (legacyQueueModeEnabled === false) {
-        return 'steer';
-    }
-
-    if (legacyQueueModeEnabled === true) {
-        return 'queue';
-    }
-
-    return DEFAULT_FOLLOW_UP_BEHAVIOR;
-};
-
-export const isServerOwnedMessageQueue = (): boolean => !isVSCodeRuntime();
+// The persistence module owns these; re-exported for the consumers that read
+// them from the store's path.
+export { isServerOwnedMessageQueue, migrateMessageQueueState, type FollowUpBehavior } from './messageQueuePersistence';
 
 export type QueuedMessageSendConfig = z.infer<typeof serverSendConfigSchema>;
 
@@ -297,7 +268,7 @@ const appliedRevisions = new Map<string, number>();
 const snapshotRevisions = new Map<string, number>();
 let hydrationGeneration = 0;
 
-interface MessageQueueState {
+export interface MessageQueueState {
     queuedMessages: Record<string, QueuedMessage[]>;
     quarantinedLegacyMessages: Record<string, QueuedMessage[]>;
     followUpBehavior: FollowUpBehavior;
@@ -328,84 +299,6 @@ interface MessageQueueActions {
 }
 
 type MessageQueueStore = MessageQueueState & MessageQueueActions;
-
-type PersistedQueuedMessage = Omit<QueuedMessage, 'text'> & { text?: string };
-
-type PersistedMessageQueueState = {
-    queuedMessages?: Record<string, PersistedQueuedMessage[]>;
-    quarantinedLegacyMessages?: Record<string, PersistedQueuedMessage[]>;
-    followUpBehavior?: FollowUpBehavior;
-    queueModeEnabled?: boolean;
-};
-
-const withDeliveryText = (queues: Record<string, PersistedQueuedMessage[]>): Record<string, QueuedMessage[]> => (
-    Object.fromEntries(Object.entries(queues).map(([key, queue]) => [
-        key,
-        queue.map((message) => ({ ...message, text: message.text ?? message.content })),
-    ]))
-);
-
-type PersistedQueueStore = Pick<MessageQueueState, 'queuedMessages' | 'quarantinedLegacyMessages' | 'followUpBehavior'>;
-
-export const migrateMessageQueueState = (persistedState: unknown, version: number): PersistedQueueStore => {
-    const state = (persistedState ?? {}) as PersistedMessageQueueState;
-    const legacyQueues = version < 2 ? (state.queuedMessages ?? {}) : {};
-    return {
-        queuedMessages: version < 2 ? {} : withDeliveryText(state.queuedMessages ?? {}),
-        quarantinedLegacyMessages: withDeliveryText({
-            ...(state.quarantinedLegacyMessages ?? {}),
-            ...legacyQueues,
-        }),
-        followUpBehavior: normalizeFollowUpBehavior(state.followUpBehavior, state.queueModeEnabled ?? null),
-    };
-};
-
-const storedQueueEnvelopeSchema = z.object({ state: z.unknown(), version: z.number().optional() });
-
-let flushedQueues: Record<string, QueuedMessage[]> = {};
-const clearedQueueKeys = new Set<string>();
-
-const readStoredQueues = (stored: string | null): Record<string, QueuedMessage[]> | null => {
-    if (stored === null) return {};
-    let json: unknown;
-    try {
-        json = JSON.parse(stored);
-    } catch {
-        return null;
-    }
-    const envelope = storedQueueEnvelopeSchema.safeParse(json);
-    if (!envelope.success) return null;
-    try {
-        return migrateMessageQueueState(envelope.data.state, envelope.data.version ?? 0).queuedMessages ?? {};
-    } catch {
-        return null;
-    }
-};
-
-const mergeQueuesWithStored = (
-    pending: StorageValue<PersistedQueueStore>,
-    stored: string | null,
-): StorageValue<PersistedQueueStore> => {
-    const ours = pending.state.queuedMessages;
-    const previous = flushedQueues;
-    flushedQueues = ours;
-    const cleared = [...clearedQueueKeys];
-    clearedQueueKeys.clear();
-    if (isServerOwnedMessageQueue()) return pending;
-    const storedQueues = readStoredQueues(stored);
-    if (!storedQueues) return pending;
-    const queuedMessages = { ...storedQueues };
-    for (const key of cleared) {
-        if (!ours[key]) delete queuedMessages[key];
-    }
-    for (const key of new Set([...Object.keys(previous), ...Object.keys(ours)])) {
-        if (ours[key] === previous[key]) continue;
-        const queue = ours[key];
-        if (queue) queuedMessages[key] = queue;
-        else delete queuedMessages[key];
-    }
-    return { ...pending, state: { ...pending.state, queuedMessages } };
-};
 
 const withoutKey = <T,>(record: Record<string, T>, key: string): Record<string, T> => {
     const { [key]: _removed, ...rest } = record;
@@ -923,7 +816,7 @@ export const useMessageQueueStore = create<MessageQueueStore>()(
     )
 );
 
-flushedQueues = useMessageQueueStore.getState().queuedMessages;
+seedFlushedQueues(useMessageQueueStore.getState().queuedMessages);
 
 export const messageQueueUpdatedEventSchema = z.object({
     type: z.literal('openchamber:message-queue.updated'),

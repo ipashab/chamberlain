@@ -44,7 +44,7 @@ import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
 import { SortableSidebarSection } from './SortableSidebarSection';
 import { sectionDragId, sectionIdOfRow } from './sectionDrag';
 import { sessionDetailedRowPaddingLeft, sessionTreeTextInset } from '../sessions/sessionTreeGeometry';
-import { SessionSidebarActivityHeader, SessionSidebarCaption, SessionSidebarDateHeading } from '../sessionSidebarHeaderPresentation';
+import { SessionSidebarActivityHeader, SessionSidebarCaption, SessionSidebarDateHeaderRow } from '../sessionSidebarHeaderPresentation';
 import { useSidebarPages } from '../pages/useSidebarPages';
 import { SidebarPageRow } from '../pages/SidebarPageRow';
 import { isPinnedZoneRowKey, resolveSessionSidebarStickyHeader, type SessionSidebarRow, type SessionSidebarRowModel } from '../sessionSidebarRowModel';
@@ -561,9 +561,7 @@ function SessionProjectScrollerComponent({ model, view, actions }: SessionProjec
         toggleParent={model.groupProps.toggleParent}
       />;
     }
-    if (row.kind === 'date-header') {
-      return <SessionSidebarDateHeading day={row.day} inset={row.detailed ? sessionDetailedRowPaddingLeft(0) : sessionTreeTextInset(0)} className="pt-1.5 pb-0.5" />;
-    }
+    if (row.kind === 'date-header') return <SessionSidebarDateHeaderRow row={row} />;
     const rowTextInset = row.kind === 'show-control' && row.flat === true
       ? FLAT_TEXT_INSET_PX
       : row.kind === 'show-control' && row.detailed === true

@@ -81,10 +81,12 @@ describe('getVisibleContextRailSurfaces', () => {
       ...baseOptions,
       railOrder: ['notes', 'git', 'editor', 'pr', 'terminal', 'context'],
     });
+    // The 2.8.1 Git panel merge folded the diff surface into git: the rail
+    // has no Changes button of its own anymore.
     expect(surfaces.map((surface) => surface.id)).toEqual([
       'notes',
       'pulls', 'jira', 'confluence', 'review', 'board', 'mcp-console',
-      'git', 'pr', 'diff', 'walkthrough',
+      'git', 'pr', 'walkthrough',
       'editor', 'terminal', 'debug', 'browser',
       'context',
     ]);

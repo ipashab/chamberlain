@@ -5,7 +5,6 @@ import { formatShortcutForDisplay } from '@/lib/shortcuts';
 import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
 import { DiffViewIcon } from '@/components/icons/DiffIcon';
 import { RegionSurfaceMenu } from './RegionSurfaceMenu';
-import { useContextPanelDetach } from './useContextPanelDetach';
 import { Button } from '@/components/ui/button';
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { SortableTabsStrip } from '@/components/ui/sortable-tabs-strip';
@@ -426,7 +425,6 @@ const isRemountedSurface = (mode: ContextPanelMode): boolean => (
  */
 export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = ({ leafId, chatCovered }) => {
   const { t } = useI18n();
-  const detachPanel = useContextPanelDetach();
   // Runtime APIs for the file tab's context menu: revealing a file needs a
   // host that can, and the browser client runtime has none.
   const { files, runtime } = useRuntimeAPIs();
@@ -914,21 +912,6 @@ export const ContextPanel: React.FC<{ leafId: string; chatCovered: boolean }> = 
         </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={6}>{t('contextPanel.region.split.column')}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-        <TooltipTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={detachPanel.detach}
-          className="h-7 w-7 p-0"
-          aria-label={t('contextPanel.window.open')}
-        >
-          <Icon name="external-link" className="h-3.5 w-3.5" />
-        </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={6}>{t('contextPanel.window.open')}</TooltipContent>
         </Tooltip>
         <Tooltip>
         <TooltipTrigger asChild>

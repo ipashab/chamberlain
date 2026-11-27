@@ -88,6 +88,17 @@ export const updateIdleI18n = {
     'settings.openchamber.about.field.autoUpdateDescription': 'Завантажувати оновлення у фоні та встановлювати при виході.',
     'settings.openchamber.about.toast.autoUpdateNotSaved': 'Не вдалося зберегти налаштування автоматичних оновлень.',
   },
+  ru: {
+    'updateDialog.actions.installWhenIdle': 'Установить, когда всё будет свободно',
+    'updateDialog.actions.cancelIdleInstall': 'Отменить',
+    'updateDialog.idle.waiting': 'Ожидание, пока ничего не запущено',
+    'updateDialog.idle.countingOne': 'Установка через {seconds} секунду',
+    'updateDialog.idle.counting': 'Установка через {seconds} секунд',
+    'updateDialog.idle.reason.install-failed': 'Установка не завершилась. Загруженное обновление никуда не делось.',
+    'settings.openchamber.about.field.autoUpdate': 'Автоматические обновления',
+    'settings.openchamber.about.field.autoUpdateDescription': 'Загружать обновления в фоне и устанавливать их при выходе.',
+    'settings.openchamber.about.toast.autoUpdateNotSaved': 'Не удалось сохранить настройку автоматических обновлений.',
+  },
   ko: {
     'updateDialog.actions.installWhenIdle': '한가할 때 설치',
     'updateDialog.actions.cancelIdleInstall': '취소',
