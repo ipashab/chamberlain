@@ -2,7 +2,7 @@
 
 ## Ownership
 
-This module owns the shared layout's header, session sidebar, workspace zone
+This module owns the shared layout's header, session sidebar, workspace region
 frames, file tree, project-action controls and extension hosts. The tab store,
 its scopes and seeding belong to `stores/DOCUMENTATION.md`
 (`useSessionTabsStore`); surface implementations own their content and editors.
@@ -22,39 +22,31 @@ client). VS Code does not mount `ContextPanel`, so it has no such menu.
 ## Context panel window
 
 `ContextWindowLayout.tsx` is the context panel in a window of its own: the
-rail and three zones, with the bottom zone as the center column where a main
-window has the chat. `ContextPanel` `variant="center"` fills that column with
-no resize handle; `variant="side"` marks the side zones there. No zone in
-that window expands, since the center already takes the room. The mode
-itself, routing and following the main window live in `lib/contextWindow`
+same workspace row a main window runs — `WorkspaceLayout` over the region tree
+the owner handed over, `RegionDropOverlay`, `ContextSurfacePanes`, the rail and
+the guest hosts. The carried tree renders itself, so the window shows the
+layout the owner showed at the moment of the detach; the chat node of that tree
+holds no chat — the chat stays in the owner window — and shows
+`CenterEmptyHint` while no region of it carries a tab. The mode itself, routing
+and following the main window live in `lib/contextWindow`
 (`DOCUMENTATION.md` there). While a main window is detached, `MainLayout`
-mounts no zones, panes, drop overlay or fit arbiter, and keeps only the
-closed right zone, whose slot holds the work-status card. In the rail's place
-it shows `DetachedPanelRail`: a pressed button that brings the panel window
-to the front, and in the slot of the detach control a button that brings the
-panel back to this window, so the panel is never out of reach from the chat
-window. The rail and
-the zone header (`ContextZoneWindowButtons`) carry the control that detaches
-the panel; in the panel window the rail's control sends it back.
+mounts no surface panes — no region registers a body for them to attach to —
+and the rail's place is taken by `DetachedPanelRail`: a pressed button that
+brings the panel window to the front, and a button that brings the panel
+back to this window, so the panel is never out of reach from the chat
+window. The rail (`ContextPanelRail`) carries the control that moves the
+panel: in a main window it opens the panel window, in the panel window it
+sends the panel back. This fork has no per-region header, so the control
+rides the rail in both windows.
 
-- The three zone cards in the panel window start at one top edge and share
-  one header height: the center card takes no top gutter (the side cards
-  have none), and without the desktop header the row is padded by the
-  cards' bottom gutter so no card touches the window's edge.
-- The center is a destination everywhere a zone is chosen: the zone menu
-  (`ZoneMoveMenuItems`) names the bottom zone "center" there with its own
-  icon, and the drop overlay labels its target the same way.
-- Drop targets follow the layout direction: in a right-to-left layout the
-  measured physical sides map to the mirrored zones. Their labels are not
-  swapped again, because right-to-left dictionaries already name the start
-  zone by the side it shows on.
-- Drop target frames are opaque, so the zone's content does not read through
-  behind the label. An open zone's frame is its card cut to its target
-  (`computeZoneDropFrames`): in the panel window a closed side's strip is
-  carved out of the center column, and the center card would otherwise run
-  under that strip's frame.
-- A file surface with no editor beside its tree fills a bottom or center
-  zone with the tree; side zones shrink to the tree's width instead.
+- The empty hint hides as soon as any leaf of the carried tree holds a tab, so
+  it never covers what the detach brought over.
+- Drops work as they do in a main window: `RegionDropOverlay` reads the same
+  `regionDropTargets` geometry, in the same right-to-left mirroring, and the
+  frames it draws are opaque so the region's content does not read through
+  behind the label.
+- The window has no chat minimum to protect: a region split here can take the
+  whole width, since nothing of the chat is rendered in it.
 
 ## Header session tabs
 

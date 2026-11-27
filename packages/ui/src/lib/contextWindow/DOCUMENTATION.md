@@ -6,7 +6,7 @@ This module owns the mode where a main window's context panel lives in a
 window of its own: which window is which, what the main window hands the
 panel window, and how the panel comes back. The panel window's layout is
 `components/layout/ContextWindowLayout.tsx` (picked by `WindowLayout.tsx`);
-the zone frames and surfaces are the layout module's
+the region frames and surfaces are the layout module's
 (`components/layout/DOCUMENTATION.md`). The desktop shell owns the native
 window: `packages/electron/context-window-controller.mjs` and its pure
 helpers in `context-window.mjs`.
@@ -45,27 +45,37 @@ with the owner's runtime; the web opens a same-origin popup with
   composer address, so in the owner's composer; files for the composer (an
   annotation's screenshot, an image pasted into a comment) go to the owner
   over the channel, because the panel window has no composer.
-- The panel window's zone layout is its own. It persists placement, zone
-  sizes and its tabs in `openchamber.context-window.v1` (`storage.ts`), never
-  in `ui-store`, so `followZonePlacementOfOtherWindows` never carries its
-  moves to a main window, and it does not run that follower itself. Shared
-  preferences it changes are merged into the stored `ui-store` field by
-  field, because a full write would put back what another window changed
-  since, and sent to the owner (`prefs`), whose next full save would
-  otherwise put the old value back. Placement and sizes are written only
-  when this window changed them, so a tab change in one panel window does
-  not undo another's layout; each panel entry also keeps the placement its
-  tabs were shown under, which the return reads. Entries keep comparison
-  targets of other worktrees for the live handoff; a restore after a restart
-  drops them, as `ui-store` does.
-- Its `bottom` zone is the center column, where the main window has the
-  chat. A surface it has never placed starts there (`panelWindowPlacement`;
-  extension surfaces when the catalog lists them, `useContextWindowPanel`);
-  one the user moved anywhere is written down explicitly, right included.
-- Detaching carries what the main window showed into the panel window, and
-  closes the main window's zones; closing the panel window carries what it
-  showed back (`carryShownSurfaces`) and drops its entry. Tabs travel per
-  owner (`panels[ownerId]`), so two main windows each keep their own panel.
+- Only the region trees are the panel window's own. It persists them in
+  `openchamber.context-window.v1` (`storage.ts`) as `contextPanelByDirectory`,
+  never in `ui-store`, so a main window cannot write them over, and the
+  storage-event follower that keeps surface zone placement in step between
+  main windows (`followZonePlacementOfOtherWindows`) does not run in a
+  panel window at all. Every other `ui-store` field is
+  shared: it is merged into the stored field by field, because a full write
+  would put back what another window changed since, and sent to the owner
+  (`prefs`), whose next full save would otherwise put the old value back.
+  A panel entry is the whole `byDirectory` of one owner and nothing more;
+  placement, zone sizes and the fork's work-status widths stay the owner's
+  shared fields, so the panel window neither decides the owner's placement
+  nor stores sizes for surfaces the owner still shows. Trees enter the record
+  through the same sanitizer as `ui-store`, and the return drops comparisons
+  of other worktrees (`withoutForeignComparisons`) and clamps roots
+  (`clampContextPanelRoots`), so what comes back keeps what a hydrated
+  store would keep.
+- The panel window has no placement of its own: it shows the region trees the
+  detach carried. A surface opened there lands by the same rule as in a main
+  window (`openSurfaceInTree`: a leaf that already shows the mode, else the
+  first leaf with a tab, else a split of the chat node); a directory that
+  was never carried starts from the bare chat node, so its first surface
+  splits that node like a fresh project does. Extension surfaces mount when
+  the catalog lists them (`useContextWindowPanel`).
+- Detaching carries what the main window showed into the panel window — the
+  region trees of every directory, whole — and closes the owner's regions:
+  `closeEveryRegion` folds each tree back to the chat node with its tabs
+  kept for the day they come back. Returning carries what the panel window
+  showed back the same way: the owner replaces `contextPanelByDirectory`
+  with the entry's trees and drops the entry. Tabs travel per owner
+  (`panels[ownerId]`), so two main windows each keep their own panel.
 - The main window can raise its panel window (`showContextPanelWindow`:
   the desktop shell focuses it, the web focuses the popup, found again by its
   window name after a reload of the main window) and ask for the panel back
