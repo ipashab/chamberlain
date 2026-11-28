@@ -53,6 +53,21 @@ and Russian gains the release's new strings across the per-feature
 dictionaries, the idle-update window included. The suite answers green
 apart from the ui and server lint tests already red in the base.
 
+**The fork adds a fallback chain for a provider that stops a session.**
+A request OpenCode gives up on — a spent usage limit, a provider's
+overload, a dead network — now moves the session along an ordered list of
+up to eight spare models, each with its own thinking level, set in
+Settings → Sessions → Session defaults; a session on a model outside the
+list starts at its top, and a session comes back to the model it left once
+that model may serve it again. The toast names what moved the session, so
+an overload never reads as a spent limit, and the way back reads as a
+return rather than another fall. The old single *fallback model* pair keeps
+working for an install that never saved the list, and saving the list
+retires it on both sides. Account switching, which moves a session to the
+provider's next stored account, is the fork's own 2.6.0 feature and stays
+set per provider on that provider's page. Both ride a managed OpenCode
+plugin, so they work wherever OpenChamber starts OpenCode itself.
+
 ---
 
 ## `2.8.0-fork1` — upstream `v2.8.0` whole: leads, one OpenCode shared, documents agents can edit
