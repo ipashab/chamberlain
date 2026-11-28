@@ -11,8 +11,8 @@ export const SESSION_DEFAULTS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   {
     id: 'sessions.fallback-model',
     page: 'sessions',
-    titleKey: 'settings.openchamber.defaults.field.fallbackModel',
-    descriptionKey: 'settings.openchamber.defaults.field.fallbackModelInfo',
+    titleKey: 'settings.openchamber.defaults.field.fallbackModels',
+    descriptionKey: 'settings.openchamber.defaults.field.fallbackModelsInfo',
     keywords: ['fallback', 'backup', 'usage limit', 'quota', 'rate limit', 'model', 'thinking'],
     isAvailable: (ctx) => !ctx.isVSCode,
   },

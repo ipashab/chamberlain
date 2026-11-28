@@ -14,7 +14,9 @@ import {
 } from './settings-files.js';
 
 const MANAGED_PLUGIN_SETTING = /^agent[A-Z]\w*ToolEnabled$/;
-const MANAGED_PLUGIN_SETTINGS_KEYS = new Set(['fallbackModel', 'accountSwitchProviders']);
+// `fallbackModels` replaced the legacy single `fallbackModel`; both are read
+// while the list has never been saved (see lib/limit-failover/policy.ts).
+const MANAGED_PLUGIN_SETTINGS_KEYS = new Set(['fallbackModel', 'fallbackModels', 'accountSwitchProviders']);
 
 export const createRuntimeSettingsApplier = ({
   onManagedPluginSettingsChanged, onMessageSearchEnabledChanged,

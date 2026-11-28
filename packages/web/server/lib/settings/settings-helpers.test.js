@@ -986,6 +986,23 @@ describe('settings helpers', () => {
       expect(sanitized.sessionRetentionOnlyArchived).toBe(true);
     });
   });
+
+  describe('fallback chain persistence', () => {
+    it('keeps an empty list as a cleared one and drops invalid or duplicate entries one by one', () => {
+      const helpers = createTestHelpers();
+      const sanitized = helpers.sanitizeSettingsUpdate({
+        fallbackModels: [
+          { providerID: ' openai ', modelID: ' gpt ', variant: ' high ' },
+          { providerID: '', modelID: 'x' },
+          'junk',
+          { providerID: 'openai', modelID: 'gpt' },
+        ],
+      });
+      expect(sanitized.fallbackModels).toEqual([{ providerID: 'openai', modelID: 'gpt', variant: 'high' }]);
+      expect(helpers.sanitizeSettingsUpdate({ fallbackModels: [] }).fallbackModels).toEqual([]);
+      expect(helpers.sanitizeSettingsUpdate({ fallbackModels: 'nope' }).fallbackModels).toBeUndefined();
+    });
+  });
 });
 
 describe('settings registry gate', () => {
@@ -1054,7 +1071,7 @@ describe('settings registry gate', () => {
     fontSize: 100, chatFontSize: 100, terminalFontSize: 14, editorFontSize: 14, uiFont: 'inter', monoFont: 'jetbrains-mono', customUiFont: 'Maple Mono NF CN', customMonoFont: 'Maple Mono', uiFontWeight: 'balanced', padding: 100, cornerRadius: 8,
     shortcutOverrides: { 'chat.send': 'mod+enter' },
     defaultModel: 'anthropic/claude', defaultVariant: 'high', defaultAgent: 'build', chatsDefaultModel: 'anthropic/claude', chatsDefaultVariant: 'high', chatsDefaultAgent: 'plan', smallModelUseDefault: false, smallModelOverride: 'anthropic/haiku', smallModelVariant: 'high',
-    walkthroughModelOverride: 'anthropic/claude', walkthroughModelVariant: 'high', zenModel: 'zen/model', fallbackModel: 'openai/gpt', fallbackVariant: 'high', accountSwitchProviders: ['anthropic'],
+    walkthroughModelOverride: 'anthropic/claude', walkthroughModelVariant: 'high', zenModel: 'zen/model', fallbackModel: 'openai/gpt', fallbackVariant: 'high', fallbackModels: [{ providerID: 'openai', modelID: 'gpt' }], accountSwitchProviders: ['anthropic'],
     favoriteModels: [{ providerID: 'anthropic', modelID: 'claude' }], hiddenModels: [{ providerID: 'openai', modelID: 'gpt' }], collapsedModelProviders: ['openai'],
     recentModels: [{ providerID: 'anthropic', modelID: 'claude' }], lastSelectedModel: 'anthropic/claude', recentAgents: ['build'], favoriteAgents: ['build'], recentEfforts: { 'anthropic/claude': ['high'] }, lastUsedEfforts: { 'anthropic/claude': 'high', 'openai/gpt-5': null }, providerOrder: ['anthropic'],
     sessionRecapEnabled: true, sessionSuggestionEnabled: true, sessionWorkEnabled: true, sessionWorkIncludesPinned: true, sessionReviewOfferEnabled: true, sessionAdvisorEnabled: true, sessionCheckpointsEnabled: true, sessionGoalEnabled: true, sessionGoalChecker: 'small-model', sessionGoalMaxAutoTurns: 50, sessionGoalDefaultBudgetEnabled: true, sessionGoalDefaultBudget: 5,

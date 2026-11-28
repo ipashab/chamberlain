@@ -22,9 +22,21 @@ export const useLimitFailoverNotices = (): void => {
         : t('chat.limitFailover.toast.accountUnknown', { provider: providerName, to: failover.toAccount }));
       return;
     }
-    toast.info(t('chat.limitFailover.toast.model', {
-      model: getProviderModelDisplayName(provider(failover.providerId), failover.modelId),
-      fallback: getProviderModelDisplayName(provider(failover.toProviderId), failover.toModelId),
-    }));
+    if (failover.kind === 'model-return') {
+      toast.info(t('chat.limitFailover.toast.modelReturn', {
+        model: getProviderModelDisplayName(provider(failover.providerId), failover.modelId),
+        fallback: getProviderModelDisplayName(provider(failover.toProviderId), failover.toModelId),
+      }));
+      return;
+    }
+    toast.info(failover.reason === 'error'
+      ? t('chat.limitFailover.toast.modelError', {
+        model: getProviderModelDisplayName(provider(failover.providerId), failover.modelId),
+        fallback: getProviderModelDisplayName(provider(failover.toProviderId), failover.toModelId),
+      })
+      : t('chat.limitFailover.toast.model', {
+        model: getProviderModelDisplayName(provider(failover.providerId), failover.modelId),
+        fallback: getProviderModelDisplayName(provider(failover.toProviderId), failover.toModelId),
+      }));
   }), [t]);
 };

@@ -7,7 +7,15 @@ import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createLimitFailoverRuntime } from './runtime.js';
-import { classifyLimitFailure, DEFAULT_EXHAUSTION_MS, parseLimitResetAt, parseModelSetting } from './policy.js';
+import {
+  classifyFailure,
+  DEFAULT_EXHAUSTION_MS,
+  FALLBACK_RETURN_MS,
+  GENERIC_EXHAUSTION_MS,
+  parseLimitResetAt,
+  parseModelChain,
+  parseModelSetting,
+} from './policy.js';
 
 const NOW = Date.parse('2026-10-20T10:00:00.000Z');
 const ACCOUNT_A = { id: 'cred_a', label: 'Work' };
@@ -46,11 +54,24 @@ const quotaReport = (overrides = {}) => ({
 
 describe('limit failure classification', () => {
   it('counts a quota error and a rate limit that waits a minute or more', () => {
-    expect(classifyLimitFailure(quotaReport(), NOW)).not.toBeNull();
+    expect(classifyFailure(quotaReport(), NOW)).not.toBeNull();
     const rateLimit = (delay) => quotaReport({ error: { type: 'provider.rate-limit', message: '', body: null }, proposed: { retry: true, delay } });
-    expect(classifyLimitFailure(rateLimit(15 * 60_000), NOW)).not.toBeNull();
-    expect(classifyLimitFailure(rateLimit(8_000), NOW)).toBeNull();
-    expect(classifyLimitFailure(quotaReport({ error: { type: 'provider.auth', message: '', body: null } }), NOW)).toBeNull();
+    expect(classifyFailure(rateLimit(15 * 60_000), NOW)).not.toBeNull();
+    expect(classifyFailure(rateLimit(8_000), NOW)).toBeNull();
+  });
+
+  it('acts on any other error only once OpenCode has given up retrying it', () => {
+    const other = (proposed) => quotaReport({ error: { type: 'provider.auth', message: '', body: null }, proposed });
+    expect(classifyFailure(other({ retry: false }), NOW)).toEqual({ resetAt: NOW + GENERIC_EXHAUSTION_MS });
+    expect(classifyFailure(other({ retry: true, delay: 30_000 }), NOW)).toBeNull();
+    expect(classifyFailure(quotaReport({ error: { type: 'server.overloaded', message: '', body: null }, proposed: { retry: true, delay: 5_000 } }), NOW)).toBeNull();
+    expect(classifyFailure(quotaReport({ error: { type: 'server.overloaded', message: '', body: null }, proposed: { retry: false } }), NOW))
+      .toEqual({ resetAt: NOW + GENERIC_EXHAUSTION_MS });
+    // A report without a usable proposed decision counts as "still retrying":
+    // guessing "given up" would fail the session over on every transient error.
+    const withoutDecision = quotaReport({ error: { type: 'provider.auth', message: '', body: null } });
+    delete withoutDecision.proposed;
+    expect(classifyFailure(withoutDecision, NOW)).toBeNull();
   });
 
   it('reads the reset from the body, and skips an account an hour when the body says nothing', () => {
@@ -59,13 +80,13 @@ describe('limit failure classification', () => {
     expect(parseLimitResetAt(body({ error: { type: 'rate_limit', resets_at: '2026-10-20T12:20:00.000Z' } }), NOW)).toBe(Date.parse('2026-10-20T12:20:00.000Z'));
     expect(parseLimitResetAt(body({ resets_at: Math.floor(NOW / 1000) + 600 }), NOW)).toBe(NOW + 600_000);
     expect(parseLimitResetAt(body({ resets_at: '2026-10-19T00:00:00.000Z' }), NOW)).toBeNull();
-    expect(classifyLimitFailure(quotaReport(), NOW)).toEqual({ resetAt: NOW + DEFAULT_EXHAUSTION_MS });
+    expect(classifyFailure(quotaReport(), NOW)).toEqual({ resetAt: NOW + DEFAULT_EXHAUSTION_MS });
   });
 
   it('counts OpenCode free-tier exhaustion and Console spend limits as quota errors', () => {
     for (const type of ['provider.free-limit', 'provider.budget-limit', 'provider.model-budget-limit']) {
       const report = quotaReport({ providerID: 'opencode', error: { type, message: '', body: null } });
-      expect(classifyLimitFailure(report, NOW)).toEqual({ resetAt: NOW + DEFAULT_EXHAUSTION_MS });
+      expect(classifyFailure(report, NOW)).toEqual({ resetAt: NOW + DEFAULT_EXHAUSTION_MS });
     }
   });
 
@@ -77,7 +98,7 @@ describe('limit failure classification', () => {
       error: { type: 'provider.rate-limit', message: '', body: null, retryAfterMs: 10 * 60_000 },
       proposed: { retry: true, delay: 10_000 },
     });
-    expect(classifyLimitFailure(longRateLimit, NOW)).toEqual({ resetAt: NOW + 600_000 });
+    expect(classifyFailure(longRateLimit, NOW)).toEqual({ resetAt: NOW + 600_000 });
   });
 
   it('treats a short rate limit as a throttle even when the body names a near reset', () => {
@@ -85,7 +106,7 @@ describe('limit failure classification', () => {
       error: { type: 'provider.rate-limit', message: '', body: JSON.stringify({ retry_after: 20 }) },
       proposed: { retry: true, delay: 20_000 },
     });
-    expect(classifyLimitFailure(report, NOW)).toBeNull();
+    expect(classifyFailure(report, NOW)).toBeNull();
   });
 
   it('parses the stored fallback model, keeping slashes in the model id', () => {
@@ -94,6 +115,25 @@ describe('limit failure classification', () => {
     expect(parseModelSetting('openai/gpt-5.6', '')).toEqual({ providerID: 'openai', id: 'gpt-5.6' });
     expect(parseModelSetting('nomodel')).toBeNull();
     expect(parseModelSetting('')).toBeNull();
+  });
+
+  it('parses the fallback chain, and falls back to the single model pair until the list was saved', () => {
+    expect(parseModelChain({ fallbackModels: [] })).toEqual([]);
+    expect(parseModelChain({})).toEqual([]);
+    expect(parseModelChain({ fallbackModel: 'openai/gpt-5.6', fallbackVariant: 'high' })).toEqual([
+      { providerID: 'openai', id: 'gpt-5.6', variant: 'high' },
+    ]);
+    expect(parseModelChain({
+      fallbackModels: [
+        { providerID: 'openai', modelID: 'gpt-5.6', variant: 'high' },
+        { providerID: 'google', modelID: 'gemini-3/pro' },
+        { providerID: 'openai', modelID: 'gpt-5.6' },
+        'not-an-entry',
+      ],
+    })).toEqual([
+      { providerID: 'openai', id: 'gpt-5.6', variant: 'high' },
+      { providerID: 'google', id: 'gemini-3/pro' },
+    ]);
   });
 });
 
@@ -168,7 +208,7 @@ describe('limit failover decisions', () => {
     runtime.settle(answer.ticket, true);
     expect(broadcastUiEvent).toHaveBeenLastCalledWith({
       type: 'openchamber:limit-failover',
-      properties: { kind: 'model', sessionId: 'ses_1', providerId: 'anthropic', modelId: 'claude-opus', toProviderId: 'openai', toModelId: 'gpt-5.6' },
+      properties: { kind: 'model', sessionId: 'ses_1', providerId: 'anthropic', modelId: 'claude-opus', toProviderId: 'openai', toModelId: 'gpt-5.6', reason: 'limit' },
     });
   });
 
@@ -183,6 +223,66 @@ describe('limit failover decisions', () => {
     await expect(runtime.decide(quotaReport()))
       .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'anthropic', id: 'claude-sonnet' } });
     await expect(runtime.decide(quotaReport({ modelID: 'claude-sonnet' }))).resolves.toEqual({ action: 'none' });
+  });
+
+  it('walks the fallback chain in order as each model fails for the session', async () => {
+    const { runtime } = createRuntime({
+      settings: {
+        fallbackModels: [
+          { providerID: 'openai', modelID: 'gpt-5.6' },
+          { providerID: 'google', modelID: 'gemini-3/pro', variant: 'high' },
+        ],
+      },
+    });
+    await expect(runtime.decide(quotaReport()))
+      .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'openai', id: 'gpt-5.6' } });
+    await expect(runtime.decide(quotaReport({ providerID: 'openai', modelID: 'gpt-5.6' })))
+      .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'google', id: 'gemini-3/pro', variant: 'high' } });
+    await expect(runtime.decide(quotaReport({ providerID: 'google', modelID: 'gemini-3/pro' }))).resolves.toEqual({ action: 'none' });
+  });
+
+  it('tracks the chain per session: another session on the primary still gets the top of it', async () => {
+    const { runtime } = createRuntime({
+      settings: {
+        fallbackModels: [
+          { providerID: 'openai', modelID: 'gpt-5.6' },
+          { providerID: 'google', modelID: 'gemini-3/pro' },
+        ],
+      },
+    });
+    await runtime.decide(quotaReport({ sessionID: 'ses_1' }));
+    await expect(runtime.decide(quotaReport({ sessionID: 'ses_2' })))
+      .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'openai', id: 'gpt-5.6' } });
+  });
+
+  it('a session that returned to the primary starts the chain from the top when the primary fails again', async () => {
+    let now = NOW;
+    const { runtime } = createRuntime({
+      settings: {
+        fallbackModels: [
+          { providerID: 'openai', modelID: 'gpt-5.6' },
+          { providerID: 'google', modelID: 'gemini-3/pro' },
+        ],
+      },
+      now: () => now,
+    });
+    const first = await runtime.decide(quotaReport({ sessionID: 'ses_1' }));
+    runtime.settle(first.ticket, true);
+    now += DEFAULT_EXHAUSTION_MS + FALLBACK_RETURN_MS;
+    const back = await runtime.decideReturn({ sessionID: 'ses_1', providerID: 'openai', modelID: 'gpt-5.6' });
+    expect(back).toMatchObject({ action: 'switch-model', model: { providerID: 'anthropic', id: 'claude-opus' } });
+    runtime.settle(back.ticket, true);
+    // The exhausted marks from the first episode have expired, so the chain opens at the top again.
+    await expect(runtime.decide(quotaReport({ sessionID: 'ses_1' })))
+      .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'openai', id: 'gpt-5.6' } });
+  });
+
+  it('falls back on a failure OpenCode gave up on, and lets its own backoff stand while it retries', async () => {
+    const { runtime } = createRuntime({ settings: { fallbackModel: 'openai/gpt-5.6' } });
+    const overloaded = (proposed) => quotaReport({ error: { type: 'server.overloaded', message: '', body: null }, proposed });
+    await expect(runtime.decide(overloaded({ retry: true, delay: 5_000 }))).resolves.toEqual({ action: 'none' });
+    await expect(runtime.decide(overloaded({ retry: false })))
+      .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'openai', id: 'gpt-5.6' } });
   });
 
   it('skips an account that ran out until its reset, then offers it again', async () => {
@@ -239,6 +339,146 @@ describe('limit failover decisions', () => {
     expect(second).toEqual({ action: 'activate-credential', credentialID: ACCOUNT_B.id });
     runtime.settle(first.ticket, true);
     expect(broadcastUiEvent).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('returning to the original model', () => {
+  const chainSettings = { fallbackModels: [{ providerID: 'openai', modelID: 'gpt-5.6' }] };
+  const probe = (overrides = {}) => ({ sessionID: 'ses_1', providerID: 'openai', modelID: 'gpt-5.6', ...overrides });
+
+  it('returns a session to the model it came from once the cooldown and the failure window have passed', async () => {
+    let now = NOW;
+    const { runtime, broadcastUiEvent } = createRuntime({ settings: chainSettings, now: () => now });
+    const answer = await runtime.decide(quotaReport());
+    runtime.settle(answer.ticket, true);
+
+    // The primary took a quota error an hour wide, so the return waits for it.
+    await expect(runtime.decideReturn(probe())).resolves.toEqual({ action: 'none' });
+    now += DEFAULT_EXHAUSTION_MS + FALLBACK_RETURN_MS;
+    const back = await runtime.decideReturn(probe());
+    expect(back).toMatchObject({ action: 'switch-model', model: { providerID: 'anthropic', id: 'claude-opus' } });
+    runtime.settle(back.ticket, true);
+    expect(broadcastUiEvent).toHaveBeenLastCalledWith({
+      type: 'openchamber:limit-failover',
+      properties: { kind: 'model-return', sessionId: 'ses_1', providerId: 'openai', modelId: 'gpt-5.6', toProviderId: 'anthropic', toModelId: 'claude-opus' },
+    });
+    // The episode is over: the session is back where it started.
+    await expect(runtime.decideReturn(probe({ providerID: 'anthropic', modelID: 'claude-opus' }))).resolves.toEqual({ action: 'none' });
+  });
+
+  it('keeps a session on its fallback while it reports a chain model before the cooldown', async () => {
+    let now = NOW;
+    const { runtime } = createRuntime({
+      settings: { fallbackModels: [{ providerID: 'openai', modelID: 'gpt-5.6' }, { providerID: 'google', modelID: 'gemini-3/pro' }] },
+      now: () => now,
+    });
+    const first = await runtime.decide(quotaReport());
+    runtime.settle(first.ticket, true);
+    const second = await runtime.decide(quotaReport({ providerID: 'openai', modelID: 'gpt-5.6' }));
+    runtime.settle(second.ticket, true);
+    now += FALLBACK_RETURN_MS + 1_000;
+    // The original is still inside its failure window; the chain's next model is not a return target.
+    await expect(runtime.decideReturn(probe({ providerID: 'google', modelID: 'gemini-3/pro' }))).resolves.toEqual({ action: 'none' });
+  });
+
+  it('ends the episode when the session moved to a model outside the chain', async () => {
+    let now = NOW;
+    const { runtime } = createRuntime({ settings: chainSettings, now: () => now });
+    const answer = await runtime.decide(quotaReport());
+    runtime.settle(answer.ticket, true);
+    await expect(runtime.decideReturn(probe({ providerID: 'moonshot', modelID: 'kimi-2' }))).resolves.toEqual({ action: 'none' });
+    now += DEFAULT_EXHAUSTION_MS + FALLBACK_RETURN_MS;
+    await expect(runtime.decideReturn(probe())).resolves.toEqual({ action: 'none' });
+  });
+
+  it('keeps the episode when the settle report is lost, so the session still returns', async () => {
+    let now = NOW;
+    const { runtime } = createRuntime({ settings: chainSettings, now: () => now });
+    // The switch decision is made but its settle report never reaches the
+    // server; the plugin still applied the switch, so the probe reports the
+    // chain model the session now runs on.
+    await runtime.decide(quotaReport());
+    await expect(runtime.decideReturn(probe())).resolves.toEqual({ action: 'none' });
+    now += DEFAULT_EXHAUSTION_MS + FALLBACK_RETURN_MS;
+    await expect(runtime.decideReturn(probe()))
+      .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'anthropic', id: 'claude-opus' } });
+  });
+
+  it('retracts the episode when the switch is reported as failed', async () => {
+    let now = NOW;
+    const { runtime } = createRuntime({ settings: chainSettings, now: () => now });
+    const answer = await runtime.decide(quotaReport());
+    runtime.settle(answer.ticket, false);
+    // The session never left its model; a probe reports it where it stands.
+    await expect(runtime.decideReturn(probe({ providerID: 'anthropic', modelID: 'claude-opus' }))).resolves.toEqual({ action: 'none' });
+    now += DEFAULT_EXHAUSTION_MS + FALLBACK_RETURN_MS;
+    await expect(runtime.decideReturn(probe())).resolves.toEqual({ action: 'none' });
+  });
+
+  it('answers a plain retry for a second failure of the same session and model within the switch grace', async () => {
+    const { runtime } = createRuntime({ settings: chainSettings });
+    await expect(runtime.decide(quotaReport()))
+      .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'openai', id: 'gpt-5.6' } });
+    await expect(runtime.decide(quotaReport())).resolves.toEqual({ action: 'retry' });
+  });
+
+  it('answers a plain retry for a duplicate report on a later chain position within the switch grace', async () => {
+    let now = NOW;
+    const { runtime } = createRuntime({
+      settings: { fallbackModels: [{ providerID: 'openai', modelID: 'gpt-5.6' }, { providerID: 'google', modelID: 'gemini-3/pro' }] },
+      now: () => now,
+    });
+    const first = await runtime.decide(quotaReport());
+    runtime.settle(first.ticket, true);
+    now += 61_000; // past the switch grace
+    const second = await runtime.decide(quotaReport({ providerID: 'openai', modelID: 'gpt-5.6' }));
+    expect(second).toMatchObject({ action: 'switch-model', model: { providerID: 'google', id: 'gemini-3/pro' } });
+    // A retry burst on the model the session just left must not announce the same move twice.
+    await expect(runtime.decide(quotaReport({ providerID: 'openai', modelID: 'gpt-5.6' }))).resolves.toEqual({ action: 'retry' });
+  });
+
+  it('keeps the episode when a later hop fails to apply and the session stays on its chain model', async () => {
+    let now = NOW;
+    const { runtime } = createRuntime({
+      settings: { fallbackModels: [{ providerID: 'openai', modelID: 'gpt-5.6' }, { providerID: 'google', modelID: 'gemini-3/pro' }] },
+      now: () => now,
+    });
+    const first = await runtime.decide(quotaReport());
+    runtime.settle(first.ticket, true);
+    now += 61_000; // past the switch grace
+    const second = await runtime.decide(quotaReport({ providerID: 'openai', modelID: 'gpt-5.6' }));
+    runtime.settle(second.ticket, false);
+    // The switch to the second chain model never happened; the session still
+    // runs on the first one, and the original model may take it back later.
+    now += DEFAULT_EXHAUSTION_MS;
+    await expect(runtime.decideReturn({ sessionID: 'ses_1', providerID: 'openai', modelID: 'gpt-5.6' }))
+      .resolves.toMatchObject({ action: 'switch-model', model: { providerID: 'anthropic', id: 'claude-opus' } });
+  });
+
+  it('does not end the episode while a switch decision is still unsettled', async () => {
+    let now = NOW;
+    const { runtime } = createRuntime({ settings: chainSettings, now: () => now });
+    await runtime.decide(quotaReport());
+    // The chat.message hook fired on the original model in the window before
+    // the plugin applied the switch; the pending ticket holds the episode.
+    now += DEFAULT_EXHAUSTION_MS + FALLBACK_RETURN_MS;
+    await expect(runtime.decideReturn({ sessionID: 'ses_1', providerID: 'anthropic', modelID: 'claude-opus' })).resolves.toEqual({ action: 'none' });
+    now += 60_000;
+    await expect(runtime.decideReturn({ sessionID: 'ses_1', providerID: 'anthropic', modelID: 'claude-opus' })).resolves.toEqual({ action: 'none' });
+  });
+
+  it('refuses a malformed probe on the route', async () => {
+    const { runtime } = createRuntime({ settings: chainSettings });
+    const app = express();
+    runtime.registerRoutes(app, express);
+    await request(app).post('/api/openchamber/limit-failover/return').set('authorization', 'Bearer token').send({ sessionID: 'ses_1' }).expect(400);
+    await request(app).post('/api/openchamber/limit-failover/return').send(probe()).expect(401);
+    await request(app)
+      .post('/api/openchamber/limit-failover/return')
+      .set('authorization', 'Bearer token')
+      .send(probe())
+      .expect(200)
+      .expect({ action: 'none' });
   });
 });
 
@@ -405,31 +645,50 @@ describe('limit failover plugin', () => {
     });
   });
 
-  it("keeps OpenCode's decision for other errors, a 'none' answer, or a failed call", async () => {
+  it("reports every error and keeps OpenCode's decision for a 'none' answer or a failed call", async () => {
     const plugin = await loadPlugin();
     const { ctx, hooks } = createContext();
     await plugin.setup(ctx);
     await withCallbackEnv(async () => {
       const fetchMock = vi.fn(async () => new Response(JSON.stringify({ action: 'none' })));
       vi.stubGlobal('fetch', fetchMock);
+
       const other = retryEvent('provider.internal');
       await hooks.retry(other);
-      expect(fetchMock).not.toHaveBeenCalled();
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).error.type).toBe('provider.internal');
+      expect(other.decision).toEqual({ retry: false });
 
       await hooks.retry(retryEvent('provider.free-limit'));
-      expect(JSON.parse(fetchMock.mock.calls[0][1].body).error.type).toBe('provider.free-limit');
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body).error.type).toBe('provider.free-limit');
       await hooks.retry(retryEvent('provider.model-budget-limit'));
-      expect(JSON.parse(fetchMock.mock.calls[1][1].body).error.type).toBe('provider.model-budget-limit');
-
-      const none = retryEvent();
-      await hooks.retry(none);
-      expect(none.decision).toEqual({ retry: false });
+      expect(JSON.parse(fetchMock.mock.calls[2][1].body).error.type).toBe('provider.model-budget-limit');
 
       fetchMock.mockRejectedValueOnce(new Error('offline'));
       const failed = retryEvent();
       await hooks.retry(failed);
       expect(failed.decision).toEqual({ retry: false });
       expect(ctx.credential.activate).not.toHaveBeenCalled();
+    });
+  });
+
+  it('returns the session to the model the server names on a new message', async () => {
+    const plugin = await loadPlugin();
+    const { ctx, hooks } = createContext();
+    await plugin.setup(ctx);
+    await withCallbackEnv(async () => {
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({ action: 'switch-model', model: { providerID: 'anthropic', id: 'claude-opus' }, ticket: 't3' })));
+      vi.stubGlobal('fetch', fetchMock);
+      await hooks['chat.message']({ sessionID: 'ses_1', agent: 'build', model: { providerID: 'openai', id: 'gpt-5.6' } });
+
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe('http://127.0.0.1:4100/api/openchamber/limit-failover/return');
+      expect(JSON.parse(init.body)).toEqual({ sessionID: 'ses_1', providerID: 'openai', modelID: 'gpt-5.6' });
+      expect(ctx.session.switchModel).toHaveBeenCalledWith({ sessionID: 'ses_1', model: { providerID: 'anthropic', id: 'claude-opus' } });
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ ticket: 't3', applied: true });
+
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ action: 'none' }))));
+      await hooks['chat.message']({ sessionID: 'ses_1', model: { providerID: 'openai', id: 'gpt-5.6' } });
+      expect(ctx.session.switchModel).toHaveBeenCalledTimes(1);
     });
   });
 });

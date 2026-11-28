@@ -162,6 +162,7 @@ mock.module('@/components/sections/shared/SettingsSection', () => ({
   ),
   SETTINGS_CUSTOM_TRIGGER_CLASS: '',
   SETTINGS_HELPER_CLASS: '',
+  SETTINGS_ICON_BUTTON_CLASS: '',
   SETTINGS_SELECT_ROW_TRIGGER_CLASS: '',
   SETTINGS_OPTION_STACK_CLASS: '',
   SettingsChipGroup: () => null,

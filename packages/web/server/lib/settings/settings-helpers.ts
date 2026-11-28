@@ -14,6 +14,7 @@ import { sshHostSchema } from '../spaces/places/ssh-host.js';
 import { PROVIDER_LOGO_MIMES } from '../appearance/provider-logo-routes.js';
 import { sanitizeChatActivitySettings } from './settings-chat-activity.js';
 import { sanitizeDictationSettings } from './settings-dictation.js';
+import { sanitizeFailoverSettings } from './settings-failover.js';
 import { keepOmittedBuiltinSections, sanitizeSidebarSections, sanitizeSidebarSettings, type SidebarSection } from './settings-sidebar.js';
 import { sanitizeSessionWorkSettings, sessionWorkResponseFields } from './settings-session-work.js';
 import { keepOrderedSessionCostAmounts, sanitizeSessionLimitSettings } from './settings-session-limits.js';
@@ -221,6 +222,7 @@ export type SanitizedSettings = Partial<Record<BooleanSettingsKey, boolean>>
     desktopWindowControlsStyle?: 'classic' | 'traffic-lights';
     permissionAutoAccept?: { sessions: Record<string, PermissionMode | boolean>; revision: number };
     permissionDefaultMode?: PermissionMode;
+    fallbackModels?: { providerID: string; modelID: string; variant?: string }[];
     projects?: NonNullable<ReturnType<Normalization['sanitizeProjects']>>;
     sidebarSections?: SidebarSection[];
     sidebarPinLists?: { id: string; name: string }[];
@@ -960,9 +962,7 @@ export const createSettingsHelpers = (dependencies: SettingsHelpersDependencies)
       const value = z.string().trim().safeParse(candidate[key]);
       if (value.success) result[key] = value.data.length > 0 ? value.data : undefined;
     }
-    if (Array.isArray(candidate.accountSwitchProviders)) {
-      result.accountSwitchProviders = normalizeStringArray(candidate.accountSwitchProviders);
-    }
+    sanitizeFailoverSettings(candidate, result, normalizeStringArray);
     if (isString(candidate.defaultGitIdentityId)) {
       const trimmed = candidate.defaultGitIdentityId.trim();
       result.defaultGitIdentityId = trimmed.length > 0 ? trimmed : undefined;

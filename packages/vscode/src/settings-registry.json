@@ -771,10 +771,7 @@
     "walkthroughModelVariant": {
       "scope": "profile"
     },
-    "fallbackModel": {
-      "scope": "profile"
-    },
-    "fallbackVariant": {
+    "fallbackModels": {
       "scope": "profile"
     },
     "accountSwitchProviders": {

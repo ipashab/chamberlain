@@ -7,7 +7,10 @@ import {
   SettingsCheckboxRow,
   SETTINGS_CUSTOM_TRIGGER_CLASS,
   SETTINGS_HELPER_CLASS,
+  SETTINGS_ICON_BUTTON_CLASS,
 } from '@/components/sections/shared/SettingsSection';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/icon/Icon';
 import { CompactionSettings } from './CompactionSettings';
 import { SessionWarmingCheckbox } from './SessionWarmingCheckbox';
 import { SettingsInlineLink } from '@/components/sections/classification/JevAccessNote';
@@ -15,6 +18,7 @@ import { SessionWarmingModeField } from './SessionWarmingModeField';
 import { PermissionDefaultModeField } from './PermissionDefaultModeField';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { loadDesktopSettings, updateDesktopSettings } from '@/lib/persistence';
+import type { FallbackChainEntry } from '@/lib/settings/parsers';
 import { selectConfigAgentsForDirectory, selectIsModelMissingFromCatalog, selectProvidersForDirectory, useConfigStore } from '@/stores/useConfigStore';
 import { useChatsRoot } from '@/hooks/useChatsRoot';
 import { useUIStore } from '@/stores/useUIStore';
@@ -38,6 +42,8 @@ const getDisplayModel = (
 
   return { providerId: '', modelId: '' };
 };
+
+type FallbackRow = { model: string; variant?: string };
 
 export const DefaultsSettings: React.FC = () => {
   const { t } = useI18n();
@@ -97,8 +103,7 @@ export const DefaultsSettings: React.FC = () => {
   const smallModelProviders = useCallableModelProviders() ?? [];
   const [walkthroughModelOverride, setWalkthroughModelOverride] = React.useState<string | undefined>();
   const [walkthroughModelVariant, setWalkthroughModelVariant] = React.useState<string | undefined>();
-  const [fallbackModel, setFallbackModel] = React.useState<string | undefined>();
-  const [fallbackVariant, setFallbackVariant] = React.useState<string | undefined>();
+  const [fallbackRows, setFallbackRows] = React.useState<FallbackRow[]>([]);
   const [chatsModel, setChatsModel] = React.useState<string | undefined>();
   const [chatsVariant, setChatsVariant] = React.useState<string | undefined>();
   const [chatsAgent, setChatsAgent] = React.useState<string | undefined>();
@@ -158,13 +163,11 @@ export const DefaultsSettings: React.FC = () => {
           if (walkthroughVariant) {
             setWalkthroughModelVariant(walkthroughVariant);
           }
-          const fallback = data.fallbackModel?.trim();
-          if (fallback) {
-            setFallbackModel(fallback);
-          }
-          const fallbackThinking = data.fallbackVariant?.trim();
-          if (fallbackThinking) {
-            setFallbackVariant(fallbackThinking);
+          if (data.fallbackModels) {
+            setFallbackRows(data.fallbackModels.map((entry) => ({
+              model: `${entry.providerID}/${entry.modelID}`,
+              variant: entry.variant,
+            })));
           }
         }
       } catch (error) {
@@ -351,31 +354,56 @@ export const DefaultsSettings: React.FC = () => {
     []
   );
 
-  const handleFallbackModelChange = React.useCallback(
-    async (providerId: string, modelId: string) => {
-      const newValue = providerId && modelId ? `${providerId}/${modelId}` : undefined;
-      setFallbackModel(newValue);
-      setFallbackVariant(undefined);
+  const saveFallbackRows = React.useCallback(
+    async (rows: FallbackRow[]) => {
+      const entries: FallbackChainEntry[] = [];
+      for (const row of rows) {
+        const parsed = parseModelIdentifier(row.model);
+        if (!parsed) continue;
+        const entry: FallbackChainEntry = { providerID: parsed.providerId, modelID: parsed.modelId };
+        if (row.variant) entry.variant = row.variant;
+        entries.push(entry);
+      }
       try {
-        await updateDesktopSettings({ fallbackModel: newValue ?? '', fallbackVariant: '' });
+        await updateDesktopSettings({ fallbackModels: entries });
       } catch (error) {
-        console.warn('Failed to save fallback model:', error);
+        console.warn('Failed to save fallback models:', error);
       }
     },
     []
   );
 
-  const handleFallbackVariantChange = React.useCallback(
-    async (variant: string | undefined) => {
-      setFallbackVariant(variant);
-      try {
-        await updateDesktopSettings({ fallbackVariant: variant ?? '' });
-      } catch (error) {
-        console.warn('Failed to save fallback thinking:', error);
-      }
+  const handleFallbackModelChange = React.useCallback(
+    async (index: number, providerId: string, modelId: string) => {
+      const model = providerId && modelId ? `${providerId}/${modelId}` : '';
+      const next = fallbackRows.map((row, i) => (i === index ? { model } : row));
+      setFallbackRows(next);
+      await saveFallbackRows(next);
     },
-    []
+    [fallbackRows, saveFallbackRows]
   );
+
+  const handleFallbackVariantChange = React.useCallback(
+    async (index: number, variant: string | undefined) => {
+      const next = fallbackRows.map((row, i) => (i === index ? { ...row, variant } : row));
+      setFallbackRows(next);
+      await saveFallbackRows(next);
+    },
+    [fallbackRows, saveFallbackRows]
+  );
+
+  const handleFallbackRemove = React.useCallback(
+    async (index: number) => {
+      const next = fallbackRows.filter((_, i) => i !== index);
+      setFallbackRows(next);
+      await saveFallbackRows(next);
+    },
+    [fallbackRows, saveFallbackRows]
+  );
+
+  const handleFallbackAdd = React.useCallback(() => {
+    setFallbackRows((rows) => [...rows, { model: '' }]);
+  }, []);
 
   const isStructuredOutputCapable = React.useCallback(
     (providerId: string, modelId: string) =>
@@ -388,7 +416,6 @@ export const DefaultsSettings: React.FC = () => {
     () => getDisplayModel(walkthroughModelOverride),
     [walkthroughModelOverride]
   );
-  const parsedFallbackModel = React.useMemo(() => getDisplayModel(fallbackModel), [fallbackModel]);
   const variantsOf = React.useCallback((providerId: string, modelId: string) => {
     if (!providerId || !modelId) return [];
     const provider = providers.find((p) => p.id === providerId);
@@ -400,10 +427,6 @@ export const DefaultsSettings: React.FC = () => {
   const availableVariants = React.useMemo(
     () => variantsOf(parsedModel.providerId, parsedModel.modelId),
     [parsedModel.modelId, parsedModel.providerId, variantsOf]
-  );
-  const fallbackVariants = React.useMemo(
-    () => variantsOf(parsedFallbackModel.providerId, parsedFallbackModel.modelId),
-    [parsedFallbackModel.modelId, parsedFallbackModel.providerId, variantsOf]
   );
   const smallModelVariants = React.useMemo(
     () => variantsOf(parsedSmallModel.providerId, parsedSmallModel.modelId),
@@ -564,26 +587,54 @@ export const DefaultsSettings: React.FC = () => {
 
       {isVSCode ? null : (
         <SettingsSection title={t('settings.openchamber.defaults.usageLimitsTitle')} contentClassName="space-y-1">
-          <SettingsFieldRow
-            settingsItem="sessions.fallback-model"
-            label={t('settings.openchamber.defaults.field.fallbackModel')}
-            info={t('settings.openchamber.defaults.field.fallbackModelInfo')}
-          >
-            <ModelSelector
-              providerId={parsedFallbackModel.providerId}
-              modelId={parsedFallbackModel.modelId}
-              onChange={handleFallbackModelChange}
-              allowedProviderIds={smallModelProviders}
-              placeholder={t('settings.openchamber.defaults.field.fallbackModelNone')}
-              className={SETTINGS_CUSTOM_TRIGGER_CLASS}
-            />
-            <ModelVariantSelect
-              variants={fallbackVariants}
-              value={fallbackVariant}
-              onChange={handleFallbackVariantChange}
-              ariaLabel={t('settings.openchamber.defaults.field.fallbackThinking')}
-            />
-          </SettingsFieldRow>
+          <div>
+            {fallbackRows.map((row, index) => {
+              const parsedRow = getDisplayModel(row.model);
+              return (
+                <SettingsFieldRow
+                  key={index}
+                  settingsItem={index === 0 ? 'sessions.fallback-model' : undefined}
+                  label={index === 0 ? t('settings.openchamber.defaults.field.fallbackModels') : ''}
+                  info={index === 0 ? t('settings.openchamber.defaults.field.fallbackModelsInfo') : undefined}
+                >
+                  <ModelSelector
+                    providerId={parsedRow.providerId}
+                    modelId={parsedRow.modelId}
+                    onChange={(providerId, modelId) => void handleFallbackModelChange(index, providerId, modelId)}
+                    allowedProviderIds={smallModelProviders}
+                    placeholder={t('settings.openchamber.defaults.field.fallbackModelNone')}
+                    className={SETTINGS_CUSTOM_TRIGGER_CLASS}
+                  />
+                  <ModelVariantSelect
+                    variants={variantsOf(parsedRow.providerId, parsedRow.modelId)}
+                    value={row.variant}
+                    onChange={(variant) => void handleFallbackVariantChange(index, variant)}
+                    ariaLabel={t('settings.openchamber.defaults.field.fallbackThinking')}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={SETTINGS_ICON_BUTTON_CLASS}
+                    onClick={() => void handleFallbackRemove(index)}
+                    aria-label={t('settings.openchamber.defaults.fallbackRemove')}
+                  >
+                    <Icon name="delete-bin" className="size-4" />
+                  </Button>
+                </SettingsFieldRow>
+              );
+            })}
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              className="!font-normal"
+              onClick={handleFallbackAdd}
+              disabled={fallbackRows.length >= 8}
+            >
+              {t('settings.openchamber.defaults.fallbackAdd')}
+            </Button>
+          </div>
           <p className={SETTINGS_HELPER_CLASS}>
             {t('settings.openchamber.defaults.usageLimits.accountSwitching')}
             {' '}

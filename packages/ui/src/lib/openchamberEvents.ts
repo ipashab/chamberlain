@@ -8,6 +8,7 @@ import { subscribeRuntimeEndpointChanged } from './runtime-switch';
 import { isDesktopShell, isVSCodeRuntime } from './desktop';
 import { canDriveBrowserPage } from './browser/hostCapability';
 import { parseBrowserControlEvent, type BrowserControlEvent } from './browser/controlEvents';
+import { limitFailoverSchema, type LimitFailoverEvent } from './limitFailoverEvent';
 import { messageQueueUpdatedEventSchema, type MessageQueueUpdatedEvent } from '@/stores/messageQueueStore';
 import { autoReviewUpdatedEventSchema, type AutoReviewUpdatedEvent } from '@/stores/useAutoReviewStore';
 import { prWatchUpdatedEventSchema, type PrWatchUpdatedEvent } from '@/sync/pr-watch';
@@ -140,25 +141,6 @@ type GuestsChangedEvent = { type: 'guests-changed' };
 type GuestMarksChangedEvent = { type: 'guest-marks-changed' };
 
 type GuestServiceEvent = { type: 'guest-service-event'; guestId: string; topic: string; data: JsonValue };
-
-const limitFailoverSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('account'),
-    sessionId: z.string().min(1),
-    providerId: z.string().min(1),
-    fromAccount: z.string().nullable(),
-    toAccount: z.string().min(1),
-  }),
-  z.object({
-    kind: z.literal('model'),
-    sessionId: z.string().min(1),
-    providerId: z.string().min(1),
-    modelId: z.string().min(1),
-    toProviderId: z.string().min(1),
-    toModelId: z.string().min(1),
-  }),
-]);
-type LimitFailoverEvent = { type: 'limit-failover'; failover: z.infer<typeof limitFailoverSchema> };
 
 const routingUpdatedSchema = z.object({
   available: z.boolean(),

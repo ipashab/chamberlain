@@ -1,7 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { classifyLimitFailure, reportSchema, parseModelSetting } from './policy.js';
+import {
+  classifyFailure,
+  FALLBACK_FORGET_MS,
+  FALLBACK_RETURN_MS,
+  isLimitErrorType,
+  parseModelChain,
+  reportSchema,
+} from './policy.js';
 import type { FailoverModel, LimitReport } from './policy.js';
 import type { Application, ExpressFactory, Request } from '../shared/http-contracts.js';
 
@@ -13,6 +20,15 @@ export type LimitFailoverAnnouncement = {
   toAccount: string;
 } | {
   kind: 'model';
+  sessionId: string;
+  providerId: string;
+  modelId: string;
+  toProviderId: string;
+  toModelId: string;
+  /** What moved the session: a usage limit, or any other failure OpenCode gave up on. */
+  reason: 'limit' | 'error';
+} | {
+  kind: 'model-return';
   sessionId: string;
   providerId: string;
   modelId: string;
@@ -38,16 +54,31 @@ export interface LimitFailoverDependencies {
 
 export interface StoredFailoverSettings {
   accountSwitchProviders?: unknown;
+  fallbackModels?: unknown;
   fallbackModel?: unknown;
   fallbackVariant?: unknown;
 }
 
-const isStoredModelSelection = (value: unknown): value is string => typeof value === 'string';
+interface FailoverEpisode {
+  at: number;
+  /** The model the session came from and may return to. */
+  original: FailoverModel;
+  /** The model the latest switch left, for the duplicate guard. */
+  left: FailoverModel;
+  /** The switch decision that recorded the episode, while its outcome is unknown. */
+  ticketID?: string | undefined;
+}
 
 interface SwitchTicket {
   sessionID: string;
   credentialID: string | null;
   announcement: LimitFailoverAnnouncement;
+}
+
+interface FailoverReturnProbe {
+  sessionID: string;
+  providerID: string;
+  modelID: string;
 }
 
 const settleSchema = z.object({ ticket: z.string().min(1), applied: z.boolean() });
@@ -65,8 +96,7 @@ const PLUGIN_PACKAGE_JSON = `${JSON.stringify({
   exports: { '.': './index.js' },
 }, null, 2)}\n`;
 
-export const LIMIT_FAILOVER_PLUGIN_HELPERS = `const LIMIT_ERROR_TYPES = new Set(["provider.quota", "provider.free-limit", "provider.budget-limit", "provider.model-budget-limit", "provider.rate-limit"])
-const LIMIT_FAILOVER_ROUTE = ${JSON.stringify(ROUTE)}
+export const LIMIT_FAILOVER_PLUGIN_HELPERS = `const LIMIT_FAILOVER_ROUTE = ${JSON.stringify(ROUTE)}
 
 // Location-scoped reads answer { location, data }.
 const failoverAccounts = async (ctx, providerID) => {
@@ -81,10 +111,19 @@ const failoverAccounts = async (ctx, providerID) => {
     activeCredentialID: active?.type === "credential" ? active.id : undefined,
   }
 }
+
+const failoverSettle = (target, ticket, applied) => ticket
+  ? fetch(target.url + "/settle", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + target.token },
+      body: JSON.stringify({ ticket, applied }),
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => undefined)
+  : undefined
 `;
 
-export const createLimitFailoverSetupCode = ({ callbackExpr }: { callbackExpr: string }) => `    await ctx.session.hook("retry", async (event) => {
-      if (!LIMIT_ERROR_TYPES.has(event.error?.type)) return
+export const createLimitFailoverSetupCode = ({ callbackExpr }: { callbackExpr: string }) => `    // Every failed request is reported; the server decides which ones act on.
+    await ctx.session.hook("retry", async (event) => {
       const target = (${callbackExpr})
       if (!target) return
       try {
@@ -114,14 +153,6 @@ export const createLimitFailoverSetupCode = ({ callbackExpr }: { callbackExpr: s
         }
         if (answer.action !== "activate-credential" && answer.action !== "switch-model") return
         // The server announces a switch only once it happened, so it hears the outcome either way.
-        const settle = (applied) => answer.ticket
-          ? fetch(target.url + "/settle", {
-              method: "POST",
-              headers: { "content-type": "application/json", authorization: "Bearer " + target.token },
-              body: JSON.stringify({ ticket: answer.ticket, applied }),
-              signal: AbortSignal.timeout(10_000),
-            }).catch(() => undefined)
-          : undefined
         try {
           if (answer.action === "activate-credential") {
             await ctx.credential.activate({ credentialID: answer.credentialID })
@@ -129,13 +160,40 @@ export const createLimitFailoverSetupCode = ({ callbackExpr }: { callbackExpr: s
             await ctx.session.switchModel({ sessionID: event.sessionID, model: answer.model })
           }
         } catch {
-          await settle(false)
+          await failoverSettle(target, answer.ticket, false)
           return
         }
         event.decision = { retry: true, delay: 0 }
-        await settle(true)
+        await failoverSettle(target, answer.ticket, true)
       } catch {
         // OpenCode's own decision stands when the server cannot be reached.
+      }
+    })
+    // A session running on a fallback model asks, with every new message,
+    // whether the model it came from may take the session back. The probe is
+    // advisory and must not hold the message hostage when the server is slow.
+    await ctx.session.hook("chat.message", async (event) => {
+      if (!event.model) return
+      const target = (${callbackExpr})
+      if (!target) return
+      try {
+        const response = await fetch(target.url + "/return", {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: "Bearer " + target.token },
+          body: JSON.stringify({
+            sessionID: event.sessionID,
+            providerID: event.model.providerID,
+            modelID: event.model.id,
+          }),
+          signal: AbortSignal.timeout(2_000),
+        })
+        if (!response.ok) return
+        const answer = await response.json()
+        if (answer.action !== "switch-model" || !answer.model) return
+        await ctx.session.switchModel({ sessionID: event.sessionID, model: answer.model })
+        await failoverSettle(target, answer.ticket, true)
+      } catch {
+        // The session stays on its current model when the server cannot be reached.
       }
     })`;
 
@@ -170,6 +228,10 @@ export const createLimitFailoverRuntime = ({
   const switchedAt = new Map<string, number>();
   const settledAt = new Map<string, number>();
   const tickets = new Map<string, SwitchTicket & { openedAt: number }>();
+  /** `session:provider/model` -> when that model may serve that session again. */
+  const exhaustedModels = new Map<string, number>();
+  /** Session id -> the failover episode: when the session fell forward, and the model it came from. */
+  const fallbackSince = new Map<string, FailoverEpisode>();
 
   const openTicket = (at: number, ticket: SwitchTicket) => {
     const id = randomUUID();
@@ -187,6 +249,21 @@ export const createLimitFailoverRuntime = ({
     for (const [id, ticket] of tickets) {
       if (ticket.openedAt <= at - SWITCH_GRACE_MS) tickets.delete(id);
     }
+    for (const [key, until] of exhaustedModels) {
+      if (until <= at) exhaustedModels.delete(key);
+    }
+    for (const [sessionID, entry] of fallbackSince) {
+      if (entry.at <= at - FALLBACK_FORGET_MS) fallbackSince.delete(sessionID);
+    }
+  };
+
+  const isModelExhausted = (sessionID: string, model: FailoverModel, at: number) => {
+    const key = `${sessionID}:${model.providerID}/${model.id}`;
+    const until = exhaustedModels.get(key);
+    if (until === undefined) return false;
+    if (until > at) return true;
+    exhaustedModels.delete(key);
+    return false;
   };
 
   const materializePlugin = async () => {
@@ -215,7 +292,7 @@ export const createLimitFailoverRuntime = ({
 
   const decideNow = async (report: LimitReport): Promise<LimitFailoverDecision> => {
     const at = now();
-    const failure = classifyLimitFailure(report, at);
+    const failure = classifyFailure(report, at);
     if (!failure) return { action: 'none' };
 
     forgetOldSettlements(at);
@@ -253,11 +330,24 @@ export const createLimitFailoverRuntime = ({
       }
     }
 
-    const fallback = parseModelSetting(
-      isStoredModelSelection(settings?.fallbackModel) ? settings.fallbackModel : undefined,
-      isStoredModelSelection(settings?.fallbackVariant) ? settings.fallbackVariant : undefined,
-    );
-    if (fallback && !(fallback.providerID === report.providerID && fallback.id === report.modelID)) {
+    // The fallback chain, in order. A session on a chain model moves to the
+    // next entry; a session on a model outside the chain starts at the top.
+    const chain = parseModelChain(settings);
+    const currentIndex = chain.findIndex((model) => model.providerID === report.providerID && model.id === report.modelID);
+    const ordered = currentIndex === -1 ? chain : chain.slice(currentIndex + 1);
+    const next = ordered.find((model) => !isModelExhausted(report.sessionID, model, at)) ?? null;
+    if (next) {
+      const episode = fallbackSince.get(report.sessionID);
+      // A retry burst on the model this session just left arrives while the
+      // switch for that move is already decided or done; a plain retry keeps
+      // it from announcing the same move twice.
+      if (
+        episode
+        && episode.left.providerID === report.providerID
+        && episode.left.id === report.modelID
+        && at - episode.at < SWITCH_GRACE_MS
+      ) return { action: 'retry' };
+      exhaustedModels.set(`${report.sessionID}:${report.providerID}/${report.modelID}`, failure.resetAt);
       const ticket = openTicket(at, {
         sessionID: report.sessionID,
         credentialID: null,
@@ -266,13 +356,68 @@ export const createLimitFailoverRuntime = ({
           sessionId: report.sessionID,
           providerId: report.providerID,
           modelId: report.modelID,
-          toProviderId: fallback.providerID,
-          toModelId: fallback.id,
+          toProviderId: next.providerID,
+          toModelId: next.id,
+          reason: isLimitErrorType(report.error.type) ? 'limit' : 'error',
         },
       });
-      return { action: 'switch-model', model: fallback, ticket };
+      // The episode starts when the decision is made, not when the plugin
+      // settles it: a lost settle report would otherwise leave the session on
+      // the fallback model with nothing to return from. A decision whose
+      // switch never happened is retracted by `settle` or by the next return
+      // probe, whichever sees the session first.
+      fallbackSince.set(report.sessionID, {
+        at,
+        original: episode?.original ?? { providerID: report.providerID, id: report.modelID },
+        left: { providerID: report.providerID, id: report.modelID },
+        ticketID: ticket,
+      });
+      return { action: 'switch-model', model: next, ticket };
     }
     return { action: 'none' };
+  };
+
+  /**
+   * What the plugin should do about a new message on a session that fell back:
+   * return it to the model it came from once the cooldown has passed and that
+   * model may serve the session again, or keep it where it is. A session the
+   * user moved to a model outside the chain ends its episode.
+   */
+  const decideReturnNow = async (probe: FailoverReturnProbe): Promise<LimitFailoverDecision> => {
+    const at = now();
+    forgetOldSettlements(at);
+    const entry = fallbackSince.get(probe.sessionID);
+    if (!entry) return { action: 'none' };
+    // A switch decision whose outcome is still unknown may be about to move
+    // the session; leave the record alone until its settle report speaks.
+    if (entry.ticketID && tickets.has(entry.ticketID)) return { action: 'none' };
+    const settings = await Promise.resolve(readSettings()).catch(() => null);
+    const chain = parseModelChain(settings);
+    const onChain = chain.some((model) => model.providerID === probe.providerID && model.id === probe.modelID);
+    if (!onChain) {
+      fallbackSince.delete(probe.sessionID);
+      return { action: 'none' };
+    }
+    const { original } = entry;
+    if (original.providerID === probe.providerID && original.id === probe.modelID) {
+      fallbackSince.delete(probe.sessionID);
+      return { action: 'none' };
+    }
+    if (at - entry.at < FALLBACK_RETURN_MS) return { action: 'none' };
+    if (isModelExhausted(probe.sessionID, original, at)) return { action: 'none' };
+    const ticket = openTicket(at, {
+      sessionID: probe.sessionID,
+      credentialID: null,
+      announcement: {
+        kind: 'model-return',
+        sessionId: probe.sessionID,
+        providerId: probe.providerID,
+        modelId: probe.modelID,
+        toProviderId: original.providerID,
+        toModelId: original.id,
+      },
+    });
+    return { action: 'switch-model', model: original, ticket };
   };
 
   const settle = (ticketID: string, applied: boolean) => {
@@ -281,19 +426,62 @@ export const createLimitFailoverRuntime = ({
     tickets.delete(ticketID);
     if (applied) {
       broadcastUiEvent({ type: 'openchamber:limit-failover', properties: ticket.announcement });
+      if (ticket.announcement.kind === 'model') {
+        const existing = fallbackSince.get(ticket.sessionID);
+        const from = { providerID: ticket.announcement.providerId, id: ticket.announcement.modelId };
+        // The decision already recorded the episode; the applied report pins
+        // its cooldown to the switch that actually happened, and names the
+        // model the session just left for the duplicate guard. The
+        // announcement's from-model stands in for the original when the
+        // decision's record was already cleaned up in between.
+        fallbackSince.set(ticket.sessionID, {
+          at: ticket.openedAt,
+          original: existing?.original ?? from,
+          left: from,
+        });
+      } else if (ticket.announcement.kind === 'model-return') {
+        fallbackSince.delete(ticket.sessionID);
+      }
     } else if (ticket.credentialID) {
       switchedAt.delete(ticket.credentialID);
       settledAt.delete(`${ticket.sessionID}:${ticket.credentialID}`);
+    } else if (ticket.announcement.kind === 'model') {
+      const entry = fallbackSince.get(ticket.sessionID);
+      if (entry?.ticketID === ticketID) {
+        // The switch never happened, so the session still stands where the
+        // report found it. From the model the episode came from that ends the
+        // episode; from a later chain position the episode continues there, and
+        // a later decision replaces the record before its own outcome speaks.
+        const from = { providerID: ticket.announcement.providerId, id: ticket.announcement.modelId };
+        if (entry.original.providerID === from.providerID && entry.original.id === from.id) {
+          fallbackSince.delete(ticket.sessionID);
+        } else {
+          fallbackSince.set(ticket.sessionID, { ...entry, at: ticket.openedAt, left: from, ticketID: undefined });
+        }
+      }
     }
     return true;
   };
 
-  let queue: Promise<void | LimitFailoverDecision> = Promise.resolve();
-  const decide = (report: LimitReport) => {
-    const result = queue.then(() => decideNow(report));
-    queue = result.catch(() => {});
+  // One decision at a time: sessions on the same account fail together, and
+  // the second report must see the switch the first one made (it then gets a
+  // grace retry) instead of switching again. SAFETY: every queued runner
+  // resolves to a LimitFailoverDecision; the catch branch pads the chain with
+  // `undefined` only so a rejected decision cannot poison the next one.
+  let queue: Promise<LimitFailoverDecision | undefined> = Promise.resolve<LimitFailoverDecision | undefined>(undefined);
+  const queueDecision = (run: () => Promise<LimitFailoverDecision>): Promise<LimitFailoverDecision> => {
+    const result = queue.then(run);
+    queue = result.catch((): LimitFailoverDecision | undefined => undefined);
     return result;
   };
+  const decide = (report: LimitReport) => queueDecision(() => decideNow(report));
+  const decideReturn = (probe: FailoverReturnProbe) => queueDecision(() => decideReturnNow(probe));
+
+  const returnSchema = z.object({
+    sessionID: z.string().min(1),
+    providerID: z.string().min(1),
+    modelID: z.string().min(1),
+  });
 
   const registerRoutes = (app: Application, express: Pick<ExpressFactory, 'json'>) => {
     app.post(ROUTE, express.json({ limit: '256kb' }), async (req, res) => {
@@ -301,6 +489,12 @@ export const createLimitFailoverRuntime = ({
       const report = reportSchema.safeParse(req.body);
       if (!report.success) return res.status(400).json({ error: 'Invalid limit report' });
       return res.json(await decide(report.data));
+    });
+    app.post(`${ROUTE}/return`, express.json({ limit: '16kb' }), async (req, res) => {
+      if (!authorizeRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+      const probe = returnSchema.safeParse(req.body);
+      if (!probe.success) return res.status(400).json({ error: 'Invalid return probe' });
+      return res.json(await decideReturn(probe.data));
     });
     app.post(`${ROUTE}/settle`, express.json({ limit: '16kb' }), (req, res) => {
       if (!authorizeRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
@@ -310,5 +504,5 @@ export const createLimitFailoverRuntime = ({
     });
   };
 
-  return { pluginDirectory, materializePlugin, decide, settle, registerRoutes };
+  return { pluginDirectory, materializePlugin, decide, decideReturn, settle, registerRoutes };
 };

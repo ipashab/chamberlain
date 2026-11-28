@@ -11,7 +11,9 @@ export interface LimitFailoverSettings {
 }
 
 export interface LimitFailoverConfigurationInput {
+  fallbackModels?: unknown;
   fallbackModel?: unknown;
+  fallbackVariant?: unknown;
   accountSwitchProviders?: unknown;
 }
 
@@ -26,6 +28,32 @@ export interface LimitFailure {
 }
 
 export const DEFAULT_EXHAUSTION_MS = 60 * 60_000;
+
+/**
+ * How long a model stays skipped for one session after a failure that is not a
+ * usage limit and says nothing about recovery: overload answers, network
+ * failures, malformed requests. Long enough to outlive a provider hiccup,
+ * short enough that a disabled model comes back the same working day.
+ */
+export const GENERIC_EXHAUSTION_MS = 10 * 60_000;
+
+/** How long a session stays on a fallback model before the next message tries the original again. */
+export const FALLBACK_RETURN_MS = 5 * 60_000;
+
+/** A session's failover state is forgotten after this long without a decision. */
+export const FALLBACK_FORGET_MS = 24 * 60 * 60_000;
+
+/** The chain holds at most this many models, in the order they are tried. */
+export const FALLBACK_CHAIN_LIMIT = 8;
+
+export interface FailoverChainEntry {
+  providerID: string;
+  modelID: string;
+  variant?: string | undefined;
+}
+
+/** Whether the error type speaks of a usage limit, rather than any other failure. */
+export const isLimitErrorType = (type: string) => LIMIT_ERROR_TYPES.has(type);
 
 const LIMIT_ERROR_TYPES = new Set([
   'provider.quota',
@@ -80,11 +108,18 @@ export const parseLimitResetAt = (error: LimitReport['error'] | null | undefined
   return resetFromHints(body.data, now) ?? (body.data.error ? resetFromHints(body.data.error, now) : null);
 };
 
-export const classifyLimitFailure = (report: LimitReport, now: number): LimitFailure | null => {
+export const classifyFailure = (report: LimitReport, now: number): LimitFailure | null => {
   const error = report.error;
-  if (!LIMIT_ERROR_TYPES.has(error.type)) return null;
+  // A report without a usable proposed decision counts as "still retrying":
+  // guessing "given up" would fail the session over on every transient error
+  // a future OpenCode stops attaching the decision to.
+  const proposed = report.proposed ?? { retry: true, delay: 0 };
+  if (!LIMIT_ERROR_TYPES.has(error.type)) {
+    if (proposed.retry) return null;
+    return { resetAt: now + GENERIC_EXHAUSTION_MS };
+  }
   const resetAt = parseLimitResetAt(error, now);
-  const proposedDelay = report.proposed.retry ? report.proposed.delay : 0;
+  const proposedDelay = proposed.retry ? proposed.delay : 0;
   if (error.type === 'provider.rate-limit') {
     const wait = Math.max(proposedDelay, resetAt === null ? 0 : resetAt - now);
     if (wait < LONG_WAIT_MS) return null;
@@ -93,8 +128,48 @@ export const classifyLimitFailure = (report: LimitReport, now: number): LimitFai
   return { resetAt: now + (proposedDelay >= LONG_WAIT_MS ? proposedDelay : DEFAULT_EXHAUSTION_MS) };
 };
 
+const chainEntrySchema = z
+  .object({
+    providerID: z.string().trim().min(1),
+    modelID: z.string().trim().min(1),
+    variant: z.string().trim().min(1).optional().catch(undefined),
+  })
+  .transform((entry) => entry.variant ? { providerID: entry.providerID, id: entry.modelID, variant: entry.variant } : { providerID: entry.providerID, id: entry.modelID });
+
+/**
+ * The fallback models in the order they are tried, each
+ * `{ providerID, id, variant? }`. `fallbackModels` is the setting; when it is
+ * absent (an install that has not saved the list yet) the single
+ * `fallbackModel`/`fallbackVariant` pair stands in as a one-model chain. An
+ * empty `fallbackModels` array means the user cleared the list, so the legacy
+ * pair is not resurrected.
+ */
+export const parseModelChain = (settings: LimitFailoverConfigurationInput | null | undefined): FailoverModel[] => {
+  const stored = settings?.fallbackModels;
+  if (Array.isArray(stored)) {
+    const chain: FailoverModel[] = [];
+    const seen = new Set<string>();
+    for (const entry of stored) {
+      if (chain.length >= FALLBACK_CHAIN_LIMIT) break;
+      const parsed = chainEntrySchema.safeParse(entry);
+      if (!parsed.success) continue;
+      const key = `${parsed.data.providerID}/${parsed.data.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      chain.push(parsed.data);
+    }
+    return chain;
+  }
+  const legacy = parseModelSetting(
+    typeof settings?.fallbackModel === 'string' ? settings.fallbackModel : undefined,
+    typeof settings?.fallbackVariant === 'string' ? settings.fallbackVariant : undefined,
+  );
+  return legacy ? [legacy] : [];
+};
+
+/** Whether either option is on, so the managed OpenCode needs the plugin at all. */
 export const isLimitFailoverConfigured = (settings: LimitFailoverConfigurationInput | null | undefined) => (
-  parseModelSetting(settings?.fallbackModel) !== null
+  parseModelChain(settings).length > 0
   || (Array.isArray(settings?.accountSwitchProviders) && settings.accountSwitchProviders.length > 0)
 );
 
@@ -127,7 +202,10 @@ export const reportSchema = z.object({
       z.object({ retry: z.literal(true), delay: z.number().finite().nonnegative() }),
       z.object({ retry: z.literal(false) }),
     ])
-    .catch({ retry: false }),
+    // An unreadable proposed decision means "OpenCode still wants to retry":
+    // guessing "given up" would fail the session over on every transient
+    // error a future OpenCode stops attaching the decision to.
+    .catch({ retry: true, delay: 0 }),
   credentials: z
     .array(z.unknown())
     .catch([])

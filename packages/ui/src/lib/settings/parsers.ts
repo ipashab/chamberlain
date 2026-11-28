@@ -12,6 +12,8 @@ export type SettingsRawDocument = Readonly<Record<string, unknown>>;
 
 export type ModelRef = { providerID: string; modelID: string };
 
+export type FallbackChainEntry = { providerID: string; modelID: string; variant?: string };
+
 export type NotificationTemplates = {
   completion: { title: string; message: string };
   error: { title: string; message: string };
@@ -147,6 +149,44 @@ export const parseModelRefs = (limit: number): SettingsParser<ModelRef[]> => fro
     return result;
   }),
 );
+
+const fallbackChainEntrySchema = z.object({
+  providerID: nonEmptyTrimmed,
+  modelID: nonEmptyTrimmed,
+  variant: trimmed.optional().catch(undefined),
+});
+
+const parseFallbackChainEntries = (entries: readonly unknown[]): FallbackChainEntry[] => {
+  const result: FallbackChainEntry[] = [];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    const parsed = fallbackChainEntrySchema.safeParse(entry);
+    if (!parsed.success) continue;
+    const key = `${parsed.data.providerID}/${parsed.data.modelID}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const chainEntry: FallbackChainEntry = { providerID: parsed.data.providerID, modelID: parsed.data.modelID };
+    if (parsed.data.variant) chainEntry.variant = parsed.data.variant;
+    result.push(chainEntry);
+    if (result.length >= 8) break;
+  }
+  return result;
+};
+
+export const parseFallbackChain: SettingsParser<FallbackChainEntry[]> = (value, raw) => {
+  if (value !== undefined) {
+    const parsed = z.array(z.unknown()).safeParse(value);
+    return parsed.success ? parseFallbackChainEntries(parsed.data) : undefined;
+  }
+  const legacy = z.string().trim().safeParse(raw.fallbackModel);
+  const model = legacy.success ? legacy.data : '';
+  const separator = model.indexOf('/');
+  if (separator <= 0 || separator >= model.length - 1) return undefined;
+  const entry: FallbackChainEntry = { providerID: model.slice(0, separator), modelID: model.slice(separator + 1) };
+  const variant = z.string().trim().safeParse(raw.fallbackVariant);
+  if (variant.success && variant.data) entry.variant = variant.data;
+  return [entry];
+};
 
 export const parseRecentEfforts = fromSchema(
   looseObject.transform((record) => {

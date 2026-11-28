@@ -1,3 +1,4 @@
+import type { I18nDictionary } from '../store';
 import { settingsDict } from './fr.settings';
 import { debugPanelI18n } from './debug-panel.i18n';
 import { mcpConsoleI18n } from './mcp-console.i18n';
@@ -89,7 +90,7 @@ import { tooltipsWorkspaceI18n } from './tooltips-workspace.i18n';
 import { tooltipsPanelI18n } from './tooltips-panel.i18n';
 import { tooltipsChatI18n } from './tooltips-chat.i18n';
 
-export const dict = {
+export const dict: I18nDictionary = {
   'quota.family.zen': 'Modèles Zen',
   'quota.value.requests': 'Requêtes : {count}',
   'quota.value.spent': '{spent} dépensés',
